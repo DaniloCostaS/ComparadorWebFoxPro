@@ -327,7 +327,23 @@
                     }
                 });
                 
-                updateAndGoToDiff(0, false); 
+                resetDiffNavigation();
+            }
+
+            function resetDiffNavigation() {
+                currentDiffIndex = -1;
+                const visibleDiffs = getVisibleDiffs();
+                document.querySelectorAll('.highlight-diff').forEach(el => el.classList.remove('highlight-diff'));
+
+                if (visibleDiffs.length === 0) {
+                    diffCounter.textContent = "Nenhuma diferença";
+                    nextBtn.disabled = true;
+                    prevBtn.disabled = true;
+                } else {
+                    diffCounter.textContent = `Diferença 0 de ${visibleDiffs.length}`;
+                    prevBtn.disabled = true;
+                    nextBtn.disabled = false;
+                }
             }
 
             function updateAndGoToDiff(newIndex, shouldScroll = true) {
