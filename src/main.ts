@@ -181,8 +181,9 @@ document.addEventListener('DOMContentLoaded', () => {
           let depoisText = '';
 
           if (antes.prgText !== null && depois.prgText !== null) {
-              antesText = antes.prgText;
-              depoisText = depois.prgText;
+              const parser = new FoxProParser();
+              antesText = parser.parsePrg(antes.prgText);
+              depoisText = parser.parsePrg(depois.prgText);
           } else if (antes.bin1 && antes.bin2 && depois.bin1 && depois.bin2) {
               const parser = new FoxProParser();
               antesText = parser.parse(antes.bin1, antes.bin2);

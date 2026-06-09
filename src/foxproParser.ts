@@ -58,6 +58,49 @@ export class FoxProParser {
         return methodBlocks.map(b => b.content.join('\n').trimEnd()).filter(text => text.length > 0).join('\n\n');
     }
 
+    public parsePrg(prgText: string): string {
+        const methodLines = prgText.split(/\r?\n/);
+        const methodBlocks: { name: string, content: string[] }[] = [];
+        let currentName = '_TOP_LEVEL';
+        let currentContent: string[] = [];
+
+        for (const line of methodLines) {
+            const match = line.match(/^\s*(?:PROCEDURE|FUNCTION)\s+([a-zA-Z0-9_]+)/i);
+            if (match) {
+                // Save previous block if it has content
+                if (currentContent.length > 0) {
+                    methodBlocks.push({ name: currentName, content: currentContent });
+                }
+                currentName = match[1].toUpperCase();
+                currentContent = [line];
+            } else {
+                currentContent.push(line);
+            }
+        }
+        if (currentContent.length > 0) {
+            methodBlocks.push({ name: currentName, content: currentContent });
+        }
+
+        // Sort by name
+        methodBlocks.sort((a, b) => a.name.localeCompare(b.name));
+
+        let output = '';
+        for (const block of methodBlocks) {
+            if (block.name === '_TOP_LEVEL') {
+                if (block.content.join('').trim()) {
+                    output += `<PRG_TopLevel>\n`;
+                    output += block.content.join('\n').trimEnd() + '\n';
+                    output += `</PRG_TopLevel>\n\n`;
+                }
+            } else {
+                output += `<PRG_Method ${block.name}>\n`;
+                output += block.content.join('\n').trimEnd() + '\n';
+                output += `</PRG_Method ${block.name}>\n\n`;
+            }
+        }
+        return output.trimEnd() + '\n';
+    }
+
     public parse(scxBuffer: ArrayBuffer, sctBuffer: ArrayBuffer): string {
         const scxView = new DataView(scxBuffer);
         const sctView = new DataView(sctBuffer);

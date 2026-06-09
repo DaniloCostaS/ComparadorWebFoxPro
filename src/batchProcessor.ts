@@ -152,10 +152,10 @@ export async function handleFoxProBatchProcess(
                     const dec = new TextDecoder('windows-1252');
                     
                     const bufAntes = await antesFiles.prg!.arrayBuffer();
-                    antesText = dec.decode(bufAntes);
+                    antesText = parser.parsePrg(dec.decode(bufAntes));
                     
                     const bufDepois = await depoisFiles.prg!.arrayBuffer();
-                    depoisText = dec.decode(bufDepois);
+                    depoisText = parser.parsePrg(dec.decode(bufDepois));
 
                 } else if (isScx && antesIsScx) {
                     const scxAntesBuf = await antesFiles.scx!.arrayBuffer();
