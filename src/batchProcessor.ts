@@ -75,3 +75,88 @@ export async function handleBatchProcess(baseContent: string, compareFiles: File
         log(`Erro ao processar lote: ${e.message}`, true);
     }
 }
+
+export type FoxProFileMap = Map<string, { scx?: File, sct?: File }>;
+
+export async function handleFoxProBatchProcess(
+    antesMap: FoxProFileMap, 
+    depoisMap: FoxProFileMap, 
+    baseContent: string,
+    parser: any // We pass FoxProParser instance from main
+) {
+    const logsContainer = document.getElementById('foxpro-batch-logs');
+    function logBatch(message: string, isError: boolean = false) {
+        if (logsContainer) {
+            logsContainer.classList.remove('hidden');
+            const el = document.createElement('div');
+            el.textContent = message;
+            if (isError) el.classList.add('text-red-600');
+            logsContainer.appendChild(el);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+        console.log(message);
+    }
+
+    logBatch('Iniciando processamento em lote FoxPro (.SCX)...', false);
+    
+    try {
+        const zip = new JSZip();
+        let successCount = 0;
+        let errorCount = 0;
+        let skippedCount = 0;
+
+        const { generateDiffHtml } = await import('./textComparator.ts');
+
+        for (const [baseName, depoisFiles] of depoisMap.entries()) {
+            // Verificar se temos os dois arquivos no modificado
+            if (!depoisFiles.scx || !depoisFiles.sct) {
+                logBatch(`Erro: Par incompleto no modificado para '${baseName}'. Ignorado.`, true);
+                errorCount++;
+                continue;
+            }
+
+            const antesFiles = antesMap.get(baseName);
+
+            if (!antesFiles || !antesFiles.scx || !antesFiles.sct) {
+                // Arquivo Novo
+                logBatch(`Aviso: Form '${baseName}' detectado como NOVO (não existe na origem). Ignorado.`, true);
+                skippedCount++;
+                continue;
+            }
+
+            // Se chegou aqui, temos tudo para comparar!
+            logBatch(`Processando '${baseName}'...`, false);
+            try {
+                const scxAntesBuf = await antesFiles.scx.arrayBuffer();
+                const sctAntesBuf = await antesFiles.sct.arrayBuffer();
+                const antesText = parser.parse(scxAntesBuf, sctAntesBuf);
+
+                const scxDepoisBuf = await depoisFiles.scx.arrayBuffer();
+                const sctDepoisBuf = await depoisFiles.sct.arrayBuffer();
+                const depoisText = parser.parse(scxDepoisBuf, sctDepoisBuf);
+
+                const finalHtml = generateDiffHtml(antesText, depoisText, baseContent, baseName);
+                
+                const finalFileName = `${baseName}_INTERATIVO.HTML`;
+                zip.file(finalFileName, finalHtml);
+                successCount++;
+                logBatch(`Sucesso: '${baseName}' processado.`);
+            } catch(e: any) {
+                logBatch(`Erro ao parsear '${baseName}': ${e.message}`, true);
+                errorCount++;
+            }
+        }
+
+        if (successCount > 0) {
+            logBatch('Gerando arquivo ZIP...', false);
+            const content = await zip.generateAsync({ type: 'blob' });
+            saveAs(content, 'Comparacoes_Lote_FoxPro.zip');
+            logBatch(`Concluído: ${successCount} salvos, ${skippedCount} pulados (novos), ${errorCount} erros.`);
+        } else {
+            logBatch('Nenhum arquivo válido pôde ser processado.', true);
+        }
+
+    } catch (e: any) {
+        logBatch(`Erro geral ao processar lote FoxPro: ${e.message}`, true);
+    }
+}
