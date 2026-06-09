@@ -36,6 +36,7 @@
             font-size: 14px;
             line-height: 1.6;
             border-spacing: 0;
+            table-layout: fixed; /* Força a tabela a respeitar os limites da tela */
         }
 
         .fc tr:hover td:not(.line-number) {
@@ -46,6 +47,7 @@
             padding: 2px 12px;
             vertical-align: top;
             border-bottom: 1px solid #dee2e6;
+            overflow: hidden;
         }
         
         .line-number {
@@ -58,6 +60,7 @@
             position: sticky;
             left: 0;
             z-index: 1;
+            width: 60px; /* Largura fixa para números de linha */
         }
 
         .fc .AlignCenter {
@@ -65,14 +68,15 @@
             font-weight: bold;
             background-color: #e9ecef;
             color: #495057;
-            width: 40px;
+            width: 40px; /* Largura fixa para o separador central */
             padding: 2px 0;
             user-select: none;
         }
         
         .fc .Wrap {
-            white-space: pre-wrap;
-            word-break: break-all;
+            white-space: pre-wrap; /* Preserva espaços e quebra linhas longas */
+            word-wrap: break-word; /* Quebra palavras enormes que não caberiam na tela */
+            overflow-wrap: anywhere;
         }
         
         /* Cores para os tipos de mudança */
