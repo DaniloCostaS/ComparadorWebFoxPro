@@ -36,7 +36,7 @@ export class FoxProParser {
         let currentContent: string[] = [];
 
         for (const line of methodLines) {
-            const match = line.match(/^\s*(?:PROCEDURE|FUNCTION)\s+([a-zA-Z0-9_]+)/i);
+            const match = line.match(/^\s*(?:PROCEDURE|PROC|FUNCTION|FUNC)\s+([a-zA-Z0-9_]+)/i);
             if (match) {
                 // Save previous block if it has content
                 if (currentContent.length > 0) {
@@ -65,7 +65,7 @@ export class FoxProParser {
         let currentContent: string[] = [];
 
         for (const line of methodLines) {
-            const match = line.match(/^\s*(?:PROCEDURE|FUNCTION)\s+([a-zA-Z0-9_]+)/i);
+            const match = line.match(/^\s*(?:PROCEDURE|PROC|FUNCTION|FUNC)\s+([a-zA-Z0-9_]+)/i);
             if (match) {
                 // Save previous block if it has content
                 if (currentContent.length > 0) {
