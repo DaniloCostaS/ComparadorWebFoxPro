@@ -213,15 +213,29 @@ document.addEventListener('DOMContentLoaded', () => {
           const file = files[i];
           const nameLower = file.name.toLowerCase();
           
-          if (nameLower.endsWith('.scx') || nameLower.endsWith('.sct')) {
-              const baseName = file.name.substring(0, file.name.length - 4).toUpperCase();
-              let entry = map.get(baseName);
+          if (nameLower.endsWith('.scx') || nameLower.endsWith('.sct') || 
+              nameLower.endsWith('.frx') || nameLower.endsWith('.frt') || 
+              nameLower.endsWith('.prg')) {
+              
+              const baseName = file.name.substring(0, file.name.lastIndexOf('.')).toUpperCase();
+              
+              // Extract the extension to create a unique map key like "CLIENTES_SCX"
+              const ext = nameLower.substring(nameLower.lastIndexOf('.') + 1);
+              let mapKey = '';
+              if (ext === 'scx' || ext === 'sct') mapKey = `${baseName}_SCX`;
+              else if (ext === 'frx' || ext === 'frt') mapKey = `${baseName}_FRX`;
+              else if (ext === 'prg') mapKey = `${baseName}_PRG`;
+
+              let entry = map.get(mapKey);
               if (!entry) {
                   entry = {};
-                  map.set(baseName, entry);
+                  map.set(mapKey, entry);
               }
-              if (nameLower.endsWith('.scx')) entry.scx = file;
-              if (nameLower.endsWith('.sct')) entry.sct = file;
+              if (ext === 'scx') entry.scx = file;
+              if (ext === 'sct') entry.sct = file;
+              if (ext === 'frx') entry.frx = file;
+              if (ext === 'frt') entry.frt = file;
+              if (ext === 'prg') entry.prg = file;
           }
       }
       return map;

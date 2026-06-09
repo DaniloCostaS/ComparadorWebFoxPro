@@ -76,7 +76,7 @@ export async function handleBatchProcess(baseContent: string, compareFiles: File
     }
 }
 
-export type FoxProFileMap = Map<string, { scx?: File, sct?: File }>;
+export type FoxProFileMap = Map<string, { scx?: File, sct?: File, frx?: File, frt?: File, prg?: File }>;
 
 export async function handleFoxProBatchProcess(
     antesMap: FoxProFileMap, 
@@ -97,7 +97,7 @@ export async function handleFoxProBatchProcess(
         console.log(message);
     }
 
-    logBatch('Iniciando processamento em lote FoxPro (.SCX)...', false);
+    logBatch('Iniciando processamento em lote FoxPro...', false);
     
     try {
         const zip = new JSZip();
@@ -107,33 +107,78 @@ export async function handleFoxProBatchProcess(
 
         const { generateDiffHtml } = await import('./textComparator.ts');
 
-        for (const [baseName, depoisFiles] of depoisMap.entries()) {
-            // Verificar se temos os dois arquivos no modificado
-            if (!depoisFiles.scx || !depoisFiles.sct) {
-                logBatch(`Erro: Par incompleto no modificado para '${baseName}'. Ignorado.`, true);
+        for (const [mapKey, depoisFiles] of depoisMap.entries()) {
+            
+            // Extract the original base name (without _SCX, _FRX, etc for the HTML name)
+            const baseName = mapKey.substring(0, mapKey.lastIndexOf('_'));
+
+            // Check what type of files we have in this mapKey
+            const isScx = !!(depoisFiles.scx && depoisFiles.sct);
+            const isFrx = !!(depoisFiles.frx && depoisFiles.frt);
+            const isPrg = !!depoisFiles.prg;
+
+            if (!isScx && !isFrx && !isPrg) {
+                logBatch(`Erro: Arquivo incompleto no modificado para '${baseName}'. Ignorado.`, true);
                 errorCount++;
                 continue;
             }
 
-            const antesFiles = antesMap.get(baseName);
+            const antesFiles = antesMap.get(mapKey);
 
-            if (!antesFiles || !antesFiles.scx || !antesFiles.sct) {
+            if (!antesFiles) {
                 // Arquivo Novo
-                logBatch(`Aviso: Form '${baseName}' detectado como NOVO (não existe na origem). Ignorado.`, true);
+                logBatch(`Aviso: Objeto '${baseName}' detectado como NOVO (não existe na origem). Ignorado.`, true);
                 skippedCount++;
+                continue;
+            }
+
+            const antesIsScx = !!(antesFiles.scx && antesFiles.sct);
+            const antesIsFrx = !!(antesFiles.frx && antesFiles.frt);
+            const antesIsPrg = !!antesFiles.prg;
+
+            if (!antesIsScx && !antesIsFrx && !antesIsPrg) {
+                logBatch(`Aviso: Objeto de origem '${baseName}' está incompleto. Ignorado.`, true);
+                errorCount++;
                 continue;
             }
 
             // Se chegou aqui, temos tudo para comparar!
             logBatch(`Processando '${baseName}'...`, false);
             try {
-                const scxAntesBuf = await antesFiles.scx.arrayBuffer();
-                const sctAntesBuf = await antesFiles.sct.arrayBuffer();
-                const antesText = parser.parse(scxAntesBuf, sctAntesBuf);
+                let antesText = '';
+                let depoisText = '';
 
-                const scxDepoisBuf = await depoisFiles.scx.arrayBuffer();
-                const sctDepoisBuf = await depoisFiles.sct.arrayBuffer();
-                const depoisText = parser.parse(scxDepoisBuf, sctDepoisBuf);
+                if (isPrg && antesIsPrg) {
+                    const dec = new TextDecoder('windows-1252');
+                    
+                    const bufAntes = await antesFiles.prg!.arrayBuffer();
+                    antesText = dec.decode(bufAntes);
+                    
+                    const bufDepois = await depoisFiles.prg!.arrayBuffer();
+                    depoisText = dec.decode(bufDepois);
+
+                } else if (isScx && antesIsScx) {
+                    const scxAntesBuf = await antesFiles.scx!.arrayBuffer();
+                    const sctAntesBuf = await antesFiles.sct!.arrayBuffer();
+                    antesText = parser.parse(scxAntesBuf, sctAntesBuf);
+
+                    const scxDepoisBuf = await depoisFiles.scx!.arrayBuffer();
+                    const sctDepoisBuf = await depoisFiles.sct!.arrayBuffer();
+                    depoisText = parser.parse(scxDepoisBuf, sctDepoisBuf);
+
+                } else if (isFrx && antesIsFrx) {
+                    const frxAntesBuf = await antesFiles.frx!.arrayBuffer();
+                    const frtAntesBuf = await antesFiles.frt!.arrayBuffer();
+                    antesText = parser.parse(frxAntesBuf, frtAntesBuf);
+
+                    const frxDepoisBuf = await depoisFiles.frx!.arrayBuffer();
+                    const frtDepoisBuf = await depoisFiles.frt!.arrayBuffer();
+                    depoisText = parser.parse(frxDepoisBuf, frtDepoisBuf);
+                } else {
+                     logBatch(`Erro: Tipos incompatíveis ou par incompleto para '${baseName}'.`, true);
+                     errorCount++;
+                     continue;
+                }
 
                 const finalHtml = generateDiffHtml(antesText, depoisText, baseContent, baseName);
                 

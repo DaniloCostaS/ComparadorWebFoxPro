@@ -158,32 +158,32 @@
         </div>
       </section>
 
-      <!-- Seção: Lote FoxPro -->
+      <!-- Seção: Comparador de Pastas (Em Lote) FoxPro -->
       <section id="section-foxpro-batch" class="hidden bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 class="text-2xl font-bold mb-4 text-blue-800">Processamento em Lote FoxPro (Pastas)</h2>
-        <p class="text-gray-600 mb-6">Selecione as pastas completas contendo os arquivos `.SCX` e `.SCT`. O sistema emparelhará automaticamente os arquivos com o mesmo nome para gerar as comparações.</p>
+        <h2 class="text-2xl font-bold mb-4 text-orange-800">Comparador Lote FoxPro (Pastas)</h2>
+        <p class="text-gray-600 mb-6">Selecione as <strong>pastas completas</strong> que contém seus arquivos do FoxPro. Suporta Formulários (<code>.SCX/.SCT</code>), Relatórios (<code>.FRX/.FRT</code>) e Programas (<code>.PRG</code>). O sistema irá varrer todas as subpastas automaticamente, comparar os arquivos que possuírem o mesmo nome e gerar um único `.ZIP` contendo todos os HTMLs interativos resultantes.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <!-- Versão Original -->
+          <!-- Pasta Original -->
           <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
             <label for="fox-batch-antes-dir" class="cursor-pointer flex flex-col items-center">
               <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-              <span class="text-blue-600 font-semibold">Pasta Original (Antes)</span>
-              <span class="text-xs text-gray-500 mt-1">Selecione a pasta com os arquivos originais</span>
+              <span class="text-orange-600 font-semibold">Pasta Original (Antes)</span>
+              <span class="text-xs text-gray-500 mt-1">Selecione o diretório com a versão antiga</span>
               <input type="file" id="fox-batch-antes-dir" class="hidden" webkitdirectory directory multiple />
             </label>
-            <div id="fox-batch-antes-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 arquivos encontrados</div>
+            <div id="fox-batch-antes-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 objetos encontrados</div>
           </div>
 
-          <!-- Versão Modificada -->
+          <!-- Pasta Modificada -->
           <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
             <label for="fox-batch-depois-dir" class="cursor-pointer flex flex-col items-center">
               <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-              <span class="text-blue-600 font-semibold">Pasta Modificada (Depois)</span>
-              <span class="text-xs text-gray-500 mt-1">Selecione a pasta com os arquivos modificados</span>
+              <span class="text-orange-600 font-semibold">Pasta Modificada (Depois)</span>
+              <span class="text-xs text-gray-500 mt-1">Selecione o diretório com a versão nova</span>
               <input type="file" id="fox-batch-depois-dir" class="hidden" webkitdirectory directory multiple />
             </label>
-            <div id="fox-batch-depois-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 arquivos encontrados</div>
+            <div id="fox-batch-depois-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 objetos encontrados</div>
           </div>
         </div>
 
