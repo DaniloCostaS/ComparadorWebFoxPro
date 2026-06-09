@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web App Comparador PWI</title>
+    <!-- Tailwind via CDN para simplificar a paridade visual com o seu modelo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --pwi-blue: #004fa3;
+        --pwi-orange: #f58220;
+        --pwi-light-gray: #f8f9fa;
+        --pwi-dark-gray: #343a40;
+      }
+      body {
+        font-family: 'Lato', sans-serif;
+        background-color: var(--pwi-light-gray);
+        color: var(--pwi-dark-gray);
+      }
+      .tab-active {
+        border-bottom: 2px solid var(--pwi-blue);
+        color: var(--pwi-blue);
+        font-weight: bold;
+      }
+      .tab-inactive {
+        color: #6b7280;
+        border-bottom: 2px solid transparent;
+      }
+      .tab-inactive:hover {
+        color: var(--pwi-blue);
+        border-bottom: 2px solid #e5e7eb;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="bg-white p-4 shadow-md border-b border-gray-200 sticky top-0 z-10">
+      <div class="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-y-4">
+        <div class="flex items-center space-x-3">
+          <!-- Logo simplificado -->
+          <svg class="h-8 text-blue-800 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <h1 class="text-xl font-bold text-gray-700">Ferramenta de Comparação</h1>
+        </div>
+        <nav class="flex space-x-6">
+          <button id="tab-batch" class="pb-2 px-1 tab-active transition-colors">Modo Lote (FoxCompare)</button>
+          <button id="tab-text" class="pb-2 px-1 tab-inactive transition-colors">Comparador Texto Nativo</button>
+          <button id="tab-foxpro" class="pb-2 px-1 tab-inactive transition-colors">Comparador FoxPro (.SCX)</button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container mx-auto p-4 mt-6">
+      
+      <!-- Seção: Processamento em Lote -->
+      <section id="section-batch" class="block bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 class="text-2xl font-bold mb-4 text-blue-800">Processamento em Lote</h2>
+        <p class="text-gray-600 mb-6">Selecione o arquivo <code class="bg-gray-100 px-1 rounded">ComparadorBase - Interativo.html</code> e em seguida os arquivos HTML com as comparações geradas pelo BeyondCompare. A ferramenta vai extrair o conteúdo e gerar um arquivo ZIP com todos os HTMLs finais.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-1 gap-6 mb-6">
+          <!-- Arquivos Comparados -->
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
+            <label for="compare-files" class="cursor-pointer flex flex-col items-center">
+              <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
+              <span class="text-blue-600 font-semibold">1. Selecionar HTMLs (BeyondCompare)</span>
+              <span class="text-xs text-gray-500 mt-1">Você pode selecionar múltiplos arquivos. A base (ComparadorBase) já está embutida.</span>
+              <input type="file" id="compare-files" class="hidden" accept=".html" multiple />
+            </label>
+            <div id="compare-files-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 arquivos carregados</div>
+          </div>
+        </div>
+
+        <div class="flex justify-end">
+          <button id="btn-process-batch" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            Processar e Baixar ZIP
+          </button>
+        </div>
+        
+        <div id="batch-logs" class="mt-4 text-sm text-gray-600 max-h-40 overflow-y-auto hidden bg-gray-50 p-3 rounded border border-gray-200">
+        </div>
+      </section>
+
+      <!-- Seção: Comparador de Texto -->
+      <section id="section-text" class="hidden bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 class="text-2xl font-bold mb-4 text-blue-800">Comparador Nativo de Texto</h2>
+        <p class="text-gray-600 mb-6">Cole o código original e o código modificado abaixo. A ferramenta irá gerar o arquivo HTML final sem a necessidade do BeyondCompare.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">Código Original</label>
+            <textarea id="text-original" class="w-full h-64 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-none" placeholder="Cole o texto original aqui..."></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">Código Modificado</label>
+            <textarea id="text-modified" class="w-full h-64 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-none" placeholder="Cole o texto modificado aqui..."></textarea>
+          </div>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row items-center gap-4 mb-6">
+          <div class="w-full sm:w-1/2">
+             <label class="block text-sm font-bold text-gray-700 mb-2">Nome do Arquivo (opcional)</label>
+             <input type="text" id="text-file-name" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Ex: FORM_NOVO">
+          </div>
+        </div>
+
+        <div class="flex justify-end">
+          <button id="btn-process-text" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            Comparar e Baixar HTML
+          </button>
+        </div>
+      </section>
+
+      <!-- Seção: Comparador de FoxPro -->
+      <section id="section-foxpro" class="hidden bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 class="text-2xl font-bold mb-4 text-blue-800">Comparador Nativo FoxPro (.SCX e .SCT)</h2>
+        <p class="text-gray-600 mb-6">Selecione os arquivos de formulário do FoxPro. Para que a leitura funcione corretamente, é obrigatório enviar o par <code>.SCX</code> e <code>.SCT</code> de cada versão.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <!-- Versão Original -->
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
+            <label for="fox-antes-files" class="cursor-pointer flex flex-col items-center">
+              <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+              <span class="text-blue-600 font-semibold">Versão Original (Antes)</span>
+              <span class="text-xs text-gray-500 mt-1">Selecione o .SCX e .SCT juntos</span>
+              <input type="file" id="fox-antes-files" class="hidden" accept=".scx,.sct" multiple />
+            </label>
+            <div id="fox-antes-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 arquivos carregados</div>
+          </div>
+
+          <!-- Versão Modificada -->
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
+            <label for="fox-depois-files" class="cursor-pointer flex flex-col items-center">
+              <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+              <span class="text-blue-600 font-semibold">Versão Modificada (Depois)</span>
+              <span class="text-xs text-gray-500 mt-1">Selecione o .SCX e .SCT juntos</span>
+              <input type="file" id="fox-depois-files" class="hidden" accept=".scx,.sct" multiple />
+            </label>
+            <div id="fox-depois-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 arquivos carregados</div>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+          <div class="w-full sm:w-1/2">
+             <label class="block text-sm font-bold text-gray-700 mb-2">Nome do Arquivo Final</label>
+             <input type="text" id="fox-file-name" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Ex: FORM_NOVO">
+          </div>
+          <div class="w-full sm:w-auto flex items-end">
+            <button id="btn-process-foxpro" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+              Comparar e Baixar HTML
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

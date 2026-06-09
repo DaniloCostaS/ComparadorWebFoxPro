@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Diferenças de Código - PWI</title>
+    <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAjVBMVEVHcEwAa68juu0juu0juu0juu0UltAWmtQ5qbownLUjuu0juu0juu0juu0juu0Aa68Aa68Aa6+Rvj4Aa68juu2Rvj6Rvj6Rvj4Aa68juu2Rvj4Aa68Aa6+Rvj4juu0juu2Rvj6Rvj4Aa68juu0juu0Aa68Aa68Aa68Aa68Aa68Aa6+Rvj4juu0Aa6+Rvj7ylpHYAAAALHRSTlMA8S9ByPAIGAMP2iO6leVT1itEsqvnJ9RxVViEQGxzipCoyGB74meRvWCiu2yr/9YAAAHvSURBVHjaXZPdkqowEIQbEpIJAQRRBOVHV1dxBd//8Q4hQc7udzVVdE2Ynh5AbPI03wgY/F0QRIwwQdvL4dUogEpvHEfvTuY7HyZChonj/j1xVqi/R8N3BlA8zOwEUBzeMw3K0fIEFLeCUALHt+WFkxOUqyDRq+CAjWcFD4A6Kwh8YLu3ggvUjxX0CtCuRQuoy9uw3wLylHpTF68GyI95mAwDl0BxmXocjgSAZFbfcy9Xcy39axS0BKhtcywIC6LuTwoWdeUV4S+U5Q+51Iy3Eh+E1mpWpF9lLaUw9TXgLfO1sv6HSVQJwHjmpXYvajdNmyQRI+d/UAHI0nFc9nJ1pjI4/81kIh9n0gzwA7cXLPb6AD2swNsAOnEtwFd7P3v5JbgNlgqwe7FPMPdEDLlzFcHtxSsJaN2v+YBsIx4GQ6hh9vKV9ncBSD4EIY86HwahJIuTWGBCSQVAdEnMtBKED8Sim4BDtLwS+IsfxdrmWXecYYWK5twUAFgSxhVjVRfOvsrnqcwIoOPBRG/rQh0ELtZZb7JeiiXfh8LNbrgCql9MPb8tDaDD1dXaZTnHxQnO8/CG2ZLnaEn/76Ci9XCWa+iXA9gXAN1W1+WXywaoMYq9ybfbS6QxUafm+0nNd/46bwkGeYuiTrsQP/KfjcA/SUtUhCGuHagAAAAASUVORK5CYII=">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Paleta de Cores PWI */
+        :root {
+            --pwi-blue: #004fa3;
+            --pwi-orange: #f58220;
+            --pwi-light-gray: #f8f9fa;
+            --pwi-dark-gray: #343a40;
+            --diff-add-bg: rgba(22, 163, 74, 0.1);
+            --diff-del-bg: rgba(220, 38, 38, 0.1);
+            --diff-mod-bg: rgba(245, 130, 32, 0.1);
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: var(--pwi-light-gray);
+            color: var(--pwi-dark-gray);
+        }
+
+        /* --- Estilos para a tabela de comparação --- */
+        .fc {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            border-spacing: 0;
+        }
+
+        .fc tr:hover td:not(.line-number) {
+            background-color: #e9ecef !important;
+        }
+
+        .fc td {
+            padding: 2px 12px;
+            vertical-align: top;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .line-number {
+            text-align: right;
+            padding-right: 1em;
+            color: #6c757d;
+            user-select: none;
+            background-color: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+        }
+
+        .fc .AlignCenter {
+            text-align: center;
+            font-weight: bold;
+            background-color: #e9ecef;
+            color: #495057;
+            width: 40px;
+            padding: 2px 0;
+            user-select: none;
+        }
+        
+        .fc .Wrap {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        /* Cores para os tipos de mudança */
+        .TextItemSame { background-color: transparent; }
+        .TextItemSigAdd, .TextItemSigRightMod { background-color: var(--diff-add-bg); }
+        .TextItemSigDel, .TextItemSigLeftMod { background-color: var(--diff-del-bg); }
+        .TextItemSigDiffMod { background-color: var(--diff-mod-bg); }
+
+        .TextSegSigDiff { 
+            color: #d97706; /* Laranja Escuro */
+            font-weight: 700; /* Negrito */
+        }
+        
+        .TextItemSigDel .TextSegSigDiff, .TextItemSigLeftMod .TextSegSigDiff {
+             text-decoration: line-through;
+             text-decoration-color: #dc2626;
+        }
+        
+        .highlight-diff {
+            outline: 2px solid var(--pwi-blue);
+            outline-offset: -2px;
+            transition: outline 0.2s ease-in-out;
+        }
+        
+        .search-highlight {
+            background-color: #fef08a !important; /* Destaque de busca amarelo */
+            color: #713f12 !important;
+        }
+
+        /* Lógica para ocultar linhas */
+        .row-hidden {
+            display: none;
+        }
+
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .stats-filter {
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-radius: 0.5rem;
+            padding: 0.25rem 0.5rem;
+        }
+        .stats-filter:hover {
+            background-color: #e9ecef;
+        }
+        .stats-filter.active-filter {
+            background-color: var(--pwi-blue);
+            color: white;
+        }
+        
+        .ignore-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.5rem;
+            margin: 0.125rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background-color: #e9ecef;
+            color: var(--pwi-dark-gray);
+            border-radius: 9999px;
+        }
+        .ignore-badge button {
+            margin-left: 0.5rem;
+            color: #6c757d;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+        .ignore-badge button:hover {
+            color: #dc2626;
+        }
+
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Cabeçalho com controles -->
+    <header class="sticky-header bg-white p-4 shadow-md border-b border-gray-200">
+        <div class="container mx-auto flex flex-wrap items-center justify-between gap-y-4">
+             <div id="logo-container" class="flex items-center space-x-3 cursor-pointer">
+                <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4gPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI4LjAuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgLS0+IDxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgdmVyc2lvbj0iMS4xIiBpZD0iQ2FtYWRhXzEiIHg9IjBweCIgeT0iMHB4IiB2aWV3Qm94PSIwIDAgMzAwIDg0IiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCAzMDAgODQ7IiB4bWw6c3BhY2U9InByZXNlcnZlIj4gPHN0eWxlIHR5cGU9InRleHQvY3NzIj4gLnN0MHtjbGlwLXBhdGg6dXJsKCNTVkdJRF8wMDAwMDEzODU2NTAxODE4ODY1OTU0NzQxMDAwMDAwNjY3OTE3MTA0NzI3OTk1NTYwOF8pO30gLnN0MXtmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMxNTMwNEQ7fSAuc3Qye2ZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzIzQkFFRDt9IC5zdDN7ZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7ZmlsbDojOTFCRTNFO30gLnN0NHtmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMwMDZCQUY7fSA8L3N0eWxlPiA8Zz4gPGRlZnM+IDxyZWN0IGlkPSJTVkdJRF8xXyIgeT0iMC4xIiB3aWR0aD0iMjk5LjgiIGhlaWdodD0iODMuNCI+PC9yZWN0PiA8L2RlZnM+IDxjbGlwUGF0aCBpZD0iU1ZHSURfMDAwMDAxODEwNjUzODU2MjgyNjcxMzg3NjAwMDAwMDIzOTMzNTA1ODYxMTg0NzEzMThfIj4gPHVzZSB4bGluazpocmVmPSIjU1ZHSURfMV8iIHN0eWxlPSJvdmVyZmxvdzp2aXNpYmxlOyI+PC91c2U+IDwvY2xpcFBhdGg+IDxnIHN0eWxlPSJjbGlwLXBhdGg6dXJsKCNTVkdJRF8wMDAwMDE4MTA2NTM4NTYyODI2NzEzODc2MDAwMDAwMjM5MzM1MDU4NjExODQ3MTMxOF8pOyI+IDxwYXRoIGNsYXNzPSJzdDEiIGQ9Ik0xNDguMiw0MS45YzE3LjEsMCwyMS45LTMuOSwyMS45LTE3LjhWMTljMC0xMy44LTUuMi0xOC45LTIxLjktMTguOWgtNDYuOHYxMS4yYzE1LjUsMCwzMC45LDAsNDYuNSwwIGM3LDAsOS4zLDEuOCw5LjMsOC4xdjRjMCw2LjItMi4yLDcuOC05LjEsNy44Yy0xNS43LDAtMzEsMC4yLTQ2LjYsMC4ydjI3LjFoMTNWNDEuOUwxNDguMiw0MS45TDE0OC4yLDQxLjl6IE0yNDMsNTMuMyBjMS41LDMuMywzLjksNS4zLDcuOSw1LjNjMy42LDAsNi0yLjIsNy40LTUuM2MzLjYtOC41LDE5LjEtNDQuNiwyMi45LTUzLjFoLTEzLjZsLTE3LDQxLjdsLTE2LTM2LjdjLTEuNi0zLjctMy42LTUtNy42LTUgcy01LjksMS4zLTcuNiw1bC0xNi43LDM2LjdMMTg2LjMsMC4xaC0xMy45bDIxLjgsNTMuMmMxLjMsMy4yLDMuNCw1LjMsNy41LDUuM2M0LDAsNi40LTIuMSw4LTUuM2wxNy4yLTM2LjFMMjQzLDUzLjNMMjQzLDUzLjN6IE0yOTkuOCw1OC42VjAuMWwtMTMsMC4xdjU4LjRMMjk5LjgsNTguNkwyOTkuOCw1OC42eiI+PC9wYXRoPiA8cGF0aCBjbGFzcz0ic3QyIiBkPSJNMTAuNSwzMS40YzIuNywwLDUuMSwxLDcuMSwzYzIsMiwzLjEsNC4zLDMuMiw3Yy0wLjEsNS43LDEuOSwxMC43LDUuOSwxNWM0LjEsNC4yLDksNi4zLDE0LjcsNi4zaDAuNSBjNS42LDAsMTAuNS0yLjEsMTQuNS02LjNjNC4yLTQuMiw2LjItOS4yLDYuMS0xNWMtMC4xLTUuNy0yLjItMTAuNi02LjQtMTQuNWMtNC4zLTQuMS05LjMtNi0xNS01LjljLTIuNy0wLjEtNS0xLjItNy0zLjIgYy0xLjktMi0yLjktNC41LTIuOS03LjNzMS01LjIsMy03LjNjMi0yLDQuNS0zLDcuNC0zYzIuOSwwLDUuMiwxLDcuMywzYzIsMiwzLDQuNSwzLDcuM2MwLDUuNSwyLDEwLjQsNS45LDE0LjcgYzQuMSw0LjEsOC45LDYuMSwxNC41LDYuM2MzLjgtMC4yLDYuNiwxLjEsOC42LDQuMWMyLDIuOCwyLjYsNS44LDEuOSw4LjljLTEuNSw1LjItNC44LDcuOC0xMCw3LjhoLTAuNSBjLTUuOCwwLjItMTAuNywyLjMtMTQuNSw2LjRjLTQsNC01LjksOC44LTUuOSwxNC41YzAsMi44LTEsNS4yLTMsNy4zYy0yLDItNC41LDMtNy4zLDNoLTAuM2MtMi44LDAtNS4yLTEtNy4yLTNjLTItMi0zLTQuNS0zLTcuMyBjMC01LjctMi0xMC42LTUuOS0xNC41Yy00LTQuMS04LjctNi4yLTE0LjQtNi40Yy0zLDAuMS01LjYtMC45LTcuNy0yLjljLTIuMS0yLTMuMi00LjYtMy4yLTcuNmMwLTIuOCwxLTUuMiwzLTcuMyBDNS4xLDMyLjQsNy41LDMxLjQsMTAuNSwzMS40TDEwLjUsMzEuNHoiPjwvcGF0aD4gPHBhdGggY2xhc3M9InN0MyIgZD0iTTExLjIsNjEuN2M2LDAsMTAuOCw0LjgsMTAuOCwxMC44cy00LjgsMTAuOC0xMC44LDEwLjhjLTYsMC0xMC44LTQuOC0xMC44LTEwLjhTNS4yLDYxLjcsMTEuMiw2MS43IEwxMS4yLDYxLjd6IE03Mi4zLDAuNmM2LDAsMTAuOCw0LjgsMTAuOCwxMC44YzAsNi00LjgsMTAuOC0xMC44LDEwLjhzLTEwLjgtNC44LTEwLjgtMTAuOEM2MS41LDUuNCw2Ni4zLDAuNiw3Mi4zLDAuNnoiPjwvcGF0aD4gPHBhdGggY2xhc3M9InN0NCIgZD0iTTcyLjMsNjEuN2M2LDAsMTAuOCw0LjgsMTAuOCwxMC44cy00LjgsMTAuOC0xMC44LDEwLjhzLTEwLjgtNC44LTEwLjgtMTAuOFM2Ni4zLDYxLjcsNzIuMyw2MS43eiBNMTEuMSwwLjUgYy0yLjgsMC01LjIsMS03LjMsM2MtMiwyLTMsNC41LTMsNy4zYzAsMywxLjEsNS41LDMuMiw3LjZjMi4xLDIsNC43LDMsNy42LDIuOWM1LjgsMC4yLDEwLjcsMi4zLDE0LjUsNi40YzQsNCw1LjksOC44LDUuOSwxNC41IGMwLDIuOCwxLDUuMiwzLDcuM2MyLDIsNC41LDMsNy40LDNzNS4yLTEsNy4zLTNjMi0yLDMtNC41LDMtNy4zUzUxLjksMzcsNTAsMzVjLTEuOS0yLTQuMi0zLjEtNy0zLjJjLTUuOSwwLjEtMTEtMS45LTE1LjItNi4xIGMtNC4zLTQuMy02LjQtOS4zLTYuMy0xNS4yYy0wLjEtMi43LTEuMS01LjEtMy4xLTdDMTYuNSwxLjUsMTQsMC41LDExLjEsMC41eiI+PC9wYXRoPiA8cGF0aCBjbGFzcz0ic3QzIiBkPSJNMTAxLjQsNzguNWwyLTAuMnYwLjFjMC4xLDAuNiwwLjIsMS4yLDAuNiwxLjdjMC4zLDAuNSwwLjgsMC44LDEuNCwxLjFjMC43LDAuMywxLjQsMC40LDIuMSwwLjQgYzAuNiwwLDEuMy0wLjEsMS45LTAuM2MwLjQtMC4yLDAuOS0wLjQsMS4yLTAuOGMwLjItMC4zLDAuNC0wLjcsMC40LTEuMmMwLTAuNC0wLjEtMC44LTAuNC0xLjFjLTAuMy0wLjQtMC44LTAuNi0xLjItMC44IGMtMC44LTAuMy0xLjctMC41LTIuNS0wLjdjLTAuOS0wLjItMi0wLjUtMi44LTAuOWMtMC42LTAuMy0xLjItMC44LTEuNi0xLjRjLTAuNC0wLjYtMC41LTEuMi0wLjUtMS44YzAtMC44LDAuMi0xLjUsMC42LTIuMSBjMC40LTAuNywxLjEtMS4yLDEuOS0xLjVjMC45LTAuMywxLjgtMC41LDIuNy0wLjVjMSwwLDIsMC4yLDIuOCwwLjVjMC44LDAuMywxLjUsMC44LDEuOSwxLjZjMC41LDAuNywwLjcsMS41LDAuNywyLjNWNzMgbC0yLjEsMC4ydi0wLjFjLTAuMS0wLjgtMC40LTEuNS0xLTJjLTAuNy0wLjUtMS42LTAuNy0yLjQtMC43Yy0wLjgsMC0xLjgsMC4xLTIuNCwwLjZjLTAuNSwwLjQtMC43LDAuOC0wLjcsMS40IGMwLDAuNSwwLjIsMC45LDAuNSwxLjJjMC41LDAuNSwyLjEsMC44LDIuOCwxYzEsMC4yLDIuMywwLjUsMy4yLDAuOWMwLjcsMC4zLDEuNCwwLjgsMS45LDEuNWMwLjQsMC42LDAuNiwxLjMsMC42LDIuMSBjMCwwLjgtMC4yLDEuNS0wLjcsMi4yYy0wLjUsMC43LTEuMSwxLjMtMS45LDEuNmMtMC45LDAuNC0xLjgsMC42LTIuOCwwLjZjLTEuMSwwLTIuMy0wLjEtMy4zLTAuNmMtMC45LTAuNC0xLjYtMC45LTIuMS0xLjggYy0wLjUtMC44LTAuOC0xLjctMC44LTIuNkwxMDEuNCw3OC41TDEwMS40LDc4LjV6IE0xMjkuOCw4My4zVjY4LjdoMi4ydjE0LjZIMTI5Ljh6IE0xNDguNCw3OC41bDItMC4ydjAuMSBjMC4xLDAuNiwwLjIsMS4yLDAuNiwxLjdjMC4zLDAuNSwwLjgsMC44LDEuNCwxLjFjMC43LDAuMywxLjQsMC40LDIuMSwwLjRjMC42LDAsMS4zLTAuMSwxLjktMC4zYzAuNC0wLjIsMC45LTAuNCwxLjItMC44IGMwLjItMC4zLDAuNC0wLjcsMC40LTEuMmMwLTAuNC0wLjEtMC44LTAuNC0xLjFjLTAuMy0wLjQtMC44LTAuNi0xLjItMC44Yy0wLjgtMC4zLTEuNy0wLjUtMi41LTAuN2MtMC45LTAuMi0yLTAuNS0yLjgtMC45IGMtMC42LTAuMy0xLjItMC44LTEuNi0xLjRjLTAuNC0wLjYtMC41LTEuMi0wLjUtMS44YzAtMC44LDAuMi0xLjUsMC42LTIuMWMwLjQtMC43LDEuMS0xLjIsMS45LTEuNWMwLjktMC4zLDEuOC0wLjUsMi43LTAuNSBjMSwwLDEuOSwwLjIsMi45LDAuNWMwLjgsMC4zLDEuNSwwLjgsMS45LDEuNmMwLjUsMC43LDAuNywxLjUsMC43LDIuM1Y3M2wtMi4xLDAuMnYtMC4xYy0wLjEtMC44LTAuNC0xLjUtMS0yIGMtMC43LTAuNS0xLjYtMC43LTIuNC0wLjdzLTEuOCwwLjEtMi40LDAuNmMtMC41LDAuNC0wLjcsMC44LTAuNywxLjRjMCwwLjUsMC4yLDAuOSwwLjUsMS4yYzAuNSwwLjUsMi4xLDAuOCwyLjgsMSBjMSwwLjIsMi4zLDAuNSwzLjIsMC45YzAuNywwLjMsMS40LDAuOCwxLjksMS41YzAuNCwwLjYsMC42LDEuMywwLjYsMi4xYzAsMC44LTAuMiwxLjUtMC43LDIuMmMtMC41LDAuNy0xLjEsMS4zLTEuOSwxLjYgYy0wLjksMC40LTEuOCwwLjYtMi44LDAuNmMtMS4xLDAtMi4zLTAuMS0zLjMtMC42Yy0wLjktMC40LTEuNi0wLjktMi4xLTEuOGMtMC41LTAuOC0wLjgtMS43LTAuOC0yLjZMMTQ4LjQsNzguNUwxNDguNCw3OC41eiBNMTgwLjEsNzAuN2gtNC43di0xLjloMTEuNnYxLjloLTQuN3YxMi42aC0yLjJWNzAuN3ogTTIwNC45LDcwLjd2NC4xaDcuOXYxLjloLTcuOXY0LjZoOC44djEuOWgtMTAuOVY2OC43aDEwLjZ2MS45SDIwNC45IEwyMDQuOSw3MC43eiBNMjM3LjEsODAuN2MwLjItMC42LDAuNC0xLjMsMC42LTEuOWwzLjUtMTBoMi44djE0LjZoLTIuMVY3MmwtNCwxMS4zaC0xLjlsLTMuOS0xMS41djExLjVoLTIuMVY2OC43aDMuMWwzLjQsMTAuMiBDMjM2LjcsNzkuNSwyMzYuOSw4MC4xLDIzNy4xLDgwLjdMMjM3LjEsODAuN3ogTTI2OC45LDc5SDI2M2wtMS42LDQuM2gtMi4zbDUuNi0xNC42aDIuMmw1LjksMTQuNmgtMi40TDI2OC45LDc5TDI2OC45LDc5eiBNMjg3LjYsNzguNWwyLTAuMnYwLjFjMC4xLDAuNiwwLjIsMS4yLDAuNiwxLjdjMC4zLDAuNSwwLjgsMC44LDEuNCwxLjFjMC43LDAuMywxLjQsMC40LDIuMSwwLjRjMC42LDAsMS4zLTAuMSwxLjktMC4zIGMwLjQtMC4yLDAuOS0wLjQsMS4yLTAuOGMwLjItMC4zLDAuNC0wLjcsMC40LTEuMmMwLTAuNC0wLjEtMC44LTAuNC0xLjFjLTAuMy0wLjQtMC44LTAuNi0xLjItMC44Yy0wLjgtMC4zLTEuNy0wLjUtMi41LTAuNyBjLTAuOS0wLjItMi0wLjUtMi44LTAuOWMtMC42LTAuMy0xLjItMC44LTEuNi0xLjRjLTAuNC0wLjYtMC41LTEuMi0wLjUtMS44YzAtMC44LDAuMi0xLjUsMC42LTIuMWMwLjUtMC43LDEuMS0xLjIsMS45LTEuNSBjMC45LTAuMywxLjgtMC41LDIuNy0wLjVjMSwwLDEuOSwwLjIsMi44LDAuNWMwLjgsMC4zLDEuNSwwLjgsMS45LDEuNmMwLjUsMC43LDAuNywxLjUsMC43LDIuM1Y3M2wtMi4xLDAuMnYtMC4xIGMtMC4xLTAuOC0wLjQtMS41LTEtMmMtMC43LTAuNS0xLjYtMC43LTIuNC0wLjdjLTAuOCwwLTEuOCwwLjEtMi40LDAuNmMtMC40LDAuNC0wLjcsMC44LTAuNywxLjRjMCwwLjUsMC4yLDAuOSwwLjUsMS4yIGMwLjUsMC41LDIuMSwwLjgsMi44LDFjMSwwLjIsMi4zLDAuNSwzLjIsMC45YzAuNywwLjMsMS40LDAuOCwxLjksMS41YzAuNCwwLjYsMC42LDEuMywwLjYsMi4xYzAsMC44LTAuMiwxLjUtMC43LDIuMiBjLTAuNSwwLjctMS4xLDEuMy0xLjksMS42Yy0wLjksMC40LTEuOCwwLjYtMi44LDAuNmMtMS4xLDAtMi4zLTAuMS0zLjMtMC42Yy0wLjktMC40LTEuNi0wLjktMi4xLTEuOGMtMC41LTAuOC0wLjgtMS43LTAuOC0yLjYgTDI4Ny42LDc4LjVMMjg3LjYsNzguNXogTTI2My43LDc3LjJoNC41bC0xLjQtMy44Yy0wLjMtMC44LTAuNi0xLjctMC45LTIuNWMtMC4yLDAuOC0wLjQsMS41LTAuNywyLjNMMjYzLjcsNzcuMkwyNjMuNyw3Ny4yeiI+PC9wYXRoPiA8L2c+IDwvZz4gPC9zdmc+IA==" alt="Logo da PWI" class="h-8">
+                <h1 class="text-xl font-bold text-gray-700">Diferenças - [[NOME_FORM]]</h1>
+            </div>
+
+            <!-- Ferramentas de Busca e Filtro -->
+            <div class="flex flex-col sm:flex-row items-center gap-2">
+                <div class="flex items-center space-x-2">
+                     <!-- Busca por Texto -->
+                    <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                        <input type="text" id="search-input" placeholder="Buscar no código..." class="border-none px-3 py-2 text-sm focus:ring-0 w-40">
+                        <button id="search-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 text-sm font-bold">Buscar</button>
+                        <button id="search-next-btn" class="bg-gray-200 hover:bg-gray-300 border-l border-gray-300 text-gray-700 px-3 py-2 text-sm">Próximo</button>
+                    </div>
+                    <!-- Ir para Linha -->
+                     <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                        <input type="number" id="goto-line-input" placeholder="Ir p/ linha..." class="border-none px-3 py-2 text-sm focus:ring-0 w-28">
+                        <button id="goto-line-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 text-sm font-bold">Ir</button>
+                    </div>
+                </div>
+                 <!-- Ignorar Texto -->
+                <div class="flex flex-col items-start w-full sm:w-auto">
+                    <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden w-full">
+                        <input type="text" id="ignore-input" placeholder="Ignorar texto..." class="border-none px-3 py-2 text-sm focus:ring-0 flex-grow">
+                        <button id="ignore-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 text-sm font-bold">Ignorar</button>
+                    </div>
+                    <div id="ignore-list-container" class="pt-1"></div>
+                </div>
+            </div>
+            
+            <!-- Controles de Navegação -->
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                <button id="prevBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    &larr; Ant
+                </button>
+                <div id="diff-counter" class="text-sm font-semibold text-gray-700 bg-gray-200 px-3 py-2 rounded-lg">
+                    Diferença 0 de 0
+                </div>
+                <button id="nextBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Próx &rarr;
+                </button>
+            </div>
+            
+            <!-- Filtros e Estatísticas -->
+            <div class="flex items-center space-x-4 text-sm">
+                <div class="flex items-center">
+                    <input type="checkbox" id="show-only-diff" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                    <label for="show-only-diff" class="ml-2 text-sm font-medium text-gray-700">Ocultar Iguais</label>
+                </div>
+                 <div class="flex items-center space-x-4 text-sm border-l pl-4">
+                    <span id="stats-total" class="font-medium stats-filter active-filter" data-filter-type="all"></span>
+                    <span id="stats-added" class="text-green-600 font-medium stats-filter" data-filter-type="added"></span>
+                    <span id="stats-modified" class="text-yellow-600 font-medium stats-filter" data-filter-type="modified"></span>
+                    <span id="stats-deleted" class="text-red-600 font-medium stats-filter" data-filter-type="deleted"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Conteúdo da Comparação -->
+    <main class="container mx-auto p-4">
+        <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+            <table class="fc" cellspacing="0" cellpadding="0">
+                <!-- O conteúdo da tabela será inserido aqui pelo JavaScript -->
+            </table>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tableContainer = document.querySelector('.fc');
+            const tableContent = `
+[[CONTEUDO_COMPARADO]]
+            `;
+
+            tableContainer.innerHTML = tableContent;
+            
+            // Element selectors
+            const nextBtn = document.getElementById('nextBtn');
+            const prevBtn = document.getElementById('prevBtn');
+            const diffCounter = document.getElementById('diff-counter');
+            const showOnlyDiffCheckbox = document.getElementById('show-only-diff');
+            const logoContainer = document.getElementById('logo-container');
+            const searchInput = document.getElementById('search-input');
+            const searchBtn = document.getElementById('search-btn');
+            const searchNextBtn = document.getElementById('search-next-btn');
+            const statsFilters = document.querySelectorAll('.stats-filter');
+            const gotoLineInput = document.getElementById('goto-line-input');
+            const gotoLineBtn = document.getElementById('goto-line-btn');
+            const ignoreInput = document.getElementById('ignore-input');
+            const ignoreBtn = document.getElementById('ignore-btn');
+            const ignoreListContainer = document.getElementById('ignore-list-container');
+            const tableRows = Array.from(document.querySelectorAll('.fc tr'));
+            
+            // State variables
+            let allDiffElements = [];
+            let currentDiffIndex = -1;
+            let searchResults = [];
+            let currentSearchIndex = -1;
+            let activeFilter = 'all';
+            let ignoreList = [];
+
+            function classifyRow(row) {
+                const rowText = row.textContent.toLowerCase();
+                // Check if the row text contains any of the ignored terms
+                if (ignoreList.some(term => rowText.includes(term))) {
+                    return 'same';
+                }
+
+                if(row.querySelector('.TextItemSigAdd, .TextItemSigRightMod')) return 'added';
+                if(row.querySelector('.TextItemSigDel, .TextItemSigLeftMod')) return 'deleted';
+                if(row.querySelector('.TextItemSigDiffMod')) return 'modified';
+                
+                return 'same';
+            }
+
+            function resetRowStyle(row) {
+                // Remove all diff-related classes and restore original ones if needed
+                row.querySelectorAll('td').forEach(td => {
+                    td.className = td.className.replace(/TextItemSig\w+/g, 'TextItemSame');
+                });
+            }
+
+            function rebuildAndRecalculate() {
+                // Reset stats and diff elements
+                const stats = { total: tableRows.length, added: 0, modified: 0, deleted: 0 };
+                allDiffElements = [];
+
+                tableRows.forEach(row => {
+                    // Reset inline styles or classes if they were modified
+                    row.style.backgroundColor = '';
+                    
+                    const originalDiffType = row.getAttribute('data-original-diff-type');
+                    const diffType = classifyRow(row);
+                    row.dataset.diffType = diffType;
+
+                    if (diffType !== 'same') {
+                        allDiffElements.push(row);
+                        stats[diffType]++;
+                    }
+                });
+
+                // Update UI text for stats
+                document.getElementById('stats-total').textContent = `Total: ${stats.total}`;
+                document.getElementById('stats-added').textContent = `Adições: ${stats.added}`;
+                document.getElementById('stats-modified').textContent = `Modificações: ${stats.modified}`;
+                document.getElementById('stats-deleted').textContent = `Deleções: ${stats.deleted}`;
+
+                applyFilters();
+            }
+            
+            function getVisibleDiffs() {
+                return allDiffElements.filter(el => !el.classList.contains('row-hidden'));
+            }
+            
+            function applyFilters() {
+                const hideSame = showOnlyDiffCheckbox.checked;
+                tableRows.forEach(row => {
+                    const rowType = row.dataset.diffType;
+                    const isSame = rowType === 'same';
+                    const typeMatch = activeFilter === 'all' || rowType === activeFilter;
+                    
+                    if ((hideSame && isSame) || !typeMatch) {
+                        row.classList.add('row-hidden');
+                    } else {
+                        row.classList.remove('row-hidden');
+                    }
+                });
+                
+                updateAndGoToDiff(0, false); 
+            }
+
+            function updateAndGoToDiff(newIndex, shouldScroll = true) {
+                const visibleDiffs = getVisibleDiffs();
+                document.querySelectorAll('.highlight-diff').forEach(el => el.classList.remove('highlight-diff'));
+
+                if (visibleDiffs.length === 0) {
+                    currentDiffIndex = -1;
+                    diffCounter.textContent = "Nenhuma diferença";
+                    nextBtn.disabled = true;
+                    prevBtn.disabled = true;
+                    return;
+                }
+
+                if (newIndex < 0) newIndex = 0;
+                if (newIndex >= visibleDiffs.length) newIndex = visibleDiffs.length - 1;
+                
+                currentDiffIndex = newIndex;
+                const targetElement = visibleDiffs[currentDiffIndex];
+                if (targetElement) {
+                    targetElement.classList.add('highlight-diff');
+                    if (shouldScroll) {
+                         targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+                
+                diffCounter.textContent = `Diferença ${currentDiffIndex + 1} de ${visibleDiffs.length}`;
+                prevBtn.disabled = currentDiffIndex <= 0;
+                nextBtn.disabled = currentDiffIndex >= visibleDiffs.length - 1;
+            }
+
+            function navigate(direction) {
+                const visibleDiffs = getVisibleDiffs();
+                if (visibleDiffs.length === 0) return;
+                let newIndex = currentDiffIndex;
+                if (direction === 'next' && currentDiffIndex < visibleDiffs.length - 1) {
+                    newIndex++;
+                } else if (direction === 'prev' && currentDiffIndex > 0) {
+                    newIndex--;
+                }
+                updateAndGoToDiff(newIndex);
+            }
+
+            function resetAll() {
+                activeFilter = 'all';
+                showOnlyDiffCheckbox.checked = false;
+                statsFilters.forEach(f => f.classList.remove('active-filter'));
+                document.querySelector('[data-filter-type="all"]').classList.add('active-filter');
+                
+                searchInput.value = '';
+                gotoLineInput.value = '';
+                ignoreInput.value = '';
+                ignoreList = [];
+                updateIgnoreListDisplay();
+                
+                searchResults = [];
+                currentSearchIndex = -1;
+                document.querySelectorAll('.search-highlight').forEach(el => el.classList.remove('search-highlight'));
+                
+                rebuildAndRecalculate();
+                
+                if (getVisibleDiffs().length > 0) {
+                    getVisibleDiffs()[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            function performSearch() {
+                const searchTerm = searchInput.value.trim().toLowerCase();
+                document.querySelectorAll('.search-highlight').forEach(el => el.classList.remove('search-highlight'));
+                searchResults = [];
+                currentSearchIndex = -1;
+                if (!searchTerm) return;
+                tableRows.forEach(row => {
+                    if (!row.classList.contains('row-hidden') && row.textContent.toLowerCase().includes(searchTerm)) {
+                        searchResults.push(row);
+                    }
+                });
+                if (searchResults.length > 0) {
+                    currentSearchIndex = 0;
+                    navigateToSearchResult();
+                } else {
+                    alert('Nenhum resultado encontrado.');
+                }
+            }
+
+            function navigateToSearchResult() {
+                const target = searchResults[currentSearchIndex];
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                document.querySelectorAll('.search-highlight').forEach(el => el.classList.remove('search-highlight'));
+                target.classList.add('search-highlight');
+            }
+
+            function goToLine() {
+                const lineNum = parseInt(gotoLineInput.value, 10);
+                if (isNaN(lineNum) || lineNum < 1 || lineNum > tableRows.length) {
+                    alert('Número da linha inválido.');
+                    return;
+                }
+                const targetRow = document.querySelector(`tr[data-line-number='${lineNum}']`);
+                if (targetRow) {
+                    if (targetRow.classList.contains('row-hidden')) {
+                        alert('A linha ' + lineNum + ' está oculta pelo filtro atual. Limpe os filtros para visualizá-la.');
+                        return;
+                    }
+                    targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    document.querySelectorAll('.highlight-diff').forEach(el => el.classList.remove('highlight-diff'));
+                    targetRow.classList.add('highlight-diff');
+                    const visibleDiffs = getVisibleDiffs();
+                    const diffIndex = visibleDiffs.indexOf(targetRow);
+                    if (diffIndex > -1) {
+                        currentDiffIndex = diffIndex;
+                        updateAndGoToDiff(currentDiffIndex, false);
+                    }
+                }
+            }
+
+            function updateIgnoreListDisplay() {
+                ignoreListContainer.innerHTML = '';
+                ignoreList.forEach((term, index) => {
+                    const badge = document.createElement('span');
+                    badge.className = 'ignore-badge';
+                    badge.textContent = term;
+                    const removeBtn = document.createElement('button');
+                    removeBtn.innerHTML = '&times;';
+                    removeBtn.onclick = () => {
+                        ignoreList.splice(index, 1);
+                        updateIgnoreListDisplay();
+                        rebuildAndRecalculate();
+                    };
+                    badge.appendChild(removeBtn);
+                    ignoreListContainer.appendChild(badge);
+                });
+            }
+
+            // Initial setup
+            tableRows.forEach((row, index) => {
+                const lineNumber = index + 1;
+                row.dataset.lineNumber = lineNumber;
+                const lineTd = document.createElement('td');
+                lineTd.className = 'line-number';
+                lineTd.textContent = lineNumber;
+                row.prepend(lineTd);
+                row.classList.add('diff-row');
+                // Store original type for resets
+                row.setAttribute('data-original-diff-type', classifyRow(row));
+            });
+            rebuildAndRecalculate();
+
+            // Event Listeners
+            nextBtn.addEventListener('click', () => navigate('next'));
+            prevBtn.addEventListener('click', () => navigate('prev'));
+            showOnlyDiffCheckbox.addEventListener('change', applyFilters);
+            logoContainer.addEventListener('click', resetAll);
+            searchBtn.addEventListener('click', performSearch);
+            searchInput.addEventListener('keydown', e => e.key === 'Enter' && (e.preventDefault(), performSearch()));
+            searchNextBtn.addEventListener('click', () => {
+                if (searchResults.length > 0) {
+                    currentSearchIndex = (currentSearchIndex + 1) % searchResults.length;
+                    navigateToSearchResult();
+                }
+            });
+            gotoLineBtn.addEventListener('click', goToLine);
+            gotoLineInput.addEventListener('keydown', e => e.key === 'Enter' && (e.preventDefault(), goToLine()));
+            statsFilters.forEach(filter => {
+                filter.addEventListener('click', (e) => {
+                    statsFilters.forEach(f => f.classList.remove('active-filter'));
+                    e.currentTarget.classList.add('active-filter');
+                    activeFilter = e.currentTarget.dataset.filterType;
+                    applyFilters();
+                });
+            });
+            ignoreBtn.addEventListener('click', () => {
+                const term = ignoreInput.value.trim().toLowerCase();
+                if (term && !ignoreList.includes(term)) {
+                    ignoreList.push(term);
+                    ignoreInput.value = '';
+                    updateIgnoreListDisplay();
+                    rebuildAndRecalculate();
+                }
+            });
+            ignoreInput.addEventListener('keydown', e => e.key === 'Enter' && (e.preventDefault(), ignoreBtn.click()));
+        });
+    </script>
+
+</body>
+
+</html>

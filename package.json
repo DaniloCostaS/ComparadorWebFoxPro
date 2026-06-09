@@ -1,0 +1,22 @@
+{
+  "name": "comparadorwebapp",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/file-saver": "^2.0.7",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12"
+  },
+  "dependencies": {
+    "@types/diff": "^7.0.2",
+    "diff": "^9.0.0",
+    "file-saver": "^2.0.5",
+    "jszip": "^3.10.1"
+  }
+}
