@@ -94,7 +94,7 @@ export class FoxProParser {
             currentOffset += 32;
         }
 
-        const objects: Record<string, {properties: string, methods: string, expr: string, tag: string, tag2: string}> = {};
+        const objects: Record<string, {properties: string, methods: string, expr: string, tag: string, tag2: string, picture: string}> = {};
 
         // Parse records
         for (let i = 0; i < numRecords; i++) {
@@ -111,6 +111,7 @@ export class FoxProParser {
             let expr = '';
             let tag = '';
             let tag2 = '';
+            let picture = '';
 
             for (const field of fields) {
                 const fieldOffset = rowOffset + field.offset;
@@ -147,6 +148,11 @@ export class FoxProParser {
                         const blockNumber = scxView.getUint32(fieldOffset, true);
                         tag2 = this.getMemoText(sctBuffer, blockNumber, blockSize);
                     }
+                } else if (field.name === 'PICTURE') {
+                    if (field.type === 'M') {
+                        const blockNumber = scxView.getUint32(fieldOffset, true);
+                        picture = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                    }
                 }
             }
 
@@ -156,7 +162,7 @@ export class FoxProParser {
             }
 
             if (objName) {
-                objects[objName] = { properties, methods, expr, tag, tag2 };
+                objects[objName] = { properties, methods, expr, tag, tag2, picture };
             }
         }
 
@@ -167,7 +173,7 @@ export class FoxProParser {
         const sortedNames = Object.keys(objects).sort();
 
         for (const name of sortedNames) {
-            const { properties, methods, expr, tag, tag2 } = objects[name];
+            const { properties, methods, expr, tag, tag2, picture } = objects[name];
             
             if (properties.trim()) {
                 output += `<Object.${name} Properties>\n`;
@@ -219,6 +225,17 @@ export class FoxProParser {
                     }
                 }
                 output += `</Object.${name} TAG2>\n\n`;
+            }
+
+            if (picture.trim()) {
+                output += `<Object.${name} PICTURE>\n`;
+                const lines = picture.split('\n');
+                for (const line of lines) {
+                    if (line.trim()) {
+                        output += `   ${line.trim()}\n`;
+                    }
+                }
+                output += `</Object.${name} PICTURE>\n\n`;
             }
         }
 
