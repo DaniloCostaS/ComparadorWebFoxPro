@@ -332,31 +332,44 @@
                 });
             }
 
+            function updateStatsUI() {
+                const selectedMethod = methodFilter.value;
+                const stats = { total: 0, added: 0, modified: 0, deleted: 0 };
+
+                tableRows.forEach(row => {
+                    const blockMatch = !selectedMethod || row.dataset.blockName === selectedMethod;
+                    if (blockMatch) {
+                        stats.total++;
+                        const diffType = row.dataset.diffType;
+                        if (diffType !== 'same') {
+                            stats[diffType]++;
+                        }
+                    }
+                });
+
+                document.getElementById('stats-total').textContent = `Total: ${stats.total}`;
+                document.getElementById('stats-added').textContent = `Adições: ${stats.added}`;
+                document.getElementById('stats-modified').textContent = `Modificações: ${stats.modified}`;
+                document.getElementById('stats-deleted').textContent = `Deleções: ${stats.deleted}`;
+            }
+
             function rebuildAndRecalculate() {
                 // Reset stats and diff elements
-                const stats = { total: tableRows.length, added: 0, modified: 0, deleted: 0 };
                 allDiffElements = [];
 
                 tableRows.forEach(row => {
                     // Reset inline styles or classes if they were modified
                     row.style.backgroundColor = '';
                     
-                    const originalDiffType = row.getAttribute('data-original-diff-type');
                     const diffType = classifyRow(row);
                     row.dataset.diffType = diffType;
 
                     if (diffType !== 'same') {
                         allDiffElements.push(row);
-                        stats[diffType]++;
                     }
                 });
 
-                // Update UI text for stats
-                document.getElementById('stats-total').textContent = `Total: ${stats.total}`;
-                document.getElementById('stats-added').textContent = `Adições: ${stats.added}`;
-                document.getElementById('stats-modified').textContent = `Modificações: ${stats.modified}`;
-                document.getElementById('stats-deleted').textContent = `Deleções: ${stats.deleted}`;
-
+                updateStatsUI();
                 applyFilters();
             }
             
@@ -381,6 +394,7 @@
                     }
                 });
                 
+                updateStatsUI();
                 resetDiffNavigation();
             }
 
