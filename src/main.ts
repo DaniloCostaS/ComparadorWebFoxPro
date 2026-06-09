@@ -118,12 +118,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- FoxPro Logic Validation ---
   function validateFoxPro() {
-    btnProcessFoxpro.disabled = !(foxAntesFilesInput.files && foxAntesFilesInput.files.length >= 2 && foxDepoisFilesInput.files && foxDepoisFilesInput.files.length >= 2);
+    btnProcessFoxpro.disabled = !(foxAntesFilesInput.files && foxAntesFilesInput.files.length >= 1 && foxDepoisFilesInput.files && foxDepoisFilesInput.files.length >= 1);
   }
 
   foxAntesFilesInput.addEventListener('change', (e) => {
       const files = (e.target as HTMLInputElement).files;
-      if (files && files.length >= 2) {
+      if (files && files.length >= 1) {
           foxAntesCount.textContent = `${files.length} arquivos carregados`;
           foxAntesCount.classList.remove('hidden');
       } else {
@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   foxDepoisFilesInput.addEventListener('change', (e) => {
       const files = (e.target as HTMLInputElement).files;
-      if (files && files.length >= 2) {
+      if (files && files.length >= 1) {
           foxDepoisCount.textContent = `${files.length} arquivos carregados`;
           foxDepoisCount.classList.remove('hidden');
       } else {
@@ -147,44 +147,54 @@ document.addEventListener('DOMContentLoaded', () => {
       const antesFiles = foxAntesFilesInput.files;
       const depoisFiles = foxDepoisFilesInput.files;
 
-      if (!antesFiles || antesFiles.length < 2 || !depoisFiles || depoisFiles.length < 2) return;
+      if (!antesFiles || antesFiles.length < 1 || !depoisFiles || depoisFiles.length < 1) return;
 
       const getBuffers = async (files: FileList) => {
-          let scx: ArrayBuffer | null = null;
-          let sct: ArrayBuffer | null = null;
-          let scxName = '';
+          let bin1: ArrayBuffer | null = null;
+          let bin2: ArrayBuffer | null = null;
+          let prgText: string | null = null;
+          let fileName = '';
+
           for (let i = 0; i < files.length; i++) {
-              if (files[i].name.toLowerCase().endsWith('.scx')) {
-                  scx = await files[i].arrayBuffer();
-                  scxName = files[i].name.replace(/\.scx$/i, '');
-              }
-              if (files[i].name.toLowerCase().endsWith('.sct')) {
-                  sct = await files[i].arrayBuffer();
+              const nameLower = files[i].name.toLowerCase();
+              if (nameLower.endsWith('.scx') || nameLower.endsWith('.frx')) {
+                  bin1 = await files[i].arrayBuffer();
+                  fileName = files[i].name.replace(/\.(scx|frx)$/i, '');
+              } else if (nameLower.endsWith('.sct') || nameLower.endsWith('.frt')) {
+                  bin2 = await files[i].arrayBuffer();
+              } else if (nameLower.endsWith('.prg')) {
+                  prgText = await files[i].text();
+                  fileName = files[i].name.replace(/\.prg$/i, '');
               }
           }
-          return { scx, sct, scxName };
+          return { bin1, bin2, prgText, fileName };
       };
 
       try {
           const antes = await getBuffers(antesFiles);
           const depois = await getBuffers(depoisFiles);
 
-          if (!antes.scx || !antes.sct || !depois.scx || !depois.sct) {
-              alert('Por favor, certifique-se de selecionar os arquivos .SCX e .SCT para ambas as versões.');
+          const finalName = foxFileName.value.trim() || antes.fileName || 'ARQUIVO_COMPARADO';
+          let antesText = '';
+          let depoisText = '';
+
+          if (antes.prgText !== null && depois.prgText !== null) {
+              antesText = antes.prgText;
+              depoisText = depois.prgText;
+          } else if (antes.bin1 && antes.bin2 && depois.bin1 && depois.bin2) {
+              const parser = new FoxProParser();
+              antesText = parser.parse(antes.bin1, antes.bin2);
+              depoisText = parser.parse(depois.bin1, depois.bin2);
+          } else {
+              alert('Por favor, selecione arquivos válidos (.PRG) ou o par correto de binários (.SCX/.SCT ou .FRX/.FRT) para ambas as versões.');
               return;
           }
 
-          const parser = new FoxProParser();
-          const antesText = parser.parse(antes.scx, antes.sct);
-          const depoisText = parser.parse(depois.scx, depois.sct);
-
-          const finalName = foxFileName.value.trim() || antes.scxName || 'FORM_COMPARADO';
-
           await handleTextProcess(antesText, depoisText, baseHtmlTemplate, finalName);
-          alert('Comparação FoxPro concluída e baixada com sucesso!');
+          alert('Comparação concluída e baixada com sucesso!');
       } catch (err) {
           console.error(err);
-          alert('Erro ao processar os arquivos do FoxPro.');
+          alert('Erro ao processar os arquivos.');
       }
   });
 

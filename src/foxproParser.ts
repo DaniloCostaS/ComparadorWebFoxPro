@@ -94,7 +94,7 @@ export class FoxProParser {
             currentOffset += 32;
         }
 
-        const objects: Record<string, {properties: string, methods: string}> = {};
+        const objects: Record<string, {properties: string, methods: string, expr: string, tag: string, tag2: string}> = {};
 
         // Parse records
         for (let i = 0; i < numRecords; i++) {
@@ -108,11 +108,14 @@ export class FoxProParser {
             let objName = '';
             let properties = '';
             let methods = '';
+            let expr = '';
+            let tag = '';
+            let tag2 = '';
 
             for (const field of fields) {
                 const fieldOffset = rowOffset + field.offset;
                 
-                if (field.name === 'OBJNAME') {
+                if (field.name === 'OBJNAME' || field.name === 'NAME') {
                     if (field.type === 'M') {
                         const blockNumber = scxView.getUint32(fieldOffset, true);
                         objName = this.getMemoText(sctBuffer, blockNumber, blockSize);
@@ -129,11 +132,31 @@ export class FoxProParser {
                         const blockNumber = scxView.getUint32(fieldOffset, true);
                         methods = this.getMemoText(sctBuffer, blockNumber, blockSize);
                     }
+                } else if (field.name === 'EXPR') {
+                    if (field.type === 'M') {
+                        const blockNumber = scxView.getUint32(fieldOffset, true);
+                        expr = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                    }
+                } else if (field.name === 'TAG') {
+                    if (field.type === 'M') {
+                        const blockNumber = scxView.getUint32(fieldOffset, true);
+                        tag = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                    }
+                } else if (field.name === 'TAG2') {
+                    if (field.type === 'M') {
+                        const blockNumber = scxView.getUint32(fieldOffset, true);
+                        tag2 = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                    }
                 }
             }
 
+            // Fallback for FRX objects that might not have a clear name
+            if (!objName) {
+                objName = `Row_${i}`;
+            }
+
             if (objName) {
-                objects[objName] = { properties, methods };
+                objects[objName] = { properties, methods, expr, tag, tag2 };
             }
         }
 
@@ -144,10 +167,10 @@ export class FoxProParser {
         const sortedNames = Object.keys(objects).sort();
 
         for (const name of sortedNames) {
-            const { properties, methods } = objects[name];
+            const { properties, methods, expr, tag, tag2 } = objects[name];
             
             if (properties.trim()) {
-                output += `<Form.${name} Properties>\n`;
+                output += `<Object.${name} Properties>\n`;
                 // Identar as propriedades levemente igual no fox
                 const lines = properties.split('\n');
                 for (const line of lines) {
@@ -155,14 +178,47 @@ export class FoxProParser {
                         output += `   ${line.trim()}\n`;
                     }
                 }
-                output += `</Form.${name} Properties>\n`;
+                output += `</Object.${name} Properties>\n`;
             }
             
             const sortedMethods = this.sortMethods(methods);
             if (sortedMethods.trim()) {
-                output += `<Form.${name} Methods>\n`;
+                output += `<Object.${name} Methods>\n`;
                 output += sortedMethods.trim() + '\n';
-                output += `</Form.${name} Methods>\n\n`;
+                output += `</Object.${name} Methods>\n\n`;
+            }
+
+            if (expr.trim()) {
+                output += `<Object.${name} EXPR>\n`;
+                const lines = expr.split('\n');
+                for (const line of lines) {
+                    if (line.trim()) {
+                        output += `   ${line.trim()}\n`;
+                    }
+                }
+                output += `</Object.${name} EXPR>\n\n`;
+            }
+
+            if (tag.trim()) {
+                output += `<Object.${name} TAG>\n`;
+                const lines = tag.split('\n');
+                for (const line of lines) {
+                    if (line.trim()) {
+                        output += `   ${line.trim()}\n`;
+                    }
+                }
+                output += `</Object.${name} TAG>\n\n`;
+            }
+
+            if (tag2.trim()) {
+                output += `<Object.${name} TAG2>\n`;
+                const lines = tag2.split('\n');
+                for (const line of lines) {
+                    if (line.trim()) {
+                        output += `   ${line.trim()}\n`;
+                    }
+                }
+                output += `</Object.${name} TAG2>\n\n`;
             }
         }
 

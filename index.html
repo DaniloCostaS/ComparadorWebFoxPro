@@ -118,8 +118,8 @@
 
       <!-- Seção: Comparador de FoxPro -->
       <section id="section-foxpro" class="hidden bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 class="text-2xl font-bold mb-4 text-blue-800">Comparador Nativo FoxPro (.SCX e .SCT)</h2>
-        <p class="text-gray-600 mb-6">Selecione os arquivos de formulário do FoxPro. Para que a leitura funcione corretamente, é obrigatório enviar o par <code>.SCX</code> e <code>.SCT</code> de cada versão.</p>
+        <h2 class="text-2xl font-bold mb-4 text-blue-800">Comparador Nativo FoxPro Único</h2>
+        <p class="text-gray-600 mb-6">Selecione os arquivos do FoxPro. Suporta Formulários (<code>.SCX/.SCT</code>), Relatórios (<code>.FRX/.FRT</code>) e Códigos (<code>.PRG</code>). Para binários, envie o par completo (ex: .scx e .sct).</p>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <!-- Versão Original -->
@@ -127,8 +127,8 @@
             <label for="fox-antes-files" class="cursor-pointer flex flex-col items-center">
               <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
               <span class="text-blue-600 font-semibold">Versão Original (Antes)</span>
-              <span class="text-xs text-gray-500 mt-1">Selecione o .SCX e .SCT juntos</span>
-              <input type="file" id="fox-antes-files" class="hidden" accept=".scx,.sct" multiple />
+              <span class="text-xs text-gray-500 mt-1">Selecione os arquivos correspondentes</span>
+              <input type="file" id="fox-antes-files" class="hidden" accept=".scx,.sct,.frx,.frt,.prg" multiple />
             </label>
             <div id="fox-antes-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 arquivos carregados</div>
           </div>
@@ -138,8 +138,8 @@
             <label for="fox-depois-files" class="cursor-pointer flex flex-col items-center">
               <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
               <span class="text-blue-600 font-semibold">Versão Modificada (Depois)</span>
-              <span class="text-xs text-gray-500 mt-1">Selecione o .SCX e .SCT juntos</span>
-              <input type="file" id="fox-depois-files" class="hidden" accept=".scx,.sct" multiple />
+              <span class="text-xs text-gray-500 mt-1">Selecione os arquivos correspondentes</span>
+              <input type="file" id="fox-depois-files" class="hidden" accept=".scx,.sct,.frx,.frt,.prg" multiple />
             </label>
             <div id="fox-depois-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 arquivos carregados</div>
           </div>
