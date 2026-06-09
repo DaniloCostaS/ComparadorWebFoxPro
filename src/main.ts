@@ -163,7 +163,9 @@ document.addEventListener('DOMContentLoaded', () => {
               } else if (nameLower.endsWith('.sct') || nameLower.endsWith('.frt')) {
                   bin2 = await files[i].arrayBuffer();
               } else if (nameLower.endsWith('.prg')) {
-                  prgText = await files[i].text();
+                  const prgBuffer = await files[i].arrayBuffer();
+                  const decoder = new TextDecoder('windows-1252');
+                  prgText = decoder.decode(prgBuffer);
                   fileName = files[i].name.replace(/\.prg$/i, '');
               }
           }
