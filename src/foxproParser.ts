@@ -29,7 +29,7 @@ export class FoxProParser {
         return this.decodeString(fptBuffer, offset + 8, dataLength);
     }
 
-    private sortMethods(methodsText: string): string {
+    private sortMethods(methodsText: string, objName: string): string {
         const methodLines = methodsText.split(/\r?\n/);
         const methodBlocks: { name: string, content: string[] }[] = [];
         let currentName = '_TOP_LEVEL';
@@ -55,7 +55,21 @@ export class FoxProParser {
         // Sort by name
         methodBlocks.sort((a, b) => a.name.localeCompare(b.name));
 
-        return methodBlocks.map(b => b.content.join('\n').trimEnd()).filter(text => text.length > 0).join('\n\n');
+        let output = '';
+        for (const block of methodBlocks) {
+            if (block.name === '_TOP_LEVEL') {
+                if (block.content.join('').trim()) {
+                    output += `<Object.${objName} Method._TopLevel>\n`;
+                    output += block.content.join('\n').trimEnd() + '\n';
+                    output += `</Object.${objName} Method._TopLevel>\n\n`;
+                }
+            } else {
+                output += `<Object.${objName} Method.${block.name}>\n`;
+                output += block.content.join('\n').trimEnd() + '\n';
+                output += `</Object.${objName} Method.${block.name}>\n\n`;
+            }
+        }
+        return output.trimEnd() + '\n';
     }
 
     public parsePrg(prgText: string): string {
@@ -230,11 +244,9 @@ export class FoxProParser {
                 output += `</Object.${name} Properties>\n`;
             }
             
-            const sortedMethods = this.sortMethods(methods);
+            const sortedMethods = this.sortMethods(methods, name);
             if (sortedMethods.trim()) {
-                output += `<Object.${name} Methods>\n`;
-                output += sortedMethods.trim() + '\n';
-                output += `</Object.${name} Methods>\n\n`;
+                output += sortedMethods.trim() + '\n\n';
             }
 
             if (expr.trim()) {

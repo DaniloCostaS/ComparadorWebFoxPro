@@ -206,8 +206,14 @@
             </div>
             
             <!-- Filtros e Estatísticas -->
-            <div class="flex items-center space-x-4 text-sm">
-                <div class="flex items-center">
+            <div class="flex items-center space-x-4 text-sm mt-2 sm:mt-0">
+                <div class="flex items-center space-x-2">
+                    <label for="method-filter" class="font-medium text-gray-700">Filtrar Método:</label>
+                    <select id="method-filter" class="border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:ring-0 w-48 truncate">
+                        <option value="">Mostrar Todo o Código</option>
+                    </select>
+                </div>
+                <div class="flex items-center border-l pl-4">
                     <input type="checkbox" id="show-only-diff" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                     <label for="show-only-diff" class="ml-2 text-sm font-medium text-gray-700">Ocultar Iguais</label>
                 </div>
@@ -264,6 +270,47 @@
             let activeFilter = 'all';
             let ignoreList = [];
 
+            // Detect and Tag Blocks
+            let currentBlockName = '';
+            let changedBlocks = new Set();
+            
+            tableRows.forEach(row => {
+                const text = row.textContent.trim();
+                
+                // Detection for block opening
+                let blockMatch = text.match(/^<((?:Object\.[^\s]+\s+Method\.[^\s>]+)|(?:PRG_Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+                if (blockMatch) {
+                    currentBlockName = blockMatch[1];
+                }
+                
+                if (currentBlockName) {
+                    row.dataset.blockName = currentBlockName;
+                    
+                    // Check if it has modifications
+                    if (row.querySelector('.TextItemSigAdd, .TextItemSigRightMod, .TextItemSigDel, .TextItemSigLeftMod, .TextItemSigDiffMod')) {
+                        changedBlocks.add(currentBlockName);
+                    }
+                }
+
+                // Detection for block closing
+                if (currentBlockName && text.toUpperCase().startsWith(`</${currentBlockName.toUpperCase()}>`)) {
+                    currentBlockName = '';
+                }
+            });
+
+            // Populate method filter select box
+            const methodFilter = document.getElementById('method-filter');
+            Array.from(changedBlocks).sort().forEach(blockName => {
+                const option = document.createElement('option');
+                option.value = blockName;
+                option.textContent = blockName.replace('Object.', '').replace('Method.', ' - ');
+                methodFilter.appendChild(option);
+            });
+
+            methodFilter.addEventListener('change', () => {
+                applyFilters();
+            });
+
             function classifyRow(row) {
                 const rowText = row.textContent.toLowerCase();
                 // Check if the row text contains any of the ignored terms
@@ -319,12 +366,15 @@
             
             function applyFilters() {
                 const hideSame = showOnlyDiffCheckbox.checked;
+                const selectedMethod = methodFilter.value;
+                
                 tableRows.forEach(row => {
                     const rowType = row.dataset.diffType;
                     const isSame = rowType === 'same';
                     const typeMatch = activeFilter === 'all' || rowType === activeFilter;
+                    const blockMatch = !selectedMethod || row.dataset.blockName === selectedMethod;
                     
-                    if ((hideSame && isSame) || !typeMatch) {
+                    if ((hideSame && isSame) || !typeMatch || !blockMatch) {
                         row.classList.add('row-hidden');
                     } else {
                         row.classList.remove('row-hidden');
