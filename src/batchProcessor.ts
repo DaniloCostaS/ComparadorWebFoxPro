@@ -48,9 +48,9 @@ export async function handleBatchProcess(baseContent: string, compareFiles: File
                 // como ISO-8859-1, pode ser necessário passar o encoding no FileReader. 
                 // Por enquanto assumimos UTF-8 (padrão web). Se der erro visual, ajustaremos.
 
-                let finalHtml = baseContent.replace('[[CONTEUDO_COMPARADO]]', corpo.trim());
+                let finalHtml = baseContent.replace('[[CONTEUDO_COMPARADO]]', () => corpo.trim());
                 // Substitui todas as ocorrências de [[NOME_FORM]]
-                finalHtml = finalHtml.replace(/\[\[NOME_FORM\]\]/g, nomeArquivo.trim());
+                finalHtml = finalHtml.replace(/\[\[NOME_FORM\]\]/g, () => nomeArquivo.trim());
                 
                 const finalFileName = `${nomeArquivo.trim()}_INTERATIVO.HTML`;
                 zip.file(finalFileName, finalHtml);

@@ -123,10 +123,10 @@ export function generateDiffHtml(originalText: string, modifiedText: string, bas
     }
 
     // Substitui no template
-    let finalHtml = baseContent.replace('[[CONTEUDO_COMPARADO]]', htmlRows.trim());
+    let finalHtml = baseContent.replace('[[CONTEUDO_COMPARADO]]', () => htmlRows.trim());
     
     const finalName = fileName.trim() || 'COMPARACAO_TEXTO';
-    finalHtml = finalHtml.replace(/\[\[NOME_FORM\]\]/g, finalName);
+    finalHtml = finalHtml.replace(/\[\[NOME_FORM\]\]/g, () => finalName);
     
     return finalHtml;
 }
