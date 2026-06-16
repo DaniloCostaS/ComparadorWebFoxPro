@@ -163,6 +163,7 @@ export class FoxProParser {
             if (isDeleted) continue;
 
             let objName = '';
+            let parentName = '';
             let properties = '';
             let methods = '';
             let expr = '';
@@ -179,6 +180,13 @@ export class FoxProParser {
                         objName = this.getMemoText(sctBuffer, blockNumber, blockSize);
                     } else {
                         objName = this.decodeString(scxBuffer, fieldOffset, field.length);
+                    }
+                } else if (field.name === 'PARENT') {
+                    if (field.type === 'M') {
+                        const blockNumber = scxView.getUint32(fieldOffset, true);
+                        parentName = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                    } else {
+                        parentName = this.decodeString(scxBuffer, fieldOffset, field.length);
                     }
                 } else if (field.name === 'PROPERTIES') {
                     if (field.type === 'M') {
@@ -219,6 +227,20 @@ export class FoxProParser {
             }
 
             if (objName) {
+                // If PARENT is present, prepend it to make the name unique by its hierarchy
+                if (parentName.trim()) {
+                    objName = `${parentName.trim()}.${objName.trim()}`;
+                }
+                
+                // Fallback collision handler just in case
+                if (objects[objName]) {
+                    let counter = 2;
+                    while (objects[`${objName}_${counter}`]) {
+                        counter++;
+                    }
+                    objName = `${objName}_${counter}`;
+                }
+
                 objects[objName] = { properties, methods, expr, tag, tag2, picture };
             }
         }
