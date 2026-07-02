@@ -276,7 +276,7 @@
             
             tableRows.forEach(row => {
                 const text = row.textContent.trim();
-                const cleanText = text.replace(/^[><=\s]+/, '');
+                const cleanText = text.replace(/^[>=\s]+/, '');
                 
                 // Detection for block opening
                 let blockMatch = cleanText.match(/^<((?:Object\.[^\s]+\s+Method\.[^\s>]+)|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
