@@ -2,6 +2,7 @@ import { handleBatchProcess } from './batchProcessor.ts';
 import { handleFoxProBatchProcess, type FoxProFileMap } from './batchProcessor.ts';
 import { handleTextProcess } from './textComparator.ts';
 import { FoxProParser } from './foxproParser.ts';
+import { handleCodeReferencesSearch, renderTreeResults } from './codeReferences.ts';
 import baseHtmlTemplate from './base.html?raw';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -10,10 +11,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabText = document.getElementById('tab-text') as HTMLButtonElement;
   const tabFoxpro = document.getElementById('tab-foxpro') as HTMLButtonElement;
   const tabFoxproBatch = document.getElementById('tab-foxpro-batch') as HTMLButtonElement;
+  const tabCodeReferences = document.getElementById('tab-code-references') as HTMLButtonElement;
+
   const sectionBatch = document.getElementById('section-batch') as HTMLElement;
   const sectionText = document.getElementById('section-text') as HTMLElement;
   const sectionFoxpro = document.getElementById('section-foxpro') as HTMLElement;
   const sectionFoxproBatch = document.getElementById('section-foxpro-batch') as HTMLElement;
+  const sectionCodeReferences = document.getElementById('section-code-references') as HTMLElement;
 
   // Batch Elements
   const compareFilesInput = document.getElementById('compare-files') as HTMLInputElement;
@@ -42,8 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Tab Logic ---
   function resetTabs() {
-    [tabBatch, tabText, tabFoxpro, tabFoxproBatch].forEach(t => t.classList.replace('tab-active', 'tab-inactive'));
-    [sectionBatch, sectionText, sectionFoxpro, sectionFoxproBatch].forEach(s => s.classList.add('hidden'));
+    [tabBatch, tabText, tabFoxpro, tabFoxproBatch, tabCodeReferences].forEach(t => t.classList.replace('tab-active', 'tab-inactive'));
+    [sectionBatch, sectionText, sectionFoxpro, sectionFoxproBatch, sectionCodeReferences].forEach(s => s.classList.add('hidden'));
   }
 
   tabBatch.addEventListener('click', () => {
@@ -70,7 +74,14 @@ document.addEventListener('DOMContentLoaded', () => {
     sectionFoxproBatch.classList.remove('hidden');
   });
 
+  tabCodeReferences.addEventListener('click', () => {
+    resetTabs();
+    tabCodeReferences.classList.replace('tab-inactive', 'tab-active');
+    sectionCodeReferences.classList.remove('hidden');
+  });
+
   // --- Batch Logic Validation ---
+
   let batchCompareFiles: FileList | null = null;
 
   function validateBatch() {
@@ -283,6 +294,137 @@ document.addEventListener('DOMContentLoaded', () => {
 
       btnProcessFoxproBatch.disabled = false;
       btnProcessFoxproBatch.textContent = 'Comparar Lote e Baixar ZIP';
+  });
+
+  // --- Code References Logic ---
+  const crFolderInput = document.getElementById('cr-folder-input') as HTMLInputElement;
+  const crFolderCount = document.getElementById('cr-folder-count') as HTMLElement;
+  const crSearchTerm = document.getElementById('cr-search-term') as HTMLInputElement;
+  const btnCrAddTerm = document.getElementById('btn-cr-add-term') as HTMLButtonElement;
+  const crSearchTags = document.getElementById('cr-search-tags') as HTMLElement;
+  
+  const crMatchExact = document.getElementById('cr-match-exact') as HTMLInputElement;
+  const crMatchCase = document.getElementById('cr-match-case') as HTMLInputElement;
+  const crMatchSameMethod = document.getElementById('cr-match-same-method') as HTMLInputElement;
+  const btnProcessCr = document.getElementById('btn-process-cr') as HTMLButtonElement;
+  const crResultsContainer = document.getElementById('cr-results-container') as HTMLElement;
+  const crResultsStats = document.getElementById('cr-results-stats') as HTMLElement;
+  const crTreeView = document.getElementById('cr-tree-view') as HTMLElement;
+
+  const btnCrExpand = document.getElementById('btn-cr-expand') as HTMLButtonElement;
+  const btnCrCollapse = document.getElementById('btn-cr-collapse') as HTMLButtonElement;
+
+  btnCrExpand.addEventListener('click', () => {
+      const uls = crTreeView.querySelectorAll('ul.hidden');
+      uls.forEach(ul => ul.classList.remove('hidden'));
+      const svgs = crTreeView.querySelectorAll('svg');
+      svgs.forEach(svg => svg.style.transform = 'rotate(90deg)');
+  });
+
+  btnCrCollapse.addEventListener('click', () => {
+      // Find all nested ULs (the ones inside LI) and hide them
+      const uls = crTreeView.querySelectorAll('li > ul');
+      uls.forEach(ul => ul.classList.add('hidden'));
+      const svgs = crTreeView.querySelectorAll('svg');
+      svgs.forEach(svg => svg.style.transform = 'rotate(0deg)');
+  });
+
+  let crFiles: FileList | null = crFolderInput.files && crFolderInput.files.length > 0 ? crFolderInput.files : null;
+  const crSearchTermList: string[] = [];
+
+  function renderCrTags() {
+      crSearchTags.innerHTML = '';
+      crSearchTermList.forEach((term, index) => {
+          const tag = document.createElement('span');
+          tag.className = 'inline-flex items-center bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded';
+          tag.textContent = term;
+          
+          const removeBtn = document.createElement('button');
+          removeBtn.className = 'ml-1 text-blue-600 hover:text-blue-900 focus:outline-none';
+          removeBtn.innerHTML = '&times;';
+          removeBtn.addEventListener('click', () => {
+              crSearchTermList.splice(index, 1);
+              renderCrTags();
+              validateCr();
+          });
+          
+          tag.appendChild(removeBtn);
+          crSearchTags.appendChild(tag);
+      });
+  }
+
+  function addCrTerm() {
+      const val = crSearchTerm.value.trim();
+      if (val) {
+          if (!crSearchTermList.includes(val)) {
+              crSearchTermList.push(val);
+          }
+          crSearchTerm.value = '';
+          renderCrTags();
+          validateCr();
+      }
+  }
+
+  btnCrAddTerm.addEventListener('click', addCrTerm);
+  crSearchTerm.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+          e.preventDefault();
+          addCrTerm();
+      }
+  });
+
+  function validateCr() {
+      btnProcessCr.disabled = !(crFiles && crFiles.length > 0 && crSearchTermList.length > 0);
+  }
+
+  crFolderInput.addEventListener('change', (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (files && files.length > 0) {
+          crFiles = files;
+          crFolderCount.textContent = `${files.length} arquivos encontrados na pasta`;
+          crFolderCount.classList.remove('hidden');
+      } else {
+          crFiles = null;
+          crFolderCount.classList.add('hidden');
+      }
+      validateCr();
+  });
+
+  // crSearchTerm validation is no longer needed on input, we only validate the tags list.
+
+  btnProcessCr.addEventListener('click', async () => {
+      if (!crFiles) return;
+      
+      btnProcessCr.disabled = true;
+      const originalText = btnProcessCr.textContent;
+      btnProcessCr.textContent = 'Pesquisando...';
+      
+      crResultsContainer.classList.remove('hidden');
+      crResultsStats.textContent = 'Lendo arquivos e buscando...';
+      crTreeView.innerHTML = '<div class="p-4 text-gray-500 text-center">Processando...</div>';
+
+      try {
+          const results = await handleCodeReferencesSearch(
+              crFiles,
+              crSearchTermList,
+              crMatchExact.checked,
+              crMatchCase.checked,
+              crMatchSameMethod.checked,
+              (msg) => {
+                  crResultsStats.textContent = msg;
+              }
+          );
+          
+          crResultsStats.textContent = `Encontrados ${results.length} resultados.`;
+          renderTreeResults(results, crTreeView);
+      } catch (err: any) {
+          console.error(err);
+          crResultsStats.textContent = 'Erro ao pesquisar.';
+          crTreeView.innerHTML = `<div class="p-4 text-red-500 text-center">Erro: ${err.message || err}</div>`;
+      } finally {
+          btnProcessCr.textContent = originalText;
+          validateCr();
+      }
   });
 
 });

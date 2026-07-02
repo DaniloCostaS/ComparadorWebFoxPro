@@ -52,6 +52,7 @@
           <button id="tab-text" class="pb-2 px-1 tab-inactive transition-colors">Comparador Texto Nativo</button>
           <button id="tab-foxpro" class="pb-2 px-1 tab-inactive transition-colors">Comparador FoxPro Único</button>
           <button id="tab-foxpro-batch" class="pb-2 px-1 tab-inactive transition-colors">Lote FoxPro (.SCX)</button>
+          <button id="tab-code-references" class="pb-2 px-1 tab-inactive transition-colors">Code References</button>
         </nav>
       </div>
     </header>
@@ -198,6 +199,77 @@
         </div>
       </section>
 
+      <!-- Seção: Code References -->
+      <section id="section-code-references" class="hidden bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 class="text-2xl font-bold mb-4 text-blue-800">Code References (Busca em Lote)</h2>
+        <p class="text-gray-600 mb-6">Busque por termos específicos em todos os arquivos de um diretório. Suporta <code>.PRG</code>, <code>.SCX/.SCT</code>, <code>.VCX/.VCT</code>, <code>.FRX/.FRT</code>.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <!-- Seleção de Pasta -->
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
+            <label for="cr-folder-input" class="cursor-pointer flex flex-col items-center">
+              <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+              <span class="text-blue-600 font-semibold">Selecionar Pasta Base</span>
+              <span class="text-xs text-gray-500 mt-1">Todos os arquivos FoxPro dentro da pasta e subpastas serão lidos</span>
+              <input type="file" id="cr-folder-input" class="hidden" webkitdirectory directory multiple />
+            </label>
+            <div id="cr-folder-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 arquivos encontrados</div>
+          </div>
+
+          <!-- Parâmetros da Busca -->
+          <div class="flex flex-col gap-4">
+            <div>
+              <label class="block text-sm font-bold text-gray-700 mb-2">Termos/Frases de Busca (AND)</label>
+              <div class="flex space-x-2">
+                <input type="text" id="cr-search-term" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Ex: DtInclusão = .T.">
+                <button type="button" id="btn-cr-add-term" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors text-sm">Adicionar</button>
+              </div>
+              <div id="cr-search-tags" class="mt-2 flex flex-wrap gap-2"></div>
+            </div>
+            
+            <div class="flex flex-col gap-2">
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="cr-match-exact" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                <span class="text-sm text-gray-700 font-medium">Buscar palavra exata (Match whole word)</span>
+              </label>
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="cr-match-case" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                <span class="text-sm text-gray-700 font-medium">Diferenciar maiúsculas e minúsculas (Match case)</span>
+              </label>
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="cr-match-same-method" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                <span class="text-sm text-gray-700 font-medium">Buscar palavras no mesmo método (ao invés do arquivo todo)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end border-b border-gray-200 pb-4 mb-4">
+          <button id="btn-process-cr" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            Pesquisar
+          </button>
+        </div>
+
+        <!-- Área de Resultados -->
+        <div id="cr-results-container" class="hidden">
+            <h3 class="text-lg font-bold text-gray-800 mb-2">Resultados da Busca</h3>
+            
+            <div class="flex justify-between items-center mb-4">
+                <div id="cr-results-stats" class="text-sm text-gray-600">Encontrados 0 resultados.</div>
+                <div class="space-x-3">
+                    <button id="btn-cr-expand" class="text-sm text-blue-600 hover:text-blue-800 hover:underline">Expandir Todos</button>
+                    <button id="btn-cr-collapse" class="text-sm text-blue-600 hover:text-blue-800 hover:underline">Retrair Todos</button>
+                </div>
+            </div>
+            
+            <div class="bg-white border border-gray-300 rounded-md overflow-hidden text-sm">
+                <!-- A árvore de resultados será injetada aqui via JavaScript -->
+                <div id="cr-tree-view" class="max-h-[500px] overflow-y-auto">
+                    
+                </div>
+            </div>
+        </div>
+      </section>
     </main>
 
     <script type="module" src="/src/main.ts"></script>
