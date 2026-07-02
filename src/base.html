@@ -276,9 +276,10 @@
             
             tableRows.forEach(row => {
                 const text = row.textContent.trim();
+                const cleanText = text.replace(/^[><=\s]+/, '');
                 
                 // Detection for block opening
-                let blockMatch = text.match(/^<((?:Object\.[^\s]+\s+Method\.[^\s>]+)|(?:PRG_Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+                let blockMatch = cleanText.match(/^<((?:Object\.[^\s]+\s+Method\.[^\s>]+)|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
                 if (blockMatch) {
                     currentBlockName = blockMatch[1];
                 }
@@ -293,7 +294,7 @@
                 }
 
                 // Detection for block closing
-                if (currentBlockName && text.toUpperCase().startsWith(`</${currentBlockName.toUpperCase()}>`)) {
+                if (currentBlockName && cleanText.toUpperCase().startsWith(`</${currentBlockName.toUpperCase()}>`)) {
                     currentBlockName = '';
                 }
             });
