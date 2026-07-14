@@ -208,7 +208,7 @@
             <!-- Filtros e Estatísticas -->
             <div class="flex items-center space-x-4 text-sm mt-2 sm:mt-0">
                 <div class="flex items-center space-x-2">
-                    <label for="method-filter" class="font-medium text-gray-700">Filtrar Método:</label>
+                    <label id="method-filter-label" for="method-filter" class="font-medium text-gray-700">Filtrar Método (0):</label>
                     <select id="method-filter" class="border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:ring-0 w-48 truncate">
                         <option value="">Mostrar Todo o Código</option>
                     </select>
@@ -268,7 +268,7 @@
             let searchResults = [];
             let currentSearchIndex = -1;
             let activeFilter = 'all';
-            let ignoreList = [];
+            let ignoreList = ['top', 'left', 'height', 'width', 'tabindex'];
 
             // Detect and Tag Blocks
             let currentBlockName = '';
@@ -319,6 +319,11 @@
                     option.textContent = blockName.replace('Object.', '').replace(/\s+Method\./i, ' - ').replace(/\s+(Properties|EXPR|TAG2?|PICTURE)$/i, ' - $1');
                     methodFilter.appendChild(option);
                 });
+                
+                const methodFilterLabel = document.getElementById('method-filter-label');
+                if (methodFilterLabel) {
+                    methodFilterLabel.textContent = `Filtrar Método (${changedBlocks.size}):`;
+                }
                 
                 // Restaura seleção se ainda for válido
                 if (previousSelection && changedBlocks.has(previousSelection)) {
@@ -482,7 +487,7 @@
                 searchInput.value = '';
                 gotoLineInput.value = '';
                 ignoreInput.value = '';
-                ignoreList = [];
+                ignoreList = ['top', 'left', 'height', 'width', 'tabindex'];
                 updateIgnoreListDisplay();
                 
                 searchResults = [];
@@ -576,6 +581,7 @@
                 // Store original type for resets
                 row.setAttribute('data-original-diff-type', classifyRow(row));
             });
+            updateIgnoreListDisplay();
             rebuildAndRecalculate();
 
             // Event Listeners
