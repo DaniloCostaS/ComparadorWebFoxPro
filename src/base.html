@@ -272,25 +272,19 @@
 
             // Detect and Tag Blocks
             let currentBlockName = '';
-            let changedBlocks = new Set();
             
             tableRows.forEach(row => {
                 const text = row.textContent.trim();
                 const cleanText = text.replace(/^[>=\s]+/, '');
                 
                 // Detection for block opening
-                let blockMatch = cleanText.match(/^<((?:Object\.[^\s]+\s+Method\.[^\s>]+)|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+                let blockMatch = cleanText.match(/^<((?:Object\.[^\s]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
                 if (blockMatch) {
                     currentBlockName = blockMatch[1];
                 }
                 
                 if (currentBlockName) {
                     row.dataset.blockName = currentBlockName;
-                    
-                    // Check if it has modifications
-                    if (row.querySelector('.TextItemSigAdd, .TextItemSigRightMod, .TextItemSigDel, .TextItemSigLeftMod, .TextItemSigDiffMod')) {
-                        changedBlocks.add(currentBlockName);
-                    }
                 }
 
                 // Detection for block closing
@@ -299,18 +293,40 @@
                 }
             });
 
-            // Populate method filter select box
             const methodFilter = document.getElementById('method-filter');
-            Array.from(changedBlocks).sort().forEach(blockName => {
-                const option = document.createElement('option');
-                option.value = blockName;
-                option.textContent = blockName.replace('Object.', '').replace('Method.', ' - ');
-                methodFilter.appendChild(option);
-            });
-
             methodFilter.addEventListener('change', () => {
                 applyFilters();
             });
+
+            function updateMethodFilterSelect() {
+                const previousSelection = methodFilter.value;
+                
+                // Limpa options exceto o primeiro
+                methodFilter.innerHTML = '<option value="">Mostrar Todo o Código</option>';
+                
+                let changedBlocks = new Set();
+                
+                // Verifica blocos alterados baseando no tipo atual classificado
+                tableRows.forEach(row => {
+                   if (row.dataset.blockName && row.dataset.diffType !== 'same') {
+                       changedBlocks.add(row.dataset.blockName);
+                   } 
+                });
+                
+                Array.from(changedBlocks).sort().forEach(blockName => {
+                    const option = document.createElement('option');
+                    option.value = blockName;
+                    option.textContent = blockName.replace('Object.', '').replace(/\s+Method\./i, ' - ').replace(/\s+(Properties|EXPR|TAG2?|PICTURE)$/i, ' - $1');
+                    methodFilter.appendChild(option);
+                });
+                
+                // Restaura seleção se ainda for válido
+                if (previousSelection && changedBlocks.has(previousSelection)) {
+                    methodFilter.value = previousSelection;
+                } else {
+                    methodFilter.value = "";
+                }
+            }
 
             function classifyRow(row) {
                 const rowText = row.textContent.toLowerCase();
@@ -370,6 +386,7 @@
                     }
                 });
 
+                updateMethodFilterSelect();
                 updateStatsUI();
                 applyFilters();
             }

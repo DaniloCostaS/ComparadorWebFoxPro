@@ -103,9 +103,9 @@ export async function handleCodeReferencesSearch(
                 const line = lines[i];
                 const trimmed = line.trim();
 
-                const blockMatch = line.match(/^<((?:Object\.[^\s]+\s+Method\.[^\s>]+)|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+                const blockMatch = line.match(/^<((?:Object\.[^\s]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
                 if (blockMatch) {
-                    currentMethodName = blockMatch[1].replace('Object.', '').replace('Method.', '').replace('PRG_Method ', '').replace('PRG Method ', '');
+                    currentMethodName = blockMatch[1].replace('Object.', '').replace(/\s+Method\./i, ' - ').replace(/\s+(Properties|EXPR|TAG2?|PICTURE)$/i, ' - $1').replace('PRG_Method ', '').replace('PRG Method ', '');
                     methodLineNum = 0;
                     currentMethod = { methodName: currentMethodName, lines: [], foundTerms: new Set() };
                     methodsInFile.push(currentMethod);
