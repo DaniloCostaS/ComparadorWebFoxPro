@@ -333,10 +333,29 @@
                 }
             }
 
+            function escapeRegExp(string) {
+                return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
+            function startsWithIgnoredTerm(text) {
+                if (!text) return false;
+                const cleanText = text.trim();
+                if (!cleanText) return false;
+                
+                return ignoreList.some(term => {
+                    const t = term.trim();
+                    if (!t) return false;
+                    const regex = new RegExp('^' + escapeRegExp(t) + '([^a-zA-Z0-9_]|$)', 'i');
+                    return regex.test(cleanText);
+                });
+            }
+
             function classifyRow(row) {
-                const rowText = row.textContent.toLowerCase();
-                // Check if the row text contains any of the ignored terms
-                if (ignoreList.some(term => rowText.includes(term))) {
+                const cells = Array.from(row.querySelectorAll('td')).filter(td => !td.classList.contains('line-number') && !td.classList.contains('AlignCenter'));
+                const leftText = cells[0] ? cells[0].textContent.replace(/\u00A0/g, ' ') : '';
+                const rightText = cells[1] ? cells[1].textContent.replace(/\u00A0/g, ' ') : '';
+
+                if (startsWithIgnoredTerm(leftText) || startsWithIgnoredTerm(rightText)) {
                     return 'same';
                 }
 
