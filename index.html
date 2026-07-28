@@ -188,10 +188,60 @@
           </div>
         </div>
 
-        <div class="flex items-center justify-end mb-6">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+          <label class="flex items-center space-x-2 cursor-pointer select-none">
+            <input type="checkbox" id="fox-batch-check-missing" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+            <span class="text-sm font-medium text-gray-700">Verificar arquivos ausentes (que existem no Antes, mas não no Depois)</span>
+          </label>
+
           <button id="btn-process-foxpro-batch" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
             Comparar Lote e Baixar ZIP
           </button>
+        </div>
+
+        <!-- Área de Resumo e Estatísticas da Comparação em Lote FoxPro -->
+        <div id="foxpro-batch-summary" class="hidden mb-6 flex flex-col gap-4 border-t border-gray-200 pt-6">
+          <h3 class="text-lg font-bold text-gray-800">Resumo da Comparação em Lote</h3>
+          
+          <!-- Cards de Métricas -->
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div id="fox-card-changed" class="bg-green-50 border border-green-200 rounded-lg p-3 text-center cursor-pointer hover:bg-green-100 transition-colors">
+              <span class="block text-2xl font-bold text-green-700" id="fox-count-changed">0</span>
+              <span class="text-xs font-semibold text-green-800">Com Alterações (No ZIP)</span>
+            </div>
+            <div id="fox-card-unchanged" class="bg-gray-100 border border-gray-300 rounded-lg p-3 text-center cursor-pointer hover:bg-gray-200 transition-colors">
+              <span class="block text-2xl font-bold text-gray-700" id="fox-count-unchanged">0</span>
+              <span class="text-xs font-semibold text-gray-800">Sem Alterações (Iguais)</span>
+            </div>
+            <div id="fox-card-new" class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center cursor-pointer hover:bg-yellow-100 transition-colors">
+              <span class="block text-2xl font-bold text-yellow-700" id="fox-count-new">0</span>
+              <span class="text-xs font-semibold text-yellow-800">Novos (Apenas Depois)</span>
+            </div>
+            <div id="fox-card-missing" class="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center cursor-pointer hover:bg-purple-100 transition-colors">
+              <span class="block text-2xl font-bold text-purple-700" id="fox-count-missing">0</span>
+              <span class="text-xs font-semibold text-purple-800">Ausentes (Apenas Antes)</span>
+            </div>
+            <div id="fox-card-error" class="bg-red-50 border border-red-200 rounded-lg p-3 text-center cursor-pointer hover:bg-red-100 transition-colors">
+              <span class="block text-2xl font-bold text-red-700" id="fox-count-error">0</span>
+              <span class="text-xs font-semibold text-red-800">Erros / Incompletos</span>
+            </div>
+          </div>
+
+          <!-- Filtros de Categoria da Lista -->
+          <div class="flex flex-wrap gap-2 items-center justify-between mt-2">
+            <div class="flex flex-wrap gap-2" id="fox-batch-filter-container">
+              <button type="button" id="fox-btn-filter-all" class="fox-batch-filter-btn bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="all">Todos (<span id="fox-filter-count-all">0</span>)</button>
+              <button type="button" id="fox-btn-filter-changed" class="fox-batch-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="changed">Com Alteração (<span id="fox-filter-count-changed">0</span>)</button>
+              <button type="button" id="fox-btn-filter-unchanged" class="fox-batch-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="unchanged">Sem Alteração (<span id="fox-filter-count-unchanged">0</span>)</button>
+              <button type="button" id="fox-btn-filter-new" class="fox-batch-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="new">Novos (Depois) (<span id="fox-filter-count-new">0</span>)</button>
+              <button type="button" id="fox-btn-filter-missing" class="fox-batch-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="missing">Ausentes (Antes) (<span id="fox-filter-count-missing">0</span>)</button>
+              <button type="button" id="fox-btn-filter-error" class="fox-batch-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="error">Erros (<span id="fox-filter-count-error">0</span>)</button>
+            </div>
+          </div>
+
+          <!-- Lista Detalhada dos Objetos Processados -->
+          <div id="foxpro-batch-items-list" class="max-h-72 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100 bg-white shadow-inner p-2">
+          </div>
         </div>
 
         <!-- Área de Logs FoxPro Lote -->

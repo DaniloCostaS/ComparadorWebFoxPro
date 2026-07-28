@@ -40,16 +40,9 @@ export async function handleBatchProcess(baseContent: string, compareFiles: File
             const endIdx = upperSource.lastIndexOf('</TR>');
             
             if (startIdx >= 0 && endIdx > startIdx) {
-                // + 5 porque '</TR>' tem 5 caracteres
                 let corpo = sourceHtml.substring(startIdx, endIdx + 5);
-                
-                // O FoxPro fazia STRCONV(lcCORPO, 9) que é conversão para UTF-8. 
-                // No navegador, a API text() já tenta ler em UTF-8. Se o arquivo estiver em outro encoding
-                // como ISO-8859-1, pode ser necessário passar o encoding no FileReader. 
-                // Por enquanto assumimos UTF-8 (padrão web). Se der erro visual, ajustaremos.
 
                 let finalHtml = baseContent.replace('[[CONTEUDO_COMPARADO]]', () => corpo.trim());
-                // Substitui todas as ocorrências de [[NOME_FORM]]
                 finalHtml = finalHtml.replace(/\[\[NOME_FORM\]\]/g, () => nomeArquivo.trim());
                 
                 const finalFileName = `${nomeArquivo.trim()}_INTERATIVO.HTML`;
@@ -76,21 +69,32 @@ export async function handleBatchProcess(baseContent: string, compareFiles: File
     }
 }
 
+export type BatchResultCategory = 'changed' | 'unchanged' | 'new' | 'missing' | 'error';
+
+export interface BatchResultItem {
+    name: string;
+    mapKey: string;
+    category: BatchResultCategory;
+    message: string;
+}
+
 export type FoxProFileMap = Map<string, { scx?: File, sct?: File, frx?: File, frt?: File, prg?: File }>;
 
 export async function handleFoxProBatchProcess(
     antesMap: FoxProFileMap, 
     depoisMap: FoxProFileMap, 
     baseContent: string,
-    parser: any // We pass FoxProParser instance from main
-) {
+    parser: any, // We pass FoxProParser instance from main
+    checkMissing: boolean = false
+): Promise<BatchResultItem[]> {
     const logsContainer = document.getElementById('foxpro-batch-logs');
-    function logBatch(message: string, isError: boolean = false) {
+    function logBatch(message: string, isError: boolean = false, isWarning: boolean = false) {
         if (logsContainer) {
             logsContainer.classList.remove('hidden');
             const el = document.createElement('div');
             el.textContent = message;
             if (isError) el.classList.add('text-red-600');
+            else if (isWarning) el.classList.add('text-yellow-600');
             logsContainer.appendChild(el);
             logsContainer.scrollTop = logsContainer.scrollHeight;
         }
@@ -99,11 +103,15 @@ export async function handleFoxProBatchProcess(
 
     logBatch('Iniciando processamento em lote FoxPro...', false);
     
+    const results: BatchResultItem[] = [];
+
     try {
         const zip = new JSZip();
         let successCount = 0;
+        let unchangedCount = 0;
+        let newCount = 0;
+        let missingCount = 0;
         let errorCount = 0;
-        let skippedCount = 0;
 
         const { generateDiffHtml } = await import('./textComparator.ts');
 
@@ -118,7 +126,9 @@ export async function handleFoxProBatchProcess(
             const isPrg = !!depoisFiles.prg;
 
             if (!isScx && !isFrx && !isPrg) {
-                logBatch(`Erro: Arquivo incompleto no modificado para '${baseName}'. Ignorado.`, true);
+                const msg = `Arquivo incompleto na pasta Modificada para '${baseName}'`;
+                logBatch(`Erro: ${msg}. Ignorado.`, true);
+                results.push({ name: baseName, mapKey, category: 'error', message: msg });
                 errorCount++;
                 continue;
             }
@@ -126,9 +136,11 @@ export async function handleFoxProBatchProcess(
             const antesFiles = antesMap.get(mapKey);
 
             if (!antesFiles) {
-                // Arquivo Novo
-                logBatch(`Aviso: Objeto '${baseName}' detectado como NOVO (não existe na origem). Ignorado.`, true);
-                skippedCount++;
+                // Arquivo Novo (Apenas no Depois)
+                const msg = `Objeto '${baseName}' detectado como NOVO (não existe na origem)`;
+                logBatch(`Aviso: ${msg}. Ignorado.`, false, true);
+                results.push({ name: baseName, mapKey, category: 'new', message: msg });
+                newCount++;
                 continue;
             }
 
@@ -137,13 +149,14 @@ export async function handleFoxProBatchProcess(
             const antesIsPrg = !!antesFiles.prg;
 
             if (!antesIsScx && !antesIsFrx && !antesIsPrg) {
-                logBatch(`Aviso: Objeto de origem '${baseName}' está incompleto. Ignorado.`, true);
+                const msg = `Objeto de origem '${baseName}' está incompleto`;
+                logBatch(`Aviso: ${msg}. Ignorado.`, true);
+                results.push({ name: baseName, mapKey, category: 'error', message: msg });
                 errorCount++;
                 continue;
             }
 
             // Se chegou aqui, temos tudo para comparar!
-            logBatch(`Processando '${baseName}'...`, false);
             try {
                 let antesText = '';
                 let depoisText = '';
@@ -175,9 +188,20 @@ export async function handleFoxProBatchProcess(
                     const frtDepoisBuf = await depoisFiles.frt!.arrayBuffer();
                     depoisText = parser.parse(frxDepoisBuf, frtDepoisBuf);
                 } else {
-                     logBatch(`Erro: Tipos incompatíveis ou par incompleto para '${baseName}'.`, true);
+                     const msg = `Tipos incompatíveis ou par incompleto para '${baseName}'`;
+                     logBatch(`Erro: ${msg}.`, true);
+                     results.push({ name: baseName, mapKey, category: 'error', message: msg });
                      errorCount++;
                      continue;
+                }
+
+                // Verificar se o conteúdo é exatamente igual
+                if (antesText.trim() === depoisText.trim()) {
+                    const msg = `Conteúdo idêntico no antes e depois (sem alterações)`;
+                    logBatch(`Ignorado: '${baseName}' existe na origem e no destino, mas está sem alterações. HTML não gerado.`, false, true);
+                    results.push({ name: baseName, mapKey, category: 'unchanged', message: msg });
+                    unchangedCount++;
+                    continue;
                 }
 
                 const finalHtml = generateDiffHtml(antesText, depoisText, baseContent, baseName);
@@ -185,10 +209,26 @@ export async function handleFoxProBatchProcess(
                 const finalFileName = `${baseName}_INTERATIVO.HTML`;
                 zip.file(finalFileName, finalHtml);
                 successCount++;
-                logBatch(`Sucesso: '${baseName}' processado.`);
+                results.push({ name: baseName, mapKey, category: 'changed', message: 'Modificações detectadas - HTML gerado no ZIP' });
+                logBatch(`Sucesso: '${baseName}' com alterações -> ${finalFileName}`);
             } catch(e: any) {
-                logBatch(`Erro ao parsear '${baseName}': ${e.message}`, true);
+                const msg = `Erro ao parsear '${baseName}': ${e.message}`;
+                logBatch(msg, true);
+                results.push({ name: baseName, mapKey, category: 'error', message: msg });
                 errorCount++;
+            }
+        }
+
+        // Se o usuário solicitou verificar ausentes no Antes
+        if (checkMissing) {
+            for (const [mapKey] of antesMap.entries()) {
+                if (!depoisMap.has(mapKey)) {
+                    const baseName = mapKey.substring(0, mapKey.lastIndexOf('_'));
+                    const msg = `Objeto '${baseName}' existe apenas na origem (ausente no modificado)`;
+                    logBatch(`Aviso: ${msg}. Ignorado.`, false, true);
+                    results.push({ name: baseName, mapKey, category: 'missing', message: msg });
+                    missingCount++;
+                }
             }
         }
 
@@ -196,12 +236,14 @@ export async function handleFoxProBatchProcess(
             logBatch('Gerando arquivo ZIP...', false);
             const content = await zip.generateAsync({ type: 'blob' });
             saveAs(content, 'Comparacoes_Lote_FoxPro.zip');
-            logBatch(`Concluído: ${successCount} salvos, ${skippedCount} pulados (novos), ${errorCount} erros.`);
+            logBatch(`Concluído: ${successCount} salvos no ZIP, ${unchangedCount} sem alteração, ${newCount} novos (depois)${checkMissing ? `, ${missingCount} ausentes (antes)` : ''}, ${errorCount} erros.`);
         } else {
-            logBatch('Nenhum arquivo válido pôde ser processado.', true);
+            logBatch('Nenhum arquivo com alterações foi encontrado para gerar no ZIP.', true);
         }
 
     } catch (e: any) {
         logBatch(`Erro geral ao processar lote FoxPro: ${e.message}`, true);
     }
+
+    return results;
 }

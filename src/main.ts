@@ -277,6 +277,140 @@ document.addEventListener('DOMContentLoaded', () => {
       validateFoxProBatch();
   });
 
+  let currentFoxBatchResults: import('./batchProcessor.ts').BatchResultItem[] = [];
+  let currentFoxBatchFilter: string = 'all';
+
+  function renderFoxBatchItemsList() {
+      const itemsListContainer = document.getElementById('foxpro-batch-items-list');
+      if (!itemsListContainer) return;
+
+      itemsListContainer.innerHTML = '';
+      
+      const filtered = currentFoxBatchFilter === 'all' 
+          ? currentFoxBatchResults 
+          : currentFoxBatchResults.filter(item => item.category === currentFoxBatchFilter);
+
+      if (filtered.length === 0) {
+          itemsListContainer.innerHTML = `<div class="p-4 text-center text-gray-500 text-sm">Nenhum item nesta categoria.</div>`;
+          return;
+      }
+
+      filtered.forEach(item => {
+          const row = document.createElement('div');
+          row.className = 'flex items-center justify-between p-3 hover:bg-gray-50 transition-colors text-sm';
+          
+          let badgeHtml = '';
+          if (item.category === 'changed') {
+              badgeHtml = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">🟢 Com Alteração</span>`;
+          } else if (item.category === 'unchanged') {
+              badgeHtml = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">⚪ Sem Alteração (Idêntico)</span>`;
+          } else if (item.category === 'new') {
+              badgeHtml = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">🟡 Novo (Apenas Depois)</span>`;
+          } else if (item.category === 'missing') {
+              badgeHtml = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">🟣 Ausente (Apenas Antes)</span>`;
+          } else {
+              badgeHtml = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">🔴 Erro</span>`;
+          }
+
+          row.innerHTML = `
+              <div class="flex items-center space-x-3">
+                  <span class="font-bold text-gray-800">${item.name}</span>
+                  <span class="text-xs text-gray-400">(${item.mapKey.replace(/.*_/, '')})</span>
+                  <span class="text-xs text-gray-600">${item.message}</span>
+              </div>
+              <div>${badgeHtml}</div>
+          `;
+          itemsListContainer.appendChild(row);
+      });
+  }
+
+  function updateFilterButtonsUI() {
+      const filterBtns = document.querySelectorAll('.fox-batch-filter-btn');
+      filterBtns.forEach(btn => {
+          const cat = (btn as HTMLElement).dataset.category;
+          if (cat === currentFoxBatchFilter) {
+              btn.className = 'fox-batch-filter-btn bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors';
+          } else {
+              btn.className = 'fox-batch-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors';
+          }
+      });
+  }
+
+  function renderFoxBatchDashboard(results: import('./batchProcessor.ts').BatchResultItem[]) {
+      currentFoxBatchResults = results;
+
+      const changedCount = results.filter(r => r.category === 'changed').length;
+      const unchangedCount = results.filter(r => r.category === 'unchanged').length;
+      const newCount = results.filter(r => r.category === 'new').length;
+      const missingCount = results.filter(r => r.category === 'missing').length;
+      const errorCount = results.filter(r => r.category === 'error').length;
+
+      const elChanged = document.getElementById('fox-count-changed');
+      const elUnchanged = document.getElementById('fox-count-unchanged');
+      const elNew = document.getElementById('fox-count-new');
+      const elMissing = document.getElementById('fox-count-missing');
+      const elError = document.getElementById('fox-count-error');
+
+      if (elChanged) elChanged.textContent = changedCount.toString();
+      if (elUnchanged) elUnchanged.textContent = unchangedCount.toString();
+      if (elNew) elNew.textContent = newCount.toString();
+      if (elMissing) elMissing.textContent = missingCount.toString();
+      if (elError) elError.textContent = errorCount.toString();
+
+      const elFilterAll = document.getElementById('fox-filter-count-all');
+      const elFilterChanged = document.getElementById('fox-filter-count-changed');
+      const elFilterUnchanged = document.getElementById('fox-filter-count-unchanged');
+      const elFilterNew = document.getElementById('fox-filter-count-new');
+      const elFilterMissing = document.getElementById('fox-filter-count-missing');
+      const elFilterError = document.getElementById('fox-filter-count-error');
+
+      if (elFilterAll) elFilterAll.textContent = results.length.toString();
+      if (elFilterChanged) elFilterChanged.textContent = changedCount.toString();
+      if (elFilterUnchanged) elFilterUnchanged.textContent = unchangedCount.toString();
+      if (elFilterNew) elFilterNew.textContent = newCount.toString();
+      if (elFilterMissing) elFilterMissing.textContent = missingCount.toString();
+      if (elFilterError) elFilterError.textContent = errorCount.toString();
+
+      const summaryContainer = document.getElementById('foxpro-batch-summary');
+      if (summaryContainer) {
+          summaryContainer.classList.remove('hidden');
+      }
+
+      currentFoxBatchFilter = 'all';
+      updateFilterButtonsUI();
+      renderFoxBatchItemsList();
+  }
+
+  const filterContainer = document.getElementById('fox-batch-filter-container');
+  if (filterContainer) {
+      filterContainer.addEventListener('click', (e) => {
+          const target = (e.target as HTMLElement).closest('.fox-batch-filter-btn') as HTMLElement;
+          if (target && target.dataset.category) {
+              currentFoxBatchFilter = target.dataset.category;
+              updateFilterButtonsUI();
+              renderFoxBatchItemsList();
+          }
+      });
+  }
+
+  const cardMap: Array<[string, string]> = [
+      ['fox-card-changed', 'changed'],
+      ['fox-card-unchanged', 'unchanged'],
+      ['fox-card-new', 'new'],
+      ['fox-card-missing', 'missing'],
+      ['fox-card-error', 'error']
+  ];
+  cardMap.forEach(([cardId, cat]) => {
+      const cardEl = document.getElementById(cardId);
+      if (cardEl) {
+          cardEl.addEventListener('click', () => {
+              currentFoxBatchFilter = cat;
+              updateFilterButtonsUI();
+              renderFoxBatchItemsList();
+          });
+      }
+  });
+
   btnProcessFoxproBatch.addEventListener('click', async () => {
       const antesFiles = foxBatchAntesDirInput.files;
       const depoisFiles = foxBatchDepoisDirInput.files;
@@ -286,11 +420,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const antesMap = getFileMap(antesFiles);
       const depoisMap = getFileMap(depoisFiles);
 
+      const checkMissingInput = document.getElementById('fox-batch-check-missing') as HTMLInputElement;
+      const checkMissing = checkMissingInput?.checked || false;
+
       const parser = new FoxProParser();
       btnProcessFoxproBatch.disabled = true;
       btnProcessFoxproBatch.textContent = 'Processando...';
 
-      await handleFoxProBatchProcess(antesMap, depoisMap, baseHtmlTemplate, parser);
+      const results = await handleFoxProBatchProcess(antesMap, depoisMap, baseHtmlTemplate, parser, checkMissing);
+      renderFoxBatchDashboard(results);
 
       btnProcessFoxproBatch.disabled = false;
       btnProcessFoxproBatch.textContent = 'Comparar Lote e Baixar ZIP';
