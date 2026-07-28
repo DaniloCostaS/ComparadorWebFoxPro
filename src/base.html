@@ -194,14 +194,14 @@
             
             <!-- Controles de Navegação -->
             <div class="flex items-center space-x-2 sm:space-x-4">
-                <button id="prevBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                    &larr; Ant
+                <button id="prevBtn" title="Atalho: Tecla 'A' ou Seta Esquerda" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    &larr; <u class="underline font-extrabold decoration-2">A</u>nt
                 </button>
                 <div id="diff-counter" class="text-sm font-semibold text-gray-700 bg-gray-200 px-3 py-2 rounded-lg">
                     Diferença 0 de 0
                 </div>
-                <button id="nextBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Próx &rarr;
+                <button id="nextBtn" title="Atalho: Tecla 'P' ou Seta Direita" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <u class="underline font-extrabold decoration-2">P</u>róx &rarr;
                 </button>
             </div>
             
@@ -636,6 +636,28 @@
                 }
             });
             ignoreInput.addEventListener('keydown', e => e.key === 'Enter' && (e.preventDefault(), ignoreBtn.click()));
+
+            // Atalhos de teclado (Teclas Quentes / Hotkeys)
+            document.addEventListener('keydown', (e) => {
+                const activeEl = document.activeElement;
+                const isInputActive = activeEl && (
+                    activeEl.tagName === 'INPUT' || 
+                    activeEl.tagName === 'TEXTAREA' || 
+                    activeEl.tagName === 'SELECT' || 
+                    activeEl.isContentEditable
+                );
+                
+                if (isInputActive) return;
+
+                const key = e.key.toLowerCase();
+                if (key === 'p' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    navigate('next');
+                } else if (key === 'a' || e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    navigate('prev');
+                }
+            });
         });
     </script>
 

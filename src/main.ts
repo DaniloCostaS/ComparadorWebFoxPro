@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
       );
   });
 
-  // --- FoxPro Logic Validation ---
+  // --- FoxPro Single Logic Validation ---
   function validateFoxPro() {
     btnProcessFoxpro.disabled = !(foxAntesFilesInput.files && foxAntesFilesInput.files.length >= 1 && foxDepoisFilesInput.files && foxDepoisFilesInput.files.length >= 1);
   }
@@ -213,11 +213,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --- FoxPro Batch Logic Validation ---
+  let foxBatchAntesFiles: File[] | FileList | null = null;
+  let foxBatchDepoisFiles: File[] | FileList | null = null;
+
   function validateFoxProBatch() {
-    btnProcessFoxproBatch.disabled = !(foxBatchAntesDirInput.files && foxBatchAntesDirInput.files.length > 0 && foxBatchDepoisDirInput.files && foxBatchDepoisDirInput.files.length > 0);
+    btnProcessFoxproBatch.disabled = !(foxBatchAntesFiles && foxBatchAntesFiles.length > 0 && foxBatchDepoisFiles && foxBatchDepoisFiles.length > 0);
   }
 
-  function getFileMap(files: FileList | null): FoxProFileMap {
+  function getFileMap(files: FileList | File[] | null): FoxProFileMap {
       const map: FoxProFileMap = new Map();
       if (!files) return map;
 
@@ -231,7 +234,6 @@ document.addEventListener('DOMContentLoaded', () => {
               
               const baseName = file.name.substring(0, file.name.lastIndexOf('.')).toUpperCase();
               
-              // Extract the extension to create a unique map key like "CLIENTES_SCX"
               const ext = nameLower.substring(nameLower.lastIndexOf('.') + 1);
               let mapKey = '';
               if (ext === 'scx' || ext === 'sct') mapKey = `${baseName}_SCX`;
@@ -253,9 +255,49 @@ document.addEventListener('DOMContentLoaded', () => {
       return map;
   }
 
+  async function readFilesFromDirectoryHandle(dirHandle: any, path = ''): Promise<File[]> {
+      const files: File[] = [];
+      for await (const entry of dirHandle.values()) {
+          if (entry.kind === 'file') {
+              const file = await entry.getFile();
+              const relativePath = path ? `${path}/${file.name}` : `${dirHandle.name}/${file.name}`;
+              Object.defineProperty(file, 'webkitRelativePath', {
+                  value: relativePath,
+                  writable: false,
+                  configurable: true
+              });
+              files.push(file);
+          } else if (entry.kind === 'directory') {
+              const subFiles = await readFilesFromDirectoryHandle(entry, path ? `${path}/${entry.name}` : `${dirHandle.name}/${entry.name}`);
+              files.push(...subFiles);
+          }
+      }
+      return files;
+  }
+
+  // Bind Native Directory Picker with separate location memory per ID
+  const foxBatchAntesLabel = foxBatchAntesDirInput.closest('label');
+  if (foxBatchAntesLabel && 'showDirectoryPicker' in window) {
+      foxBatchAntesLabel.addEventListener('click', async (e) => {
+          e.preventDefault();
+          try {
+              const handle = await (window as any).showDirectoryPicker({ id: 'fox_batch_antes_directory' });
+              const files = await readFilesFromDirectoryHandle(handle);
+              foxBatchAntesFiles = files;
+              const map = getFileMap(files);
+              foxBatchAntesCount.textContent = `${map.size} formulários encontrados`;
+              foxBatchAntesCount.classList.remove('hidden');
+              validateFoxProBatch();
+          } catch (err: any) {
+              if (err.name !== 'AbortError') console.error(err);
+          }
+      });
+  }
+
   foxBatchAntesDirInput.addEventListener('change', (e) => {
       const files = (e.target as HTMLInputElement).files;
       if (files && files.length > 0) {
+          foxBatchAntesFiles = files;
           const map = getFileMap(files);
           foxBatchAntesCount.textContent = `${map.size} formulários encontrados`;
           foxBatchAntesCount.classList.remove('hidden');
@@ -265,9 +307,28 @@ document.addEventListener('DOMContentLoaded', () => {
       validateFoxProBatch();
   });
 
+  const foxBatchDepoisLabel = foxBatchDepoisDirInput.closest('label');
+  if (foxBatchDepoisLabel && 'showDirectoryPicker' in window) {
+      foxBatchDepoisLabel.addEventListener('click', async (e) => {
+          e.preventDefault();
+          try {
+              const handle = await (window as any).showDirectoryPicker({ id: 'fox_batch_depois_directory' });
+              const files = await readFilesFromDirectoryHandle(handle);
+              foxBatchDepoisFiles = files;
+              const map = getFileMap(files);
+              foxBatchDepoisCount.textContent = `${map.size} formulários encontrados`;
+              foxBatchDepoisCount.classList.remove('hidden');
+              validateFoxProBatch();
+          } catch (err: any) {
+              if (err.name !== 'AbortError') console.error(err);
+          }
+      });
+  }
+
   foxBatchDepoisDirInput.addEventListener('change', (e) => {
       const files = (e.target as HTMLInputElement).files;
       if (files && files.length > 0) {
+          foxBatchDepoisFiles = files;
           const map = getFileMap(files);
           foxBatchDepoisCount.textContent = `${map.size} formulários encontrados`;
           foxBatchDepoisCount.classList.remove('hidden');
@@ -276,6 +337,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       validateFoxProBatch();
   });
+  validateFoxProBatch();
+  validateFoxPro();
 
   let currentFoxBatchResults: import('./batchProcessor.ts').BatchResultItem[] = [];
   let currentFoxBatchFilter: string = 'all';
@@ -412,8 +475,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnProcessFoxproBatch.addEventListener('click', async () => {
-      const antesFiles = foxBatchAntesDirInput.files;
-      const depoisFiles = foxBatchDepoisDirInput.files;
+      const antesFiles = foxBatchAntesFiles;
+      const depoisFiles = foxBatchDepoisFiles;
 
       if (!antesFiles || !depoisFiles) return;
 
