@@ -103,7 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnProcessBatch.addEventListener('click', async () => {
     if (batchCompareFiles) {
-      await handleBatchProcess(baseHtmlTemplate, batchCompareFiles);
+      const customPrefix = (document.getElementById('batch-custom-prefix') as HTMLInputElement)?.value || '';
+      await handleBatchProcess(baseHtmlTemplate, batchCompareFiles, customPrefix);
     }
   });
 
@@ -486,11 +487,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const checkMissingInput = document.getElementById('fox-batch-check-missing') as HTMLInputElement;
       const checkMissing = checkMissingInput?.checked || false;
 
+      const customPrefixInput = document.getElementById('fox-batch-custom-prefix') as HTMLInputElement;
+      const customPrefix = customPrefixInput?.value || '';
+
       const parser = new FoxProParser();
       btnProcessFoxproBatch.disabled = true;
       btnProcessFoxproBatch.textContent = 'Processando...';
 
-      const results = await handleFoxProBatchProcess(antesMap, depoisMap, baseHtmlTemplate, parser, checkMissing);
+      const results = await handleFoxProBatchProcess(antesMap, depoisMap, baseHtmlTemplate, parser, checkMissing, customPrefix);
       renderFoxBatchDashboard(results);
 
       btnProcessFoxproBatch.disabled = false;

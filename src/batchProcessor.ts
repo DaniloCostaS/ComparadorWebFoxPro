@@ -14,7 +14,7 @@ function log(message: string, isError: boolean = false) {
     console.log(message);
 }
 
-export async function handleBatchProcess(baseContent: string, compareFiles: FileList) {
+export async function handleBatchProcess(baseContent: string, compareFiles: FileList, customPrefix: string = '') {
     log('Iniciando processamento em lote...', false);
     
     try {
@@ -43,6 +43,8 @@ export async function handleBatchProcess(baseContent: string, compareFiles: File
                 let corpo = sourceHtml.substring(startIdx, endIdx + 5);
 
                 let finalHtml = baseContent.replace('[[CONTEUDO_COMPARADO]]', () => corpo.trim());
+                const prefixStr = customPrefix && customPrefix.trim() ? ` ${customPrefix.trim()}` : '';
+                finalHtml = finalHtml.replace(/\[\[PREFIXO_DIFERENCAS\]\]/g, () => prefixStr);
                 finalHtml = finalHtml.replace(/\[\[NOME_FORM\]\]/g, () => nomeArquivo.trim());
                 
                 const finalFileName = `${nomeArquivo.trim()}_INTERATIVO.HTML`;
@@ -85,7 +87,8 @@ export async function handleFoxProBatchProcess(
     depoisMap: FoxProFileMap, 
     baseContent: string,
     parser: any, // We pass FoxProParser instance from main
-    checkMissing: boolean = false
+    checkMissing: boolean = false,
+    customPrefix: string = ''
 ): Promise<BatchResultItem[]> {
     const logsContainer = document.getElementById('foxpro-batch-logs');
     function logBatch(message: string, isError: boolean = false, isWarning: boolean = false) {
@@ -204,7 +207,7 @@ export async function handleFoxProBatchProcess(
                     continue;
                 }
 
-                const finalHtml = generateDiffHtml(antesText, depoisText, baseContent, baseName);
+                const finalHtml = generateDiffHtml(antesText, depoisText, baseContent, baseName, customPrefix);
                 
                 const finalFileName = `${baseName}_INTERATIVO.HTML`;
                 zip.file(finalFileName, finalHtml);

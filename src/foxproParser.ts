@@ -52,8 +52,7 @@ export class FoxProParser {
             methodBlocks.push({ name: currentName, content: currentContent });
         }
 
-        // Sort by name
-        methodBlocks.sort((a, b) => a.name.localeCompare(b.name));
+
 
         let output = '';
         for (const block of methodBlocks) {
@@ -95,8 +94,7 @@ export class FoxProParser {
             methodBlocks.push({ name: currentName, content: currentContent });
         }
 
-        // Sort by name
-        methodBlocks.sort((a, b) => a.name.localeCompare(b.name));
+
 
         let output = '';
         for (const block of methodBlocks) {
