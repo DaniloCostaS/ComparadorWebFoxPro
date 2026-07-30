@@ -1,6 +1,6 @@
 import { handleBatchProcess } from './batchProcessor.ts';
 import { handleFoxProBatchProcess, type FoxProFileMap } from './batchProcessor.ts';
-import { handleTextProcess } from './textComparator.ts';
+import { handleTextProcess, generateDiffHtml } from './textComparator.ts';
 import { FoxProParser } from './foxproParser.ts';
 import { handleCodeReferencesSearch, renderTreeResults } from './codeReferences.ts';
 import baseHtmlTemplate from './base.html?raw';
@@ -116,15 +116,55 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --- Text Logic Validation ---
+  const btnPreviewText = document.getElementById('btn-preview-text') as HTMLButtonElement;
+  const textPreviewContainer = document.getElementById('text-preview-container') as HTMLElement;
+  const textPreviewIframe = document.getElementById('text-preview-iframe') as HTMLIFrameElement;
+  const textPreviewFilename = document.getElementById('text-preview-filename') as HTMLElement;
+  const btnCloseTextPreview = document.getElementById('btn-close-text-preview') as HTMLButtonElement;
+
   function validateText() {
     const hasOriginal = textOriginal.value.trim().length > 0;
     const hasModified = textModified.value.trim().length > 0;
+    const isValid = hasOriginal && hasModified;
     
-    btnProcessText.disabled = !(hasOriginal && hasModified);
+    btnProcessText.disabled = !isValid;
+    if (btnPreviewText) {
+      btnPreviewText.disabled = !isValid;
+    }
   }
 
   textOriginal.addEventListener('input', validateText);
   textModified.addEventListener('input', validateText);
+
+  btnPreviewText?.addEventListener('click', () => {
+    const originalText = textOriginal.value;
+    const modifiedText = textModified.value;
+    const fileNameInput = (document.getElementById('text-file-name') as HTMLInputElement).value;
+    const fileName = fileNameInput.trim() || 'COMPARACAO_TEXTO';
+
+    const finalHtml = generateDiffHtml(originalText, modifiedText, baseHtmlTemplate, fileName);
+
+    if (textPreviewFilename) {
+      textPreviewFilename.textContent = fileName;
+    }
+    if (textPreviewContainer) {
+      textPreviewContainer.classList.remove('hidden');
+    }
+    if (textPreviewIframe) {
+      textPreviewIframe.srcdoc = finalHtml;
+    }
+
+    textPreviewContainer?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  btnCloseTextPreview?.addEventListener('click', () => {
+    if (textPreviewContainer) {
+      textPreviewContainer.classList.add('hidden');
+    }
+    if (textPreviewIframe) {
+      textPreviewIframe.srcdoc = '';
+    }
+  });
 
   btnProcessText.addEventListener('click', async () => {
       await handleTextProcess(

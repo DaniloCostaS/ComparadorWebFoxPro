@@ -122,10 +122,28 @@
           </div>
         </div>
 
-        <div class="flex justify-end">
-          <button id="btn-process-text" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+        <div class="flex justify-end gap-3">
+          <button id="btn-preview-text" class="bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300 font-bold py-2 px-6 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2" disabled>
+            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+            Visualizar na Tela
+          </button>
+          <button id="btn-process-text" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer" disabled>
             Comparar e Baixar HTML
           </button>
+        </div>
+
+        <!-- Container da Visualização na Tela -->
+        <div id="text-preview-container" class="mt-6 border border-gray-300 rounded-lg overflow-hidden hidden bg-white shadow-md">
+          <div class="bg-gray-100 px-4 py-3 border-b border-gray-300 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="text-sm font-bold text-gray-700">Visualização Interativa na Tela:</span>
+              <span id="text-preview-filename" class="text-sm font-bold text-blue-800"></span>
+            </div>
+            <button id="btn-close-text-preview" class="text-xs bg-white hover:bg-red-50 text-red-600 border border-red-200 font-bold px-3 py-1.5 rounded-md transition-colors cursor-pointer flex items-center gap-1">
+              ✕ Fechar Visualização
+            </button>
+          </div>
+          <iframe id="text-preview-iframe" class="w-full h-[680px] border-none bg-white"></iframe>
         </div>
       </section>
 
