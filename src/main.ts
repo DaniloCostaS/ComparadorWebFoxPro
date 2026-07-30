@@ -3,6 +3,8 @@ import { handleFoxProBatchProcess, type FoxProFileMap } from './batchProcessor.t
 import { handleTextProcess, generateDiffHtml } from './textComparator.ts';
 import { FoxProParser } from './foxproParser.ts';
 import { handleCodeReferencesSearch, renderTreeResults } from './codeReferences.ts';
+import { beautifyText, minifyText } from './beautifier.ts';
+import { saveAs } from 'file-saver';
 import baseHtmlTemplate from './base.html?raw';
 import baseConsolidatedHtmlTemplate from './baseConsolidated.html?raw';
 
@@ -10,12 +12,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Tab Elements
   const tabBatch = document.getElementById('tab-batch') as HTMLButtonElement;
   const tabText = document.getElementById('tab-text') as HTMLButtonElement;
+  const tabBeautifier = document.getElementById('tab-beautifier') as HTMLButtonElement;
   const tabFoxpro = document.getElementById('tab-foxpro') as HTMLButtonElement;
   const tabFoxproBatch = document.getElementById('tab-foxpro-batch') as HTMLButtonElement;
   const tabCodeReferences = document.getElementById('tab-code-references') as HTMLButtonElement;
 
   const sectionBatch = document.getElementById('section-batch') as HTMLElement;
   const sectionText = document.getElementById('section-text') as HTMLElement;
+  const sectionBeautifier = document.getElementById('section-beautifier') as HTMLElement;
   const sectionFoxpro = document.getElementById('section-foxpro') as HTMLElement;
   const sectionFoxproBatch = document.getElementById('section-foxpro-batch') as HTMLElement;
   const sectionCodeReferences = document.getElementById('section-code-references') as HTMLElement;
@@ -47,8 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Tab Logic ---
   function resetTabs() {
-    [tabBatch, tabText, tabFoxpro, tabFoxproBatch, tabCodeReferences].forEach(t => t.classList.replace('tab-active', 'tab-inactive'));
-    [sectionBatch, sectionText, sectionFoxpro, sectionFoxproBatch, sectionCodeReferences].forEach(s => s.classList.add('hidden'));
+    [tabBatch, tabText, tabBeautifier, tabFoxpro, tabFoxproBatch, tabCodeReferences].forEach(t => t?.classList.replace('tab-active', 'tab-inactive'));
+    [sectionBatch, sectionText, sectionBeautifier, sectionFoxpro, sectionFoxproBatch, sectionCodeReferences].forEach(s => s?.classList.add('hidden'));
   }
 
   tabBatch.addEventListener('click', () => {
@@ -61,6 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
     resetTabs();
     tabText.classList.replace('tab-inactive', 'tab-active');
     sectionText.classList.remove('hidden');
+  });
+
+  tabBeautifier?.addEventListener('click', () => {
+    resetTabs();
+    tabBeautifier.classList.replace('tab-inactive', 'tab-active');
+    sectionBeautifier.classList.remove('hidden');
   });
 
   tabFoxpro.addEventListener('click', () => {
@@ -689,6 +699,154 @@ document.addEventListener('DOMContentLoaded', () => {
           btnProcessCr.textContent = originalText;
           validateCr();
       }
+  });
+
+  // --- Beautifier / Formatador Logic ---
+  const beautifierType = document.getElementById('beautifier-type') as HTMLSelectElement;
+  const beautifierIndent = document.getElementById('beautifier-indent') as HTMLSelectElement;
+  const beautifierInput = document.getElementById('beautifier-input') as HTMLTextAreaElement;
+  const beautifierOutput = document.getElementById('beautifier-output') as HTMLTextAreaElement;
+  const beautifierStatus = document.getElementById('beautifier-status') as HTMLElement;
+  const beautifierStatusText = document.getElementById('beautifier-status-text') as HTMLElement;
+  const beautifierDetectedBadge = document.getElementById('beautifier-detected-badge') as HTMLElement;
+  const beautifierInputStats = document.getElementById('beautifier-input-stats') as HTMLElement;
+  const beautifierOutputStats = document.getElementById('beautifier-output-stats') as HTMLElement;
+
+  const btnBeautifierFormat = document.getElementById('btn-beautifier-format') as HTMLButtonElement;
+  const btnBeautifierMinify = document.getElementById('btn-beautifier-minify') as HTMLButtonElement;
+  const btnBeautifierCopy = document.getElementById('btn-beautifier-copy') as HTMLButtonElement;
+  const btnBeautifierDownload = document.getElementById('btn-beautifier-download') as HTMLButtonElement;
+  const btnBeautifierClear = document.getElementById('btn-beautifier-clear') as HTMLButtonElement;
+
+  const btnFormatOriginal = document.getElementById('btn-format-original') as HTMLButtonElement;
+  const btnFormatModified = document.getElementById('btn-format-modified') as HTMLButtonElement;
+
+  function calcStats(text: string): string {
+    if (!text) return '0 lin | 0 car';
+    const lines = text.split('\n').length;
+    const chars = text.length;
+    return `${lines} lin | ${chars} car`;
+  }
+
+  function runBeautify() {
+    const text = beautifierInput.value;
+    const targetType = beautifierType.value as 'auto' | 'json' | 'xml' | 'sql';
+    const indent = beautifierIndent.value;
+
+    if (!text.trim()) {
+      beautifierOutput.value = '';
+      beautifierStatus.classList.add('hidden');
+      beautifierInputStats.textContent = '0 lin | 0 car';
+      beautifierOutputStats.textContent = '0 lin | 0 car';
+      return;
+    }
+
+    const res = beautifyText(text, targetType, indent);
+    beautifierOutput.value = res.formatted;
+
+    beautifierInputStats.textContent = calcStats(text);
+    beautifierOutputStats.textContent = calcStats(res.formatted);
+
+    beautifierStatus.classList.remove('hidden');
+    beautifierDetectedBadge.textContent = res.detectedType.toUpperCase();
+
+    if (res.error) {
+      beautifierStatus.className = 'mb-4 p-3 rounded-lg text-sm border font-medium flex items-center justify-between bg-red-50 text-red-700 border-red-200';
+      beautifierStatusText.textContent = res.error;
+    } else {
+      beautifierStatus.className = 'mb-4 p-3 rounded-lg text-sm border font-medium flex items-center justify-between bg-green-50 text-green-700 border-green-200';
+      beautifierStatusText.textContent = '✓ Texto formatado com sucesso!';
+    }
+  }
+
+  function runMinify() {
+    const text = beautifierInput.value;
+    const targetType = beautifierType.value as any;
+
+    if (!text.trim()) return;
+
+    const res = minifyText(text, targetType);
+    beautifierOutput.value = res.formatted;
+
+    beautifierInputStats.textContent = calcStats(text);
+    beautifierOutputStats.textContent = calcStats(res.formatted);
+
+    beautifierStatus.classList.remove('hidden');
+    beautifierDetectedBadge.textContent = res.detectedType.toUpperCase();
+
+    if (res.error) {
+      beautifierStatus.className = 'mb-4 p-3 rounded-lg text-sm border font-medium flex items-center justify-between bg-red-50 text-red-700 border-red-200';
+      beautifierStatusText.textContent = res.error;
+    } else {
+      beautifierStatus.className = 'mb-4 p-3 rounded-lg text-sm border font-medium flex items-center justify-between bg-amber-50 text-amber-800 border-amber-200';
+      beautifierStatusText.textContent = '⚡ Texto minificado com sucesso!';
+    }
+  }
+
+  beautifierInput?.addEventListener('input', () => {
+    beautifierInputStats.textContent = calcStats(beautifierInput.value);
+  });
+
+  btnBeautifierFormat?.addEventListener('click', runBeautify);
+  btnBeautifierMinify?.addEventListener('click', runMinify);
+
+  beautifierType?.addEventListener('change', () => {
+    if (beautifierInput.value.trim()) runBeautify();
+  });
+
+  beautifierIndent?.addEventListener('change', () => {
+    if (beautifierInput.value.trim()) runBeautify();
+  });
+
+  btnBeautifierClear?.addEventListener('click', () => {
+    beautifierInput.value = '';
+    beautifierOutput.value = '';
+    beautifierStatus.classList.add('hidden');
+    beautifierInputStats.textContent = '0 lin | 0 car';
+    beautifierOutputStats.textContent = '0 lin | 0 car';
+  });
+
+  btnBeautifierCopy?.addEventListener('click', () => {
+    if (!beautifierOutput.value) return;
+    navigator.clipboard.writeText(beautifierOutput.value).then(() => {
+      const orig = btnBeautifierCopy.innerHTML;
+      btnBeautifierCopy.innerHTML = '✓ Copiado!';
+      setTimeout(() => { btnBeautifierCopy.innerHTML = orig; }, 2000);
+    });
+  });
+
+  btnBeautifierDownload?.addEventListener('click', () => {
+    if (!beautifierOutput.value) return;
+    const content = beautifierOutput.value;
+    const detected = (beautifierDetectedBadge.textContent || '').toLowerCase();
+    const ext = detected === 'json' ? 'json' : (detected === 'xml' ? 'xml' : (detected === 'sql' ? 'sql' : 'txt'));
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    saveAs(blob, `texto_formatado.${ext}`);
+  });
+
+  // Botões rápidos de formatação na aba de Comparação de Texto
+  btnFormatOriginal?.addEventListener('click', () => {
+    const text = textOriginal.value;
+    if (!text.trim()) return;
+    const res = beautifyText(text, 'auto', 2);
+    if (res.error) {
+      alert(res.error);
+    } else {
+      textOriginal.value = res.formatted;
+      textOriginal.dispatchEvent(new Event('input'));
+    }
+  });
+
+  btnFormatModified?.addEventListener('click', () => {
+    const text = textModified.value;
+    if (!text.trim()) return;
+    const res = beautifyText(text, 'auto', 2);
+    if (res.error) {
+      alert(res.error);
+    } else {
+      textModified.value = res.formatted;
+      textModified.dispatchEvent(new Event('input'));
+    }
   });
 
 });

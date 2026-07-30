@@ -50,6 +50,7 @@
         <nav class="flex space-x-6">
           <button id="tab-batch" class="pb-2 px-1 tab-active transition-colors">Modo Lote (FoxCompare)</button>
           <button id="tab-text" class="pb-2 px-1 tab-inactive transition-colors">Comparador Texto Nativo</button>
+          <button id="tab-beautifier" class="pb-2 px-1 tab-inactive transition-colors">Embelezador de Texto</button>
           <button id="tab-foxpro" class="pb-2 px-1 tab-inactive transition-colors">Comparador FoxPro Único</button>
           <button id="tab-foxpro-batch" class="pb-2 px-1 tab-inactive transition-colors">Lote FoxPro (.SCX)</button>
           <button id="tab-code-references" class="pb-2 px-1 tab-inactive transition-colors">Code References</button>
@@ -106,11 +107,21 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label class="block text-sm font-bold text-gray-700 mb-2">Código Original</label>
+            <div class="flex justify-between items-center mb-2">
+              <label class="block text-sm font-bold text-gray-700">Código Original</label>
+              <button type="button" id="btn-format-original" class="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-2 py-1 rounded font-semibold cursor-pointer flex items-center gap-1" title="Formata JSON ou XML desformatado">
+                ✨ Formatar JSON/XML
+              </button>
+            </div>
             <textarea id="text-original" class="w-full h-64 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-none" placeholder="Cole o texto original aqui..."></textarea>
           </div>
           <div>
-            <label class="block text-sm font-bold text-gray-700 mb-2">Código Modificado</label>
+            <div class="flex justify-between items-center mb-2">
+              <label class="block text-sm font-bold text-gray-700">Código Modificado</label>
+              <button type="button" id="btn-format-modified" class="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-2 py-1 rounded font-semibold cursor-pointer flex items-center gap-1" title="Formata JSON ou XML desformatado">
+                ✨ Formatar JSON/XML
+              </button>
+            </div>
             <textarea id="text-modified" class="w-full h-64 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-none" placeholder="Cole o texto modificado aqui..."></textarea>
           </div>
         </div>
@@ -144,6 +155,87 @@
             </button>
           </div>
           <iframe id="text-preview-iframe" class="w-full h-[680px] border-none bg-white"></iframe>
+        </div>
+      </section>
+
+      <!-- Seção: Embelezador de Texto -->
+      <section id="section-beautifier" class="hidden bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-2xl font-bold text-blue-800">Embelezador / Formatador de Texto</h2>
+            <p class="text-gray-600 text-sm mt-1">Formate textos brutos ou minificados como JSON, XML e SQL com indentação limpa e legível.</p>
+          </div>
+          
+          <div class="flex flex-wrap items-center gap-3 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+            <div>
+              <label class="block text-xs font-bold text-gray-600 mb-1">Formato</label>
+              <select id="beautifier-type" class="p-1.5 border border-gray-300 rounded text-xs bg-white font-semibold cursor-pointer">
+                <option value="auto">Auto-Detectar</option>
+                <option value="json">JSON</option>
+                <option value="xml">XML</option>
+                <option value="sql">SQL</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-gray-600 mb-1">Recuo / Indentação</label>
+              <select id="beautifier-indent" class="p-1.5 border border-gray-300 rounded text-xs bg-white font-semibold cursor-pointer">
+                <option value="2">2 Espaços</option>
+                <option value="4">4 Espaços</option>
+                <option value="tab">Tabulação (\t)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Painel de Status / Validação -->
+        <div id="beautifier-status" class="hidden mb-4 p-3 rounded-lg text-sm border font-medium flex items-center justify-between">
+          <span id="beautifier-status-text"></span>
+          <span id="beautifier-detected-badge" class="text-xs bg-white px-2 py-0.5 rounded border border-gray-300 font-bold uppercase text-gray-600"></span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <!-- Entrada -->
+          <div class="flex flex-col">
+            <div class="flex justify-between items-center mb-2">
+              <label class="block text-sm font-bold text-gray-700">Texto de Entrada (Sem Formatação / Minificado)</label>
+              <span id="beautifier-input-stats" class="text-xs text-gray-500 font-mono">0 lin | 0 car</span>
+            </div>
+            <textarea id="beautifier-input" class="w-full h-80 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-none" placeholder="Cole aqui seu JSON sem formatação, XML em linha única ou código SQL..."></textarea>
+          </div>
+
+          <!-- Saída -->
+          <div class="flex flex-col">
+            <div class="flex justify-between items-center mb-2">
+              <label class="block text-sm font-bold text-gray-700">Resultado Formatado</label>
+              <span id="beautifier-output-stats" class="text-xs text-gray-500 font-mono">0 lin | 0 car</span>
+            </div>
+            <textarea id="beautifier-output" readonly class="w-full h-80 p-3 border border-gray-300 rounded-lg bg-gray-50 font-mono text-sm resize-none" placeholder="O resultado formatado aparecerá aqui..."></textarea>
+          </div>
+        </div>
+
+        <!-- Barra de Botões -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <div class="flex items-center gap-2">
+            <button id="btn-beautifier-clear" class="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 font-semibold py-2 px-4 rounded-lg transition-colors text-sm cursor-pointer flex items-center gap-1">
+              🗑️ Limpar
+            </button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btn-beautifier-minify" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm cursor-pointer flex items-center gap-1">
+              ⚡ Minificar
+            </button>
+            <button id="btn-beautifier-copy" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm cursor-pointer flex items-center gap-1">
+              📋 Copiar Resultado
+            </button>
+            <button id="btn-beautifier-download" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm cursor-pointer flex items-center gap-1">
+              💾 Baixar Arquivo
+            </button>
+            <button id="btn-beautifier-format" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md text-sm cursor-pointer flex items-center gap-1">
+              ✨ Formatar Texto
+            </button>
+          </div>
         </div>
       </section>
 

@@ -42,8 +42,18 @@ Cada comparação gerada exporta um relatório HTML autônomo com recursos avan�
 ### 4. 📄 Comparador Nativo de Texto e Arquivo Único
 - **Comparador Nativo FoxPro Único**: Envie o par de binários (`.SCX/.SCT` ou `.FRX/.FRT`) ou arquivo `.PRG` individual para comparar diretamente no navegador.
 - **Comparador de Texto Puro**: Cole dois blocos de código livremente para gerar uma comparação instantânea.
+- **Atalhos de Embelezamento Rápido**: Botões integrados `✨ Formatar JSON/XML` diretamente nas caixas de texto para estruturar o código antes de comparar.
 - **Parser DBF/FPT Interno (TypeScript Puro)**: Decodifica `Windows-1252`, extrai campos de memo (`PROPERTIES`, `METHODS`, `EXPR`, `TAG`, etc.).
 - **Ordenação Alfabética Determinística**: Garante que os métodos e procedures fiquem ordenados de A-Z, evitando falsos-positivos de diferença por reordenação do FoxPro.
+
+### 5. ✨ Embelezador / Formatador de Texto (JSON, XML e SQL)
+- **Formatação de Dados Brutos / Minificados**: Converte códigos JSON desformatados, documentos XML em linha única e consultas SQL brutas em estruturas perfeitamente indentadas e legíveis.
+- **Auto-Detecção de Formato**: Identifica automaticamente se o conteúdo colado é JSON, XML ou SQL.
+- **Recuo / Indentação Personalizável**: Permite escolher o nível de indentação desejado (2 Espaços, 4 Espaços ou Tabulação `\t`).
+- **Validação de Sintaxe e Erros em Tempo Real**: Valida a estrutura de dados durante a formatação e exibe o status de sucesso ou mensagens amigáveis indicando a localização exata de erros de sintaxe (ex: JSON malformado).
+- **Minificação (Compactação)**: Opção de compactar JSON, XML ou textos removendo quebras de linha e espaços excedentes.
+- **Ferramentas Práticas**: Botões de cópia direta para a área de transferência (`📋 Copiar`), download do arquivo formatado (`💾 Baixar Arquivo` com extensão apropriada `.json`, `.xml`, `.sql` ou `.txt`) e limpeza rápida (`🗑️ Limpar`).
+- **Estatísticas de Linha e Caracteres**: Exibe contadores de linhas e caracteres do texto de entrada e do resultado formatado.
 
 ---
 
