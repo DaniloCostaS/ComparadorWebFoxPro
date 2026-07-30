@@ -52,8 +52,8 @@ export class FoxProParser {
             methodBlocks.push({ name: currentName, content: currentContent });
         }
 
-
-
+        // Sort by name for Form/Class object methods to ensure deterministic diff
+        methodBlocks.sort((a, b) => a.name.localeCompare(b.name));
         let output = '';
         for (const block of methodBlocks) {
             if (block.name === '_TOP_LEVEL') {

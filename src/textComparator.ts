@@ -12,11 +12,36 @@ function escapeHtml(unsafe: string) {
          .replace(/ /g, "&nbsp;");
 }
 
-export function generateDiffHtml(originalText: string, modifiedText: string, baseContent: string, fileName: string, customPrefix: string = ''): string {
-    // Calcula as diferenças por linha
+export function generateDiffRows(originalText: string, modifiedText: string): string {
     const differences = diff.diffLines(originalText, modifiedText);
     
     let htmlRows = '';
+    function renderModifiedLine(oldLine: string, newLine: string) {
+        const wordDiff = diff.diffWordsWithSpace(oldLine, newLine);
+        
+        let leftHtml = '';
+        let rightHtml = '';
+        
+        wordDiff.forEach(part => {
+            const escaped = escapeHtml(part.value);
+            if (part.removed) {
+                leftHtml += `<span class="TextSegSigDiff">${escaped}</span>`;
+            } else if (part.added) {
+                rightHtml += `<span class="TextSegSigDiff">${escaped}</span>`;
+            } else {
+                leftHtml += escaped;
+                rightHtml += escaped;
+            }
+        });
+
+        return `
+<tr class="SectionMiddle">
+<td class="TextItemSigDiffMod Wrap">${leftHtml || '&nbsp;'}</td>
+<td class="AlignCenter Wrap">&lt;&gt;</td>
+<td class="TextItemSigDiffMod Wrap">${rightHtml || '&nbsp;'}</td>
+</tr>`;
+    }
+
     // Iterar cada parte das diferenças
     for (let i = 0; i < differences.length; i++) {
         const part = differences[i];
@@ -38,12 +63,7 @@ export function generateDiffHtml(originalText: string, modifiedText: string, bas
                 const add = addedLines[j];
 
                 if (rem !== undefined && add !== undefined) {
-                    htmlRows += `
-<tr class="SectionMiddle">
-<td class="TextItemSigDiffMod Wrap"><span class="TextSegSigDiff">${escapeHtml(rem)}</span></td>
-<td class="AlignCenter Wrap">&lt;&gt;</td>
-<td class="TextItemSigDiffMod Wrap"><span class="TextSegSigDiff">${escapeHtml(add)}</span></td>
-</tr>`;
+                    htmlRows += renderModifiedLine(rem, add);
                 } else if (rem !== undefined) {
                     htmlRows += `
 <tr class="SectionMiddle">
@@ -97,8 +117,14 @@ export function generateDiffHtml(originalText: string, modifiedText: string, bas
         });
     }
 
+    return htmlRows.trim();
+}
+
+export function generateDiffHtml(originalText: string, modifiedText: string, baseContent: string, fileName: string, customPrefix: string = ''): string {
+    const htmlRows = generateDiffRows(originalText, modifiedText);
+
     // Substitui no template
-    let finalHtml = baseContent.replace('[[CONTEUDO_COMPARADO]]', () => htmlRows.trim());
+    let finalHtml = baseContent.replace('[[CONTEUDO_COMPARADO]]', () => htmlRows);
     
     const prefixStr = customPrefix && customPrefix.trim() ? ` ${customPrefix.trim()}` : '';
     finalHtml = finalHtml.replace(/\[\[PREFIXO_DIFERENCAS\]\]/g, () => prefixStr);

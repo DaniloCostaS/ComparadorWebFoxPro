@@ -77,10 +77,16 @@
           </div>
         </div>
 
-        <div class="mb-6">
-          <label for="batch-custom-prefix" class="block text-sm font-bold text-gray-700 mb-2">Prefixo / Texto Adicional para o Título (opcional)</label>
-          <input type="text" id="batch-custom-prefix" class="w-full sm:w-1/2 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Ex: 4.209">
-          <p class="text-xs text-gray-500 mt-1">Se preenchido, o título do HTML exibirá "Diferenças 4.209 - Nome do Objeto".</p>
+        <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="w-full sm:w-1/2">
+            <label for="batch-custom-prefix" class="block text-sm font-bold text-gray-700 mb-1">Prefixo / Texto Adicional para o Título (opcional)</label>
+            <input type="text" id="batch-custom-prefix" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Ex: 4.209">
+          </div>
+
+          <label class="flex items-center space-x-2 cursor-pointer select-none bg-blue-50 border border-blue-200 p-3 rounded-lg hover:bg-blue-100 transition-colors">
+            <input type="checkbox" id="batch-consolidated-check" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+            <span class="text-sm font-semibold text-blue-900">Gerar único arquivo HTML agrupado (com menu lateral)</span>
+          </label>
         </div>
 
         <div class="flex justify-end">
@@ -194,10 +200,16 @@
           </div>
         </div>
 
-        <div class="mb-6">
-          <label for="fox-batch-custom-prefix" class="block text-sm font-bold text-gray-700 mb-2">Prefixo / Texto Adicional para o Título (opcional)</label>
-          <input type="text" id="fox-batch-custom-prefix" class="w-full sm:w-1/2 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Ex: 4.209">
-          <p class="text-xs text-gray-500 mt-1">Se preenchido, o título do HTML exibirá "Diferenças 4.209 - Nome do Objeto".</p>
+        <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="w-full sm:w-1/2">
+            <label for="fox-batch-custom-prefix" class="block text-sm font-bold text-gray-700 mb-1">Prefixo / Texto Adicional para o Título (opcional)</label>
+            <input type="text" id="fox-batch-custom-prefix" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Ex: 4.209">
+          </div>
+
+          <label class="flex items-center space-x-2 cursor-pointer select-none bg-orange-50 border border-orange-200 p-3 rounded-lg hover:bg-orange-100 transition-colors">
+            <input type="checkbox" id="fox-batch-consolidated-check" class="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500">
+            <span class="text-sm font-semibold text-orange-900">Gerar único arquivo HTML agrupado (com menu lateral)</span>
+          </label>
         </div>
 
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">

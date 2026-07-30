@@ -14,11 +14,20 @@ function log(message: string, isError: boolean = false) {
     console.log(message);
 }
 
-export async function handleBatchProcess(baseContent: string, compareFiles: FileList, customPrefix: string = '') {
+
+
+export async function handleBatchProcess(
+    baseContent: string, 
+    compareFiles: FileList, 
+    customPrefix: string = '',
+    isConsolidated: boolean = false,
+    consolidatedTemplate: string = ''
+) {
     log('Iniciando processamento em lote...', false);
     
     try {
         const zip = new JSZip();
+        const batchDataItems: Array<{ id: string, fileName: string, rowsHtml: string, isError?: boolean }> = [];
         let successCount = 0;
         let errorCount = 0;
 
@@ -42,15 +51,24 @@ export async function handleBatchProcess(baseContent: string, compareFiles: File
             if (startIdx >= 0 && endIdx > startIdx) {
                 let corpo = sourceHtml.substring(startIdx, endIdx + 5);
 
-                let finalHtml = baseContent.replace('[[CONTEUDO_COMPARADO]]', () => corpo.trim());
-                const prefixStr = customPrefix && customPrefix.trim() ? ` ${customPrefix.trim()}` : '';
-                finalHtml = finalHtml.replace(/\[\[PREFIXO_DIFERENCAS\]\]/g, () => prefixStr);
-                finalHtml = finalHtml.replace(/\[\[NOME_FORM\]\]/g, () => nomeArquivo.trim());
-                
-                const finalFileName = `${nomeArquivo.trim()}_INTERATIVO.HTML`;
-                zip.file(finalFileName, finalHtml);
+                if (isConsolidated) {
+                    batchDataItems.push({
+                        id: `file_${i}`,
+                        fileName: nomeArquivo.trim(),
+                        rowsHtml: corpo.trim()
+                    });
+                } else {
+                    let finalHtml = baseContent.replace('[[CONTEUDO_COMPARADO]]', () => corpo.trim());
+                    const prefixStr = customPrefix && customPrefix.trim() ? ` ${customPrefix.trim()}` : '';
+                    finalHtml = finalHtml.replace(/\[\[PREFIXO_DIFERENCAS\]\]/g, () => prefixStr);
+                    finalHtml = finalHtml.replace(/\[\[NOME_FORM\]\]/g, () => nomeArquivo.trim());
+                    
+                    const finalFileName = `${nomeArquivo.trim()}_INTERATIVO.HTML`;
+                    zip.file(finalFileName, finalHtml);
+                }
+
                 successCount++;
-                log(`Sucesso: ${file.name} -> ${finalFileName}`);
+                log(`Sucesso: ${file.name}`);
             } else {
                 log(`Aviso: Tags <TR> ou </TR> não encontradas corretamente em ${file.name}`, true);
                 errorCount++;
@@ -58,10 +76,26 @@ export async function handleBatchProcess(baseContent: string, compareFiles: File
         }
 
         if (successCount > 0) {
-            log('Gerando arquivo ZIP...', false);
-            const content = await zip.generateAsync({ type: 'blob' });
-            saveAs(content, 'Comparações_Geradas.zip');
-            log(`Processamento concluído. ${successCount} salvos, ${errorCount} erros.`);
+            if (isConsolidated) {
+                log('Gerando arquivo HTML agrupado...', false);
+                const prefixStr = customPrefix && customPrefix.trim() ? ` ${customPrefix.trim()}` : '';
+                let finalConsolidatedHtml = consolidatedTemplate.replace(/\[\[PREFIXO_DIFERENCAS\]\]/g, () => prefixStr);
+                finalConsolidatedHtml = finalConsolidatedHtml.replace('[[TOTAL_ARQUIVOS]]', () => batchDataItems.length.toString());
+                finalConsolidatedHtml = finalConsolidatedHtml.replace('[[BATCH_DATA_JSON]]', () => JSON.stringify(batchDataItems));
+
+                const outName = customPrefix && customPrefix.trim() 
+                    ? `Diferencas_${customPrefix.trim().replace(/\s+/g, '_')}_Agrupado.HTML` 
+                    : 'Comparacao_Agrupada.HTML';
+                
+                const blob = new Blob([finalConsolidatedHtml], { type: 'text/html;charset=utf-8' });
+                saveAs(blob, outName);
+                log(`Processamento concluído. Arquivo HTML agrupado gerado com ${batchDataItems.length} arquivo(s).`);
+            } else {
+                log('Gerando arquivo ZIP...', false);
+                const content = await zip.generateAsync({ type: 'blob' });
+                saveAs(content, 'Comparações_Geradas.zip');
+                log(`Processamento concluído. ${successCount} salvos no ZIP, ${errorCount} erros.`);
+            }
         } else {
             log('Nenhum arquivo pôde ser processado.', true);
         }
@@ -88,7 +122,9 @@ export async function handleFoxProBatchProcess(
     baseContent: string,
     parser: any, // We pass FoxProParser instance from main
     checkMissing: boolean = false,
-    customPrefix: string = ''
+    customPrefix: string = '',
+    isConsolidated: boolean = false,
+    consolidatedTemplate: string = ''
 ): Promise<BatchResultItem[]> {
     const logsContainer = document.getElementById('foxpro-batch-logs');
     function logBatch(message: string, isError: boolean = false, isWarning: boolean = false) {
@@ -110,13 +146,14 @@ export async function handleFoxProBatchProcess(
 
     try {
         const zip = new JSZip();
+        const batchDataItems: Array<{ id: string, fileName: string, rowsHtml: string, isError?: boolean }> = [];
         let successCount = 0;
         let unchangedCount = 0;
         let newCount = 0;
         let missingCount = 0;
         let errorCount = 0;
 
-        const { generateDiffHtml } = await import('./textComparator.ts');
+        const { generateDiffHtml, generateDiffRows } = await import('./textComparator.ts');
 
         for (const [mapKey, depoisFiles] of depoisMap.entries()) {
             
@@ -207,13 +244,26 @@ export async function handleFoxProBatchProcess(
                     continue;
                 }
 
-                const finalHtml = generateDiffHtml(antesText, depoisText, baseContent, baseName, customPrefix);
-                
-                const finalFileName = `${baseName}_INTERATIVO.HTML`;
-                zip.file(finalFileName, finalHtml);
+                let formattedFileName = baseName;
+                if (isPrg) formattedFileName = `OBJETOS\\${baseName}`;
+                else if (isFrx) formattedFileName = `REPORTS\\${baseName}`;
+
+                if (isConsolidated) {
+                    const rowsHtml = generateDiffRows(antesText, depoisText);
+                    batchDataItems.push({
+                        id: `file_${successCount}`,
+                        fileName: formattedFileName,
+                        rowsHtml
+                    });
+                } else {
+                    const finalHtml = generateDiffHtml(antesText, depoisText, baseContent, formattedFileName, customPrefix);
+                    const finalFileName = `${baseName}_INTERATIVO.HTML`;
+                    zip.file(finalFileName, finalHtml);
+                }
+
                 successCount++;
-                results.push({ name: baseName, mapKey, category: 'changed', message: 'Modificações detectadas - HTML gerado no ZIP' });
-                logBatch(`Sucesso: '${baseName}' com alterações -> ${finalFileName}`);
+                results.push({ name: baseName, mapKey, category: 'changed', message: 'Modificações detectadas - HTML gerado' });
+                logBatch(`Sucesso: '${baseName}' com alterações`);
             } catch(e: any) {
                 const msg = `Erro ao parsear '${baseName}': ${e.message}`;
                 logBatch(msg, true);
@@ -236,12 +286,28 @@ export async function handleFoxProBatchProcess(
         }
 
         if (successCount > 0) {
-            logBatch('Gerando arquivo ZIP...', false);
-            const content = await zip.generateAsync({ type: 'blob' });
-            saveAs(content, 'Comparacoes_Lote_FoxPro.zip');
-            logBatch(`Concluído: ${successCount} salvos no ZIP, ${unchangedCount} sem alteração, ${newCount} novos (depois)${checkMissing ? `, ${missingCount} ausentes (antes)` : ''}, ${errorCount} erros.`);
+            if (isConsolidated) {
+                logBatch('Gerando arquivo HTML agrupado FoxPro...', false);
+                const prefixStr = customPrefix && customPrefix.trim() ? ` ${customPrefix.trim()}` : '';
+                let finalConsolidatedHtml = consolidatedTemplate.replace(/\[\[PREFIXO_DIFERENCAS\]\]/g, () => prefixStr);
+                finalConsolidatedHtml = finalConsolidatedHtml.replace('[[TOTAL_ARQUIVOS]]', () => batchDataItems.length.toString());
+                finalConsolidatedHtml = finalConsolidatedHtml.replace('[[BATCH_DATA_JSON]]', () => JSON.stringify(batchDataItems));
+
+                const outName = customPrefix && customPrefix.trim() 
+                    ? `Diferencas_${customPrefix.trim().replace(/\s+/g, '_')}_FoxPro_Agrupado.HTML` 
+                    : 'Comparacao_Lote_FoxPro_Agrupada.HTML';
+                
+                const blob = new Blob([finalConsolidatedHtml], { type: 'text/html;charset=utf-8' });
+                saveAs(blob, outName);
+                logBatch(`Concluído: HTML agrupado gerado com ${batchDataItems.length} arquivo(s).`);
+            } else {
+                logBatch('Gerando arquivo ZIP...', false);
+                const content = await zip.generateAsync({ type: 'blob' });
+                saveAs(content, 'Comparacoes_Lote_FoxPro.zip');
+                logBatch(`Concluído: ${successCount} salvos no ZIP, ${unchangedCount} sem alteração, ${newCount} novos (depois)${checkMissing ? `, ${missingCount} ausentes (antes)` : ''}, ${errorCount} erros.`);
+            }
         } else {
-            logBatch('Nenhum arquivo com alterações foi encontrado para gerar no ZIP.', true);
+            logBatch('Nenhum arquivo com alterações foi encontrado para gerar o relatório.', true);
         }
 
     } catch (e: any) {
@@ -250,3 +316,4 @@ export async function handleFoxProBatchProcess(
 
     return results;
 }
+

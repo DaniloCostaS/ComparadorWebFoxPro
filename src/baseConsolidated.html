@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório Agrupado de Diferenças - PWI</title>
+    <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAjVBMVEVHcEwAa68juu0juu0juu0juu0UltAWmtQ5qbownLUjuu0juu0juu0juu0juu0Aa68Aa68Aa6+Rvj4Aa68juu2Rvj6Rvj6Rvj4Aa68juu2Rvj4Aa68Aa6+Rvj4juu0juu2Rvj6Rvj4Aa68juu0juu0Aa68Aa68Aa68Aa68Aa68Aa6+Rvj4juu0Aa6+Rvj7ylpHYAAAALHRSTlMA8S9ByPAIGAMP2iO6leVT1itEsqvnJ9RxVViEQGxzipCoyGB74meRvWCiu2yr/9YAAAHvSURBVHjaXZPdkqowEIQbEpIJAQRRBOVHV1dxBd//8Q4hQc7udzVVdE2Ynh5AbPI03wgY/F0QRIwwQdvL4dUogEpvHEfvTuY7HyZChonj/j1xVqi/R8N3BlA8zOwEUBzeMw3K0fIEFLeCUALHt+WFkxOUqyDRq+CAjWcFD4A6Kwh8YLu3ggvUjxX0CtCuRQuoy9uw3wLylHpTF68GyI95mAwDl0BxmXocjgSAZFbfcy9Xcy39axS0BKhtcywIC6LuTwoWdeUV4S+U5Q+51Iy3Eh+E1mpWpF9lLaUw9TXgLfO1sv6HSVQJwHjmpXYvajdNmyQRI+d/UAHI0nFc9nJ1pjI4/81kIh9n0gzwA7cXLPb6AD2swNsAOnEtwFd7P3v5JbgNlgqwe7FPMPdEDLlzFcHtxSuJaN2v+YBsIx4GQ6hh9vKV9ncBSD4EIY86HwahJIuTWGBCSQVAdEnMtBKED8Sim4BDtLwS+IsfxdrmWXecYYWK5twUAFgSxhVjVRfOvsrnqcwIoOPBRG/rQh0ELtZZb7JeiiXfh8LNbrgCql9MPb8tDaDD1dXaZTnHxQnO8/CG2ZLnaEn/76Ci9XCWa+iXA9gXAN1W1+WXywaoMYq9ybfbS6QxUafm+0nNd/46bwkGeYuiTrsQP/KfjcA/SUtUhCGuHagAAAAASUVORK5CYII=">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pwi-blue: #004fa3;
+            --pwi-orange: #f58220;
+            --pwi-light-gray: #f8f9fa;
+            --pwi-dark-gray: #343a40;
+            --diff-add-bg: rgba(22, 163, 74, 0.1);
+            --diff-del-bg: rgba(220, 38, 38, 0.1);
+            --diff-mod-bg: rgba(245, 130, 32, 0.1);
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: var(--pwi-light-gray);
+            color: var(--pwi-dark-gray);
+        }
+
+        /* Estilos da tabela de comparação */
+        .fc {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            border-spacing: 0;
+            table-layout: fixed;
+        }
+
+        .fc tr:hover td:not(.line-number) {
+            background-color: #e9ecef !important;
+        }
+
+        .fc td {
+            padding: 2px 12px;
+            vertical-align: top;
+            border-bottom: 1px solid #dee2e6;
+            overflow: hidden;
+        }
+        
+        .line-number {
+            text-align: right;
+            padding-right: 1em;
+            color: #6c757d;
+            user-select: none;
+            background-color: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            width: 60px;
+        }
+
+        .fc .AlignCenter {
+            text-align: center;
+            font-weight: bold;
+            background-color: #e9ecef;
+            color: #495057;
+            width: 40px;
+            padding: 2px 0;
+            user-select: none;
+        }
+        
+        .fc .Wrap {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+        }
+        
+        .TextItemSame { background-color: transparent; }
+        .TextItemSigAdd, .TextItemSigRightMod { background-color: var(--diff-add-bg); }
+        .TextItemSigDel, .TextItemSigLeftMod { background-color: var(--diff-del-bg); }
+        .TextItemSigDiffMod { background-color: var(--diff-mod-bg); }
+
+        .TextSegSigDiff { 
+            color: #d97706;
+            font-weight: 700;
+        }
+        
+        .TextItemSigDel .TextSegSigDiff, .TextItemSigLeftMod .TextSegSigDiff {
+             text-decoration: line-through;
+             text-decoration-color: #dc2626;
+        }
+        
+        .highlight-diff {
+            outline: 2px solid var(--pwi-blue);
+            outline-offset: -2px;
+        }
+
+        .row-hidden { display: none !important; }
+
+        .search-highlight {
+            background-color: #fef08a !important;
+            color: #854d0e !important;
+            font-weight: bold;
+        }
+
+        .stats-filter {
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .stats-filter:hover { background-color: #e5e7eb; }
+        .active-filter {
+            background-color: #dbeafe;
+            color: #1e40af;
+            font-weight: bold;
+        }
+
+        .sidebar-item-active {
+            background-color: #eff6ff !important;
+            border-left: 4px solid var(--pwi-blue);
+            color: var(--pwi-blue) !important;
+        }
+
+        .sidebar-collapsed {
+            width: 0px !important;
+            min-width: 0px !important;
+            overflow: hidden !important;
+            padding: 0 !important;
+            border: none !important;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800 flex h-screen overflow-hidden">
+
+    <!-- Sidebar Menu Lateral -->
+    <aside id="sidebar" class="bg-white border-r border-gray-200 flex flex-col w-80 shrink-0 h-full transition-all duration-300 z-20">
+        <!-- Sidebar Header -->
+        <div class="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+            <div class="flex items-center space-x-3">
+                <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4gPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI4LjAuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgLS0+IDxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgdmVyc2lvbj0iMS4xIiBpZD0iQ2FtYWRhXzEiIHg9IjBweCIgeT0iMHB4IiB2aWV3Qm94PSIwIDAgMzAwIDg0IiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCAzMDAgODQ7IiB4bWw6c3BhY2U9InByZXNlcnZlIj4gPHN0eWxlIHR5cGU9InRleHQvY3NzIj4gLnN0MHtjbGlwLXBhdGg6dXJsKCNTVkdJRF8wMDAwMDEzODU2NTAxODE4ODY1OTU0NzQxMDAwMDAwNjY3OTE3MTA0NzI3OTk1NTYwOF8pO30gLnN0MXtmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMxNTMwNEQ7fSAuc3Qye2ZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzIzQkFFRDt9IC5zdDN7ZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7ZmlsbDojOTFCRTNFO30gLnN0NHtmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMwMDZCQUY7fSA8L3N0eWxlPiA8Zz4gPGRlZnM+IDxyZWN0IGlkPSJTVkdJRF8xXyIgeT0iMC4xIiB3aWR0aD0iMjk5LjgiIGhlaWdodD0iODMuNCI+PC9yZWN0PiA8L2RlZnM+IDxjbGlwUGF0aCBpZD0iU1ZHSURfMDAwMDAxODEwNjUzODU2MjgyNjcxMzg3NjAwMDAwMDIzOTMzNTA1ODYxMTg0NzEzMThfIj4gPHVzZSB4bGluazpocmVmPSIjU1ZHSURfMV8iIHN0eWxlPSJvdmVyZmxvdzp2aXNpYmxlOyI+PC91c2U+IDwvY2xpcFBhdGg+IDxnIHN0eWxlPSJjbGlwLXBhdGg6dXJsKCNTVkdJRF8wMDAwMDE4MTA2NTM4NTYyODI2NzEzODc2MDAwMDAwMjM5MzM1MDU4NjExODQ3MTMxOF8pOyI+IDxwYXRoIGNsYXNzPSJzdDEiIGQ9Ik0xNDguMiw0MS45YzE3LjEsMCwyMS45LTMuOSwyMS45LTE3LjhWMTljMC0xMy44LTUuMi0xOC45LTIxLjktMTguOWgtNDYuOHYxMS4yYzE1LjUsMCwzMC45LDAsNDYuNSwwIGM3LDAsOS4zLDEuOCw5LjMsOC4xdjRjMCw2LjItMi4yLDcuOC05LjEsNy44Yy0xNS43LDAtMzEsMC4yLTQ2LjYsMC4ydjI3LjFoMTNWNDEuOUwxNDguMiw0MS45TDE0OC4yLDQxLjl6IE0yNDMsNTMuMyBjMS41LDMuMywzLjksNS4zLDcuOSw1LjNjMy42LDAsNi0yLjIsNy40LTUuM2MzLjYtOC41LDE5LjEtNDQuNiwyMi45LTUzLjFoLTEzLjZsLTE3LDQxLjdsLTE2LTM2LjdjLTEuNi0zLjctMy42LTUtNy42LTUgcy01LjksMS4zLTcuNiw1bC0xNi43LDM2LjdMMTg2LjMsMC4xaC0xMy45bDIxLjgsNTMuMmMxLjMsMy4yLDMuNCw1LjMsNy41LDUuM2M4LDAsNi40LTIuMSw4LTUuM2wxNy4yLTM2LjFMMjQzLDUzLjNMMjQzLDUzLjN6IE0yOTkuOCw1OC42VjAuMWwtMTMsMC4xdjU4LjRMMjk5LjgsNTguNkwyOTkuOCw1OC42eiI+PC9wYXRoPiA8cGF0aCBjbGFzcz0ic3QyIiBkPSJNMTAuNSwzMS40YzIuNywwLDUuMSwxLDcuMSwzYzIsMiwzLjEsNC4zLDMuMiw3Yy0wLjEsNS43LDEuOSwxMC43LDUuOSwxNWM0LjEsNC4yLDksNi4zLDE0LjcsNi4zaDAuNSBjNS42LDAsMTAuNS0yLjEsMTQuNS02LjNjNC4yLTQuMiw2LjItOS4yLDYuMS0xNWMtMC4xLTUuNy0yLjItMTAuNi02LjQtMTQuNWMtNC4zLTQuMS05LjMtNi0xNS01LjljLTIuNy0wLjEtNS0xLjItNy0zLjIgYy0xLjktMi0yLjktNC41LTIuOS03LjNzMS01LjIsMy03LjNjMi0yLDQuNS0zLDcuNC0zYzIuOSwwLDUuMiwxLDcuMywzYzIsMiwzLDQuNSwzLDcuM2MwLDUuNSwyLDEwLjQsNS45LDE0LjcgYzQuMSw0LjEsOC45LDYuMSwxNC41LDYuM2MzLjgtMC4yLDYuNiwxLjEsOC42LDQuMWMyLDIuOCwyLjYsNS44LDEuOSw4LjljLTEuNSw1LjItNC44LDcuOC0xMCw3LjhoLTAuNSBjLTUuOCwwLjItMTAuNywyLjMtMTQuNSw2LjRjLTQsNC01LjksOC44LTUuOSwxNC41YzAsMi44LTEsNS4yLTMsNy4zYy0yLDItNC41LDMtNy4zLDNoLTAuM2MtMi44LDAtNS4yLTEtNy4yLTNjLTItMi0zLTQuNS0zLTcuMyBjMC01LjctMi0xMC42LTUuOS0xNC41Yy00LTQuMS04LjctNi4yLTE0LjQtNi40Yy0zLDAuMS01LjYtMC45LTcuNy0yLjljLTIuMS0yLTMuMi00LjYtMy4yLTcuNmMwLTIuOCwxLTUuMiwzLTcuMyBDNS4xLDMyLjQsNy41LDMxLjQsMTAuNSwzMS40TDEwLjUsMzEuNHoiPjwvcGF0aD4gPHBhdGggY2xhc3M9InN0MyIgZD0iTTExLjIsNjEuN2M2LDAsMTAuOCw0LjgsMTAuOCwxMC44cy00LjgsMTAuOC0xMC44LDEwLjhjLTYsMC0xMC48LTQuOC0xMC44LTEwLjhTNS4yLDYxLjcsMTEuMiw2MS43IEwxMS4yLDYxLjd6IE03Mi4zLDAuNmM2LDAsMTAuOCw0LjgsMTAuOCwxMC44YzAsNi00LjgsMTAuOC0xMC44LDEwLjhzLTEwLjgtNC44LTEwLjgtMTAuOEM2MS41LDUuNCw2Ni4zLDAuNiw3Mi4zLDAuNnoiPjwvcGF0aD4gPHBhdGggY2xhc3M9InN0NCIgZD0iTTcyLjMsNjEuN2M2LDAsMTAuOCw0LjgsMTAuOCwxMC44cy00LjgsMTAuOC0xMC44LDEwLjhzLTEwLjgtNC44LTEwLjgtMTAuOFM2Ni4zLDYxLjcsNzIuMyw2MS43eiBNMTEuMSwwLjUgYy0yLjgsMC01LjIsMS03LjMsM2MtMiwyLTMsNC41LTMsNy4zYzAsMywxLjEsNS41LDMuMiw3LjZjMi4xLDIsNC43LDMsNy42LDIuOWM1LjgsMC4yLDEwLjcsMi4zLDE0LjUsNi40YzQsNCw1LjksOC44LDUuOSwxNC41IGMwLDIuOCwxLDUuMiwzLDcuM2MyLDIsNC41LDMsNy40LDNzNS4yLTEsNy4zLTNjMi0yLDMtNC41LDMtNy4zUzUxLjksMzcsNTAsMzVjLTEuOS0yLTQuMi0zLjEtNy0zLjJjLTUuOSwwLjEtMTEtMS45LTE1LjItNi4xIGMtNC4zLTQuMy02LjQtOS4zLTYuMy0xNS4yYy0wLjEtMi43LTEuMS01LjEtMy4xLTdDMTYuNSwxLjUsMTQsMC41LDExLjEsMC41eiI+PC9wYXRoPiA8cGF0aCBjbGFzcz0ic3QzIiBkPSJNMTAxLjQsNzguNWwyLTAuMnYwLjFjMC4xLDAuNiwwLjIsMS4yLDAuNiwxLjdjMC4zLDAuNSwwLjgsMC44LDEuNCwxLjFjMC43LDAuMywxLjQsMC40LDIuMSwwLjQgYzAuNiwwLDEuMy0wLjEsMS45LTAuM2MwLjQtMC4yLDAuOS0wLjQsMS4yLTAuOGMwLjItMC4zLDAuNC0wLjcsMC40LTEuMmMwLTAuNC0wLjEtMC44LTAuNC0xLjFjLTAuMy0wLjQtMC44LTAuNi0xLjItMC44IGMtMC44LTAuMy0xLjctMC41LTIuNS0wLjdjLTAuOS0wLjItMi0wLjUtMi44LTAuOWMtMC42LTAuMy0xLjItMC44LTEuNi0xLjRjLTAuNC0wLjYtMC41LTEuMi0wLjUtMS44YzAtMC44LDAuMi0xLjUsMC42LTIuMSBjMC40LTAuNywxLjEtMS4yLDEuOS0xLjVjMC45LTAuMywxLjgtMC41LDIuNy0wLjVjMSwwLDIsMC4yLDIuOCwwLjVjMC44LDAuMywxLjUsMC44LDEuOSwxLjZjMC41LDAuNywwLjcsMS41LDAuNywyLjNWNzMgbC0yLjEsMC4ydi0wLjFjLTAuMS0wLjgtMC40LTEuNS0xLTJjLTAuNy0wLjUtMS42LTAuNy0yLjQtMC43Yy0wLjgsMC0xLjgsMC4xLTIuNCwwLjZjLTAuNSwwLjQtMC43LDAuOC0wLjcsMS40IGMwLDAuNSwwLjIsMC45LDAuNSwxLjJjMC41LDAuNSwyLjEsMC44LDIuOCwxYzEsMC4yLDIuMywwLjUsMy4yLDAuOWMwLjcsMC4zLDEuNCwwLjgsMS45LDEuNWMwLjQsMC42LDAuNiwxLjMsMC42LDIuMSBjMCwwLjgtMC4yLDEuNS0wLjcsMi4yYy0wLjUsMC43LTEuMSwxLjMtMS45LDEuNmMtMC45LDAuNC0xLjgsMC42LTIuOCwwLjZjLTEuMSwwLTIuMy0wLjEtMy4zLTAuNmMtMC45LTAuNC0xLjYtMC45LTIuMS0xLjggYy0wLjUtMC44LTAuOC0xLjctMC44LTIuNkwxMDEuNCw3OC41TDEwMS40LDc4LjV6IE0xMjkuOCw4My4zVjY4LjdoMi4ydjE0LjZIMTI5Ljh6IE0xNDguNCw3OC41bDItMC4ydjAuMSBjMC4xLDAuNiwwLjIsMS4yLDAuNiwxLjdjMC4zLDAuNSwwLjgsMC44LDEuNCwxLjFjMC43LDAuMywxLjQsMC40LDIuMSwwLjRjMC42LDAsMS4zLTAuMSwxLjktMC4zYzAuNC0wLjIsMC45LTAuNCwxLjItMC44IGMwLjItMC4zLDAuNC0wLjcsMC40LTEuMmMwLTAuNC0wLjEtMC44LTAuNC0xLjFjLTAuMy0wLjQtMC44LTAuNi0xLjItMC44Yy0wLjgtMC4zLTEuNy0wLjUtMi41LTAuN2MtMC45LTAuMi0yLTAuNS0yLjgtMC45IGMtMC42LTAuMy0xLjItMC44LTEuNi0xLjRjLTAuNC0wLjYtMC41LTEuMi0wLjUtMS44YzAtMC44LDAuMi0xLjUsMC42LTIuMWMwLjQtMC43LDEuMS0xLjIsMS45LTEuNWMwLjktMC4zLDEuOC0wLjUsMi43LTAuNSBjMSwwLDEuOSwwLjIsMi45LDAuNWMwLjgsMC4zLDEuNSwwLjgsMS45LDEuNmMwLjUsMC43LDAuNywxLjUsMC43LDIuM1Y3M2wtMi4xLDAuMnYtMC4xYy0wLjEtMC44LTAuNC0xLjUtMS0yIGMtMC43LTAuNS0xLjYtMC43LTIuNC0wLjdzLTEuOCwwLjEtMi40LDAuNmMtMC41LDAuNC0wLjcsMC44LTAuNywxLjRjMCwwLjUsMC4yLDAuOSwwLjUsMS4yYzAuNSwwLjUsMi4xLDAuOCwyLjgsMSBjMSwwLjIsMi4zLDAuNSwzLjIsMC45YzAuNywwLjMsMS40LDAuOCwxLjksMS41YzAuNCwwLjYsMC42LDEuMywwLjYsMi4xYzAsMC44LTAuMiwxLjUtMC43LDIuMmMtMC41LDAuNy0xLjEsMS4zLTEuOSwxLjYgYy0wLjksMC40LTEuOCwwLjYtMi44LDAuNmMtMS4xLDAtMi4zLTAuMS0zLjMtMC42Yy0wLjktMC40LTEuNi0wLjktMi4xLTEuOGMtMC41LTAuOC0wLjgtMS43LTAuOC0yLjZMMTQ4LjQsNzguNUwxNDguNCw3OC41eiBNMTgwLjEsNzAuN2gtNC43di0xLjloMTEuNnYxLjloLTQuN3YxMi42aC0yLjJWNzAuN3ogTTIwNC45LDcwLjd2NC4xaDcuOXYxLjloLTcuOXY0LjZoOC44djEuOWgtMTAuOVY2OC43aDEwLjZ2MS45SDIwNC45IEwyMDQuOSw3MC43eiBNMjM3LjEsODAuN2MwLjItMC42LDAuNC0xLjMsMC42LTEuOWwzLjUtMTBoMi44djE0LjZoLTIuMVY3MmwtNCwxMS4zaC0xLjlsLTMuOS0xMS41djExLjVoLTIuMVY2OC43aDMuMWwzLjQsMTAuMiBDMjM2LjcsNzkuNSwyMzYuOSw4MC Krieg3MSw4MC43TDIzNy4xLDgwLjd6IE0yNjguOSw3OUkyNjNsLTEuNiw0LjNoLTIsM2w1LjYtMTQuNmgyLjJsNS45LDE0LjZoLTIuNEwyNjguOSw3OUwyNjguOSw3OXogTTI4Ny42LDc4LjVsMi0wLjJ2MC4xYzAuMSwwLjYsMC4yLDEuMiwwLjYsMS43YzAuMywwLjUsMC44LDAuOCwxLjQsMS4xYzAuNywwLjMsMS40LDAuNCwyLjEsMC40YzAuNiwwLDEuMy0wLjEsMS45LTAuMyBjMC40LTAuMiwwLjktMC40LDEuMi0wLjhjMC4yLTAuMywwLjQtMC43LDAuNC0xLjJjMC0wLjQtMC4xLTAuOC0wLjQtMS4xYy0wLjMtMC40LTAuOC0wLjYtMS4yLTAuOGMtMC44LTAuMy0xLjctMC41LTIuNS0wLjcgYy0wLjktMC4yLTItMC41LTIuOC0wLjljLTAuNi0wLjMtMS4yLTAuOC0xLjYtMS40Yy0wLjQtMC42LTAuNS0xLjItMC41LTEuOGMwLTAuOCwwLjItMS41LDAuNi0yLjFjMC41LTAuNywxLjEtMS4yLDEuOS0xLjUgYzAuOS0wLjMsMS44LTAuNSwyLjctMC41YzEsMCwxLjksMC4yLDIuOCwwLjVjMC44LDAuMywxLjUsMC44LDEuOSwxLjZjMC41LDAuNywwLjcsMS41LDAuNywyLjNWNzMgbC0yLjEsMC4ydi0wLjEgYy0wLjEtMC44LTAuNC0xLjUtMS0yYy0wLjctMC41LTEuNi0wLjctMi40LTAuN2MtMC44LDAtMS44LDAuMS0yLjQsMC42Yy0wLjQsMC40LTAuNywwLjgtMC43LDEuNGMwLDAuNSwwLjIsMC45LDAuNSwxLjIgYzAuNSwwLjUsMi4xLDAuOCwyLjgsMWMxLDAuMiwyLjMsMC41LDMuMiwwLjljMC43LDAuMywxLjQsMC44LDEuOSwxLjVjMC40LDAuNiwwLjYsMS4zLDAuNiwyLjFjMCwwLjgtMC4yLDEuNS0wLjcsMi4y cC0wLjUsMC43LTEuMSwxLjMtMS45LDEuNmMtMC45LDAuNC0xLjgsMC42LTIuOCwwLjZjLTEuMSwwLTIuMy0wLjEtMy4zLTAuNmMtMC45LTAuNC0xLjYtMC45LTIuMS0xLjhjLTAuNS0wLjgtMC44LTEuNy0wLjgtMi42 LDI4Ny42LDc4LjVMMjg3LjYsNzguNXogTTI2My43LDc3LjJoNC41bC0xLjQtMy44Yy0wLjMtMC44LTAuNi0xLjctMC45LTIuNWMtMC4yLDAuOC0wLjQsMS41LTAuNywyLjNMMjYzLjcsNzcuMkwyNjMuNyw3Ny4yeiI+PC9wYXRoPiA8L2c+IDwvZz4gPC9zdmc+IA==" alt="Logo da PWI" class="h-6 shrink-0">
+                <span class="font-bold text-gray-700 text-xs truncate">Lote[[PREFIXO_DIFERENCAS]]</span>
+            </div>
+            <div class="flex items-center space-x-1 shrink-0">
+                <span id="completed-files-badge" class="bg-green-100 text-green-800 text-[11px] font-bold px-2 py-0.5 rounded-full" title="Progresso do Release">0 / [[TOTAL_ARQUIVOS]] vistos</span>
+            </div>
+        </div>
+
+        <!-- Sidebar Search -->
+        <div class="p-3 border-b border-gray-200">
+            <input type="text" id="sidebar-search" placeholder="Filtrar arquivos no menu..." class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-xs bg-gray-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+        </div>
+
+        <!-- Sidebar List -->
+        <div id="sidebar-file-list" class="flex-1 overflow-y-auto divide-y divide-gray-100 text-xs">
+        </div>
+    </aside>
+
+    <!-- Content Area Principal -->
+    <div class="flex-1 flex flex-col h-full overflow-hidden">
+        
+        <!-- Header com Controles -->
+        <header class="bg-white p-4 shadow-sm border-b border-gray-200 shrink-0">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center space-x-3">
+                    <button id="toggle-sidebar-btn" title="Alternar Menu Lateral" class="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <h1 class="text-xl font-bold text-gray-700 truncate">Diferenças[[PREFIXO_DIFERENCAS]] - <span id="current-filename-heading" class="text-blue-800"></span></h1>
+                </div>
+
+                <!-- Ferramentas de Busca e Filtro -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                        <input type="text" id="search-input" placeholder="Buscar no código..." class="border-none px-3 py-1.5 text-xs focus:ring-0 w-36">
+                        <button id="search-btn" class="bg-gray-100 hover:bg-gray-200 px-2 py-1.5 border-l border-gray-300 text-xs font-semibold text-gray-700">Buscar</button>
+                        <button id="search-next-btn" class="bg-gray-100 hover:bg-gray-200 px-2 py-1.5 border-l border-gray-300 text-xs font-semibold text-gray-700 hidden">Próx</button>
+                    </div>
+
+                    <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden text-xs">
+                        <input type="text" id="goto-line-input" placeholder="Ir para linha..." class="border-none px-2 py-1.5 w-24 focus:ring-0 text-xs">
+                        <button id="goto-line-btn" class="bg-gray-100 hover:bg-gray-200 px-2 py-1.5 border-l border-gray-300 font-semibold text-gray-700">Ir</button>
+                    </div>
+
+                    <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden text-xs">
+                        <input type="text" id="ignore-input" placeholder="Ignorar termo..." class="border-none px-2 py-1.5 w-28 focus:ring-0 text-xs">
+                        <button id="ignore-btn" class="bg-gray-100 hover:bg-gray-200 px-2 py-1.5 border-l border-gray-300 font-semibold text-gray-700">Ignorar</button>
+                    </div>
+
+                    <div class="flex items-center space-x-1">
+                        <button id="prevBtn" title="Atalho: Tecla 'A' ou Seta Esquerda" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-3 rounded text-xs disabled:opacity-50">
+                            &larr; Ant
+                        </button>
+                        <div id="diff-counter" class="text-xs font-semibold text-gray-700 bg-gray-200 px-2 py-1 rounded">
+                            0 de 0
+                        </div>
+                        <button id="nextBtn" title="Atalho: Tecla 'P' ou Seta Direita" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-3 rounded text-xs disabled:opacity-50">
+                            Próx &rarr;
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros Secundários -->
+            <div class="flex flex-wrap items-center justify-between gap-3 text-xs mt-3 border-t border-gray-100 pt-2">
+                <div class="flex items-center space-x-3">
+                    <label id="method-filter-label" for="method-filter" class="font-medium text-gray-700">Filtrar Método (0):</label>
+                    <select id="method-filter" class="border border-gray-300 rounded px-2 py-1 text-xs bg-white focus:ring-0 w-44 truncate">
+                        <option value="">Mostrar Todo o Código</option>
+                    </select>
+
+                    <label class="flex items-center space-x-1 cursor-pointer">
+                        <input type="checkbox" id="show-only-diff" class="w-3.5 h-3.5 text-blue-600 rounded">
+                        <span class="font-medium text-gray-700">Ocultar Iguais</span>
+                    </label>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <span id="stats-total" class="stats-filter active-filter" data-filter-type="all">Total: 0</span>
+                    <span id="stats-added" class="text-green-600 stats-filter" data-filter-type="added">Adições: 0</span>
+                    <span id="stats-modified" class="text-yellow-600 stats-filter" data-filter-type="modified">Modificações: 0</span>
+                    <span id="stats-deleted" class="text-red-600 stats-filter" data-filter-type="deleted">Deleções: 0</span>
+                </div>
+            </div>
+
+            <!-- Chips de ignorar -->
+            <div id="ignore-list-container" class="flex flex-wrap gap-1 mt-2"></div>
+        </header>
+
+        <!-- Main Tabela de Código -->
+        <main class="flex-1 overflow-auto p-4 bg-gray-50">
+            <div class="bg-white rounded-lg shadow-sm overflow-x-auto border border-gray-200">
+                <table class="fc">
+                    <tbody id="diff-tbody">
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Dados do Lote embutidos -->
+    <script id="batch-data" type="application/json">
+[[BATCH_DATA_JSON]]
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const batchData = JSON.parse(document.getElementById('batch-data').textContent);
+            let activeFileIndex = 0;
+            
+            // Storage key para checklist de release
+            const storageKey = 'pwi_release_check_' + window.location.pathname;
+            let completedFiles = new Set();
+            try {
+                const saved = localStorage.getItem(storageKey);
+                if (saved) completedFiles = new Set(JSON.parse(saved));
+            } catch(e) {}
+
+            // DOM Elements
+            const sidebar = document.getElementById('sidebar');
+            const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
+            const sidebarSearch = document.getElementById('sidebar-search');
+            const sidebarFileList = document.getElementById('sidebar-file-list');
+            const completedFilesBadge = document.getElementById('completed-files-badge');
+            const currentFilenameHeading = document.getElementById('current-filename-heading');
+            const diffTbody = document.getElementById('diff-tbody');
+
+            const nextBtn = document.getElementById('nextBtn');
+            const prevBtn = document.getElementById('prevBtn');
+            const diffCounter = document.getElementById('diff-counter');
+            const showOnlyDiffCheckbox = document.getElementById('show-only-diff');
+            const searchInput = document.getElementById('search-input');
+            const searchBtn = document.getElementById('search-btn');
+            const searchNextBtn = document.getElementById('search-next-btn');
+            const statsFilters = document.querySelectorAll('.stats-filter');
+            const gotoLineInput = document.getElementById('goto-line-input');
+            const gotoLineBtn = document.getElementById('goto-line-btn');
+            const ignoreInput = document.getElementById('ignore-input');
+            const ignoreBtn = document.getElementById('ignore-btn');
+            const ignoreListContainer = document.getElementById('ignore-list-container');
+            const methodFilter = document.getElementById('method-filter');
+            const methodFilterLabel = document.getElementById('method-filter-label');
+
+            // State
+            let tableRows = [];
+            let allDiffElements = [];
+            let currentDiffIndex = -1;
+            let searchResults = [];
+            let currentSearchIndex = -1;
+            let activeFilter = 'all';
+            let ignoreList = ['top', 'left', 'height', 'width', 'tabindex'];
+
+            // Formatação do nome para exibição no menu
+            function formatDisplayName(rawName) {
+                if (!rawName) return '';
+                let name = rawName.trim();
+
+                // Se já tiver prefixo conhecido, preserva
+                if (name.startsWith('OBJETOS\\') || name.startsWith('REPORTS\\') || name.startsWith('FORMS\\')) {
+                    return name;
+                }
+
+                const upper = name.toUpperCase();
+                if (upper.endsWith('.PRG') || upper.includes('_PRG')) {
+                    const clean = name.replace(/\.PRG$/i, '').replace(/_PRG$/i, '');
+                    return `OBJETOS\\${clean}`;
+                }
+                if (upper.endsWith('.FRT') || upper.endsWith('.FRX') || upper.includes('_FRX')) {
+                    const clean = name.replace(/\.(FRT|FRX)$/i, '').replace(/_FRX$/i, '');
+                    return `REPORTS\\${clean}`;
+                }
+                if (upper.endsWith('.SCX') || upper.endsWith('.SCT') || upper.includes('_SCX')) {
+                    const clean = name.replace(/\.(SCX|SCT)$/i, '').replace(/_SCX$/i, '');
+                    return `FORMS\\${clean}`;
+                }
+                
+                return name;
+            }
+
+            // Alternar sidebar
+            toggleSidebarBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('sidebar-collapsed');
+            });
+
+            function toggleFileCompleted(rawFileName) {
+                if (completedFiles.has(rawFileName)) {
+                    completedFiles.delete(rawFileName);
+                } else {
+                    completedFiles.add(rawFileName);
+                }
+                try {
+                    localStorage.setItem(storageKey, JSON.stringify(Array.from(completedFiles)));
+                } catch(e) {}
+
+                renderSidebarFiles(sidebarSearch.value);
+            }
+
+            function updateCompletedBadge() {
+                if (completedFilesBadge) {
+                    completedFilesBadge.textContent = `${completedFiles.size} / ${batchData.length} vistos`;
+                }
+            }
+
+            // Render Sidebar File Items
+            function renderSidebarFiles(filterTerm = '') {
+                sidebarFileList.innerHTML = '';
+                const term = filterTerm.trim().toLowerCase();
+
+                batchData.forEach((fileItem, idx) => {
+                    const displayName = formatDisplayName(fileItem.fileName);
+                    if (term && !displayName.toLowerCase().includes(term) && !fileItem.fileName.toLowerCase().includes(term)) {
+                        return;
+                    }
+
+                    const isDone = completedFiles.has(fileItem.fileName);
+
+                    const container = document.createElement('div');
+                    container.className = `w-full px-3 py-2.5 flex items-center justify-between hover:bg-gray-100 transition-colors text-xs border-b border-gray-100 cursor-pointer ${idx === activeFileIndex ? 'sidebar-item-active' : 'text-gray-700'}`;
+                    
+                    container.innerHTML = `
+                        <div class="flex items-center space-x-2.5 min-w-0 flex-1 pr-2">
+                            <input type="checkbox" class="file-chk cursor-pointer w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 shrink-0" ${isDone ? 'checked' : ''} title="Marcar como alterado no release">
+                            <span class="font-bold truncate ${isDone ? 'line-through text-gray-400' : ''}" title="${displayName}">${displayName}</span>
+                        </div>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 ${isDone ? 'bg-green-100 text-green-800 border border-green-300' : fileItem.isError ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}">
+                            ${isDone ? '✓ Visto' : fileItem.isError ? 'Erro' : 'Alterado'}
+                        </span>
+                    `;
+
+                    // Intercepta clique no checkbox para não forçar alteração da tela se for apenas marcação
+                    const cb = container.querySelector('.file-chk');
+                    cb.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        toggleFileCompleted(fileItem.fileName);
+                    });
+
+                    container.addEventListener('click', () => {
+                        selectFile(idx);
+                    });
+
+                    sidebarFileList.appendChild(container);
+                });
+
+                updateCompletedBadge();
+            }
+
+            sidebarSearch.addEventListener('input', (e) => {
+                renderSidebarFiles(e.target.value);
+            });
+
+            // Select active file
+            function selectFile(idx) {
+                if (idx < 0 || idx >= batchData.length) return;
+                activeFileIndex = idx;
+                
+                const fileItem = batchData[idx];
+                const displayName = formatDisplayName(fileItem.fileName);
+                currentFilenameHeading.textContent = displayName;
+
+                diffTbody.innerHTML = fileItem.rowsHtml || '';
+                tableRows = Array.from(diffTbody.querySelectorAll('tr'));
+
+                renderSidebarFiles(sidebarSearch.value);
+                detectAndTagBlocks();
+                rebuildAndRecalculate();
+            }
+
+            function detectAndTagBlocks() {
+                let currentBlockName = '';
+                tableRows.forEach(row => {
+                    const text = row.textContent.trim();
+                    const cleanText = text.replace(/^[>=\s]+/, '');
+                    
+                    let blockMatch = cleanText.match(/^<((?:Object\.[^\s]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+                    if (blockMatch) {
+                        currentBlockName = blockMatch[1];
+                    }
+                    if (currentBlockName) {
+                        row.dataset.blockName = currentBlockName;
+                    }
+                    if (currentBlockName && cleanText.toUpperCase().startsWith(`</${currentBlockName.toUpperCase()}>`)) {
+                        currentBlockName = '';
+                    }
+                });
+            }
+
+            function updateMethodFilterSelect() {
+                const previousSelection = methodFilter.value;
+                methodFilter.innerHTML = '<option value="">Mostrar Todo o Código</option>';
+                
+                let changedBlocks = new Set();
+                tableRows.forEach(row => {
+                   if (row.dataset.blockName && row.dataset.diffType !== 'same') {
+                       changedBlocks.add(row.dataset.blockName);
+                   } 
+                });
+                
+                Array.from(changedBlocks).forEach(blockName => {
+                    const option = document.createElement('option');
+                    option.value = blockName;
+                    option.textContent = blockName.replace('Object.', '').replace(/\s+Method\./i, ' - ').replace(/\s+(Properties|EXPR|TAG2?|PICTURE)$/i, ' - $1');
+                    methodFilter.appendChild(option);
+                });
+                
+                if (methodFilterLabel) {
+                    methodFilterLabel.textContent = `Filtrar Método (${changedBlocks.size}):`;
+                }
+                
+                if (previousSelection && changedBlocks.has(previousSelection)) {
+                    methodFilter.value = previousSelection;
+                } else {
+                    methodFilter.value = "";
+                }
+            }
+
+            methodFilter.addEventListener('change', applyFilters);
+
+            function escapeRegExp(string) {
+                return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
+            function startsWithIgnoredTerm(text) {
+                if (!text) return false;
+                const cleanText = text.trim();
+                if (!cleanText) return false;
+                return ignoreList.some(term => {
+                    const t = term.trim();
+                    if (!t) return false;
+                    const regex = new RegExp('^' + escapeRegExp(t) + '([^a-zA-Z0-9_]|$)', 'i');
+                    return regex.test(cleanText);
+                });
+            }
+
+            function classifyRow(row) {
+                const cells = Array.from(row.querySelectorAll('td')).filter(td => !td.classList.contains('line-number') && !td.classList.contains('AlignCenter'));
+                const leftText = cells[0] ? cells[0].textContent.replace(/\u00A0/g, ' ') : '';
+                const rightText = cells[1] ? cells[1].textContent.replace(/\u00A0/g, ' ') : '';
+
+                if (startsWithIgnoredTerm(leftText) || startsWithIgnoredTerm(rightText)) {
+                    return 'same';
+                }
+
+                if(row.querySelector('.TextItemSigAdd, .TextItemSigRightMod')) return 'added';
+                if(row.querySelector('.TextItemSigDel, .TextItemSigLeftMod')) return 'deleted';
+                if(row.querySelector('.TextItemSigDiffMod')) return 'modified';
+                
+                return 'same';
+            }
+
+            function updateStatsUI() {
+                const selectedMethod = methodFilter.value;
+                const stats = { total: 0, added: 0, modified: 0, deleted: 0 };
+
+                tableRows.forEach(row => {
+                    const blockMatch = !selectedMethod || row.dataset.blockName === selectedMethod;
+                    if (blockMatch) {
+                        stats.total++;
+                        const diffType = row.dataset.diffType;
+                        if (diffType !== 'same') {
+                            stats[diffType]++;
+                        }
+                    }
+                });
+
+                document.getElementById('stats-total').textContent = `Total: ${stats.total}`;
+                document.getElementById('stats-added').textContent = `Adições: ${stats.added}`;
+                document.getElementById('stats-modified').textContent = `Modificações: ${stats.modified}`;
+                document.getElementById('stats-deleted').textContent = `Deleções: ${stats.deleted}`;
+            }
+
+            function rebuildAndRecalculate() {
+                allDiffElements = [];
+                tableRows.forEach(row => {
+                    row.style.backgroundColor = '';
+                    const diffType = classifyRow(row);
+                    row.dataset.diffType = diffType;
+                    if (diffType !== 'same') {
+                        allDiffElements.push(row);
+                    }
+                });
+
+                updateMethodFilterSelect();
+                updateStatsUI();
+                applyFilters();
+            }
+
+            function getVisibleDiffs() {
+                return allDiffElements.filter(el => !el.classList.contains('row-hidden'));
+            }
+
+            function applyFilters() {
+                const hideSame = showOnlyDiffCheckbox.checked;
+                const selectedMethod = methodFilter.value;
+                
+                tableRows.forEach(row => {
+                    const rowType = row.dataset.diffType;
+                    const isSame = rowType === 'same';
+                    const typeMatch = activeFilter === 'all' || rowType === activeFilter;
+                    const blockMatch = !selectedMethod || row.dataset.blockName === selectedMethod;
+                    
+                    if ((hideSame && isSame) || !typeMatch || !blockMatch) {
+                        row.classList.add('row-hidden');
+                    } else {
+                        row.classList.remove('row-hidden');
+                    }
+                });
+                
+                updateStatsUI();
+                resetDiffNavigation();
+            }
+
+            function resetDiffNavigation() {
+                currentDiffIndex = -1;
+                const visibleDiffs = getVisibleDiffs();
+                document.querySelectorAll('.highlight-diff').forEach(el => el.classList.remove('highlight-diff'));
+
+                if (visibleDiffs.length === 0) {
+                    diffCounter.textContent = "0 de 0";
+                    nextBtn.disabled = true;
+                    prevBtn.disabled = true;
+                } else {
+                    diffCounter.textContent = `0 de ${visibleDiffs.length}`;
+                    nextBtn.disabled = false;
+                    prevBtn.disabled = false;
+                }
+            }
+
+            function navigateDiff(direction) {
+                const visibleDiffs = getVisibleDiffs();
+                if (visibleDiffs.length === 0) return;
+
+                if (currentDiffIndex >= 0 && currentDiffIndex < visibleDiffs.length) {
+                    visibleDiffs[currentDiffIndex].classList.remove('highlight-diff');
+                }
+
+                currentDiffIndex += direction;
+
+                if (currentDiffIndex >= visibleDiffs.length) {
+                    currentDiffIndex = 0;
+                } else if (currentDiffIndex < 0) {
+                    currentDiffIndex = visibleDiffs.length - 1;
+                }
+
+                const targetRow = visibleDiffs[currentDiffIndex];
+                targetRow.classList.add('highlight-diff');
+                targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                diffCounter.textContent = `${currentDiffIndex + 1} de ${visibleDiffs.length}`;
+            }
+
+            nextBtn.addEventListener('click', () => navigateDiff(1));
+            prevBtn.addEventListener('click', () => navigateDiff(-1));
+            showOnlyDiffCheckbox.addEventListener('change', applyFilters);
+
+            // Teclas de atalho
+            document.addEventListener('keydown', (e) => {
+                const activeEl = document.activeElement;
+                if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')) {
+                    return;
+                }
+
+                if (e.key === 'p' || e.key === 'P' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    if (!nextBtn.disabled) navigateDiff(1);
+                } else if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    if (!prevBtn.disabled) navigateDiff(-1);
+                }
+            });
+
+            // Ignore list management
+            function renderIgnoreChips() {
+                ignoreListContainer.innerHTML = '';
+                ignoreList.forEach(term => {
+                    const chip = document.createElement('span');
+                    chip.className = 'inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-gray-200 text-gray-800';
+                    chip.innerHTML = `${term} <button class="ml-1 text-gray-500 hover:text-red-600 font-bold">&times;</button>`;
+                    chip.querySelector('button').addEventListener('click', () => {
+                        ignoreList = ignoreList.filter(t => t !== term);
+                        renderIgnoreChips();
+                        rebuildAndRecalculate();
+                    });
+                    ignoreListContainer.appendChild(chip);
+                });
+            }
+
+            ignoreBtn.addEventListener('click', () => {
+                const val = ignoreInput.value.trim().toLowerCase();
+                if (val && !ignoreList.includes(val)) {
+                    ignoreList.push(val);
+                    ignoreInput.value = '';
+                    renderIgnoreChips();
+                    rebuildAndRecalculate();
+                }
+            });
+
+            ignoreInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    ignoreBtn.click();
+                }
+            });
+
+            // Stats filter click
+            statsFilters.forEach(filterEl => {
+                filterEl.addEventListener('click', () => {
+                    statsFilters.forEach(f => f.classList.remove('active-filter'));
+                    filterEl.classList.add('active-filter');
+                    activeFilter = filterEl.dataset.filterType;
+                    applyFilters();
+                });
+            });
+
+            // Text search
+            function performSearch() {
+                const term = searchInput.value.trim().toLowerCase();
+                document.querySelectorAll('.search-highlight').forEach(el => el.classList.remove('search-highlight'));
+                searchResults = [];
+                currentSearchIndex = -1;
+
+                if (!term) {
+                    searchNextBtn.classList.add('hidden');
+                    return;
+                }
+
+                tableRows.forEach(row => {
+                    if (row.classList.contains('row-hidden')) return;
+                    const text = row.textContent.toLowerCase();
+                    if (text.includes(term)) {
+                        searchResults.push(row);
+                        row.classList.add('search-highlight');
+                    }
+                });
+
+                if (searchResults.length > 0) {
+                    searchNextBtn.classList.remove('hidden');
+                    navigateSearch(1);
+                } else {
+                    searchNextBtn.classList.add('hidden');
+                }
+            }
+
+            function navigateSearch(direction) {
+                if (searchResults.length === 0) return;
+                currentSearchIndex += direction;
+                if (currentSearchIndex >= searchResults.length) currentSearchIndex = 0;
+                if (currentSearchIndex < 0) currentSearchIndex = searchResults.length - 1;
+
+                const targetRow = searchResults[currentSearchIndex];
+                targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            searchBtn.addEventListener('click', performSearch);
+            searchNextBtn.addEventListener('click', () => navigateSearch(1));
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') performSearch();
+            });
+
+            // Init
+            renderIgnoreChips();
+            if (batchData.length > 0) {
+                selectFile(0);
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -4,6 +4,7 @@ import { handleTextProcess } from './textComparator.ts';
 import { FoxProParser } from './foxproParser.ts';
 import { handleCodeReferencesSearch, renderTreeResults } from './codeReferences.ts';
 import baseHtmlTemplate from './base.html?raw';
+import baseConsolidatedHtmlTemplate from './baseConsolidated.html?raw';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Tab Elements
@@ -101,10 +102,16 @@ document.addEventListener('DOMContentLoaded', () => {
     validateBatch();
   });
 
+  const batchConsolidatedCheck = document.getElementById('batch-consolidated-check') as HTMLInputElement;
+  batchConsolidatedCheck?.addEventListener('change', () => {
+    btnProcessBatch.textContent = batchConsolidatedCheck.checked ? 'Gerar e Baixar HTML Agrupado' : 'Processar e Baixar ZIP';
+  });
+
   btnProcessBatch.addEventListener('click', async () => {
     if (batchCompareFiles) {
       const customPrefix = (document.getElementById('batch-custom-prefix') as HTMLInputElement)?.value || '';
-      await handleBatchProcess(baseHtmlTemplate, batchCompareFiles, customPrefix);
+      const isConsolidated = batchConsolidatedCheck?.checked || false;
+      await handleBatchProcess(baseHtmlTemplate, batchCompareFiles, customPrefix, isConsolidated, baseConsolidatedHtmlTemplate);
     }
   });
 
@@ -341,6 +348,11 @@ document.addEventListener('DOMContentLoaded', () => {
   validateFoxProBatch();
   validateFoxPro();
 
+  const foxBatchConsolidatedCheck = document.getElementById('fox-batch-consolidated-check') as HTMLInputElement;
+  foxBatchConsolidatedCheck?.addEventListener('change', () => {
+    btnProcessFoxproBatch.textContent = foxBatchConsolidatedCheck.checked ? 'Comparar Lote e Baixar HTML Agrupado' : 'Comparar Lote e Baixar ZIP';
+  });
+
   let currentFoxBatchResults: import('./batchProcessor.ts').BatchResultItem[] = [];
   let currentFoxBatchFilter: string = 'all';
 
@@ -490,15 +502,22 @@ document.addEventListener('DOMContentLoaded', () => {
       const customPrefixInput = document.getElementById('fox-batch-custom-prefix') as HTMLInputElement;
       const customPrefix = customPrefixInput?.value || '';
 
+      const foxBatchConsolidatedCheck = document.getElementById('fox-batch-consolidated-check') as HTMLInputElement;
+      const isConsolidated = foxBatchConsolidatedCheck?.checked || false;
+
+      foxBatchConsolidatedCheck?.addEventListener('change', () => {
+        btnProcessFoxproBatch.textContent = foxBatchConsolidatedCheck.checked ? 'Comparar Lote e Baixar HTML Agrupado' : 'Comparar Lote e Baixar ZIP';
+      });
+
       const parser = new FoxProParser();
       btnProcessFoxproBatch.disabled = true;
       btnProcessFoxproBatch.textContent = 'Processando...';
 
-      const results = await handleFoxProBatchProcess(antesMap, depoisMap, baseHtmlTemplate, parser, checkMissing, customPrefix);
+      const results = await handleFoxProBatchProcess(antesMap, depoisMap, baseHtmlTemplate, parser, checkMissing, customPrefix, isConsolidated, baseConsolidatedHtmlTemplate);
       renderFoxBatchDashboard(results);
 
       btnProcessFoxproBatch.disabled = false;
-      btnProcessFoxproBatch.textContent = 'Comparar Lote e Baixar ZIP';
+      btnProcessFoxproBatch.textContent = isConsolidated ? 'Comparar Lote e Baixar HTML Agrupado' : 'Comparar Lote e Baixar ZIP';
   });
 
   // --- Code References Logic ---
