@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: comparador-web-foxpro
+    env: static
+    buildCommand: npm run build
+    staticPublishPath: ./dist
