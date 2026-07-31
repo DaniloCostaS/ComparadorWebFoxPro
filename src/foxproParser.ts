@@ -179,6 +179,7 @@ export class FoxProParser {
                     } else {
                         objName = this.decodeString(scxBuffer, fieldOffset, field.length);
                     }
+                    objName = objName.toUpperCase();
                 } else if (field.name === 'PARENT') {
                     if (field.type === 'M') {
                         const blockNumber = scxView.getUint32(fieldOffset, true);
@@ -186,6 +187,7 @@ export class FoxProParser {
                     } else {
                         parentName = this.decodeString(scxBuffer, fieldOffset, field.length);
                     }
+                    parentName = parentName.toUpperCase();
                 } else if (field.name === 'PROPERTIES') {
                     if (field.type === 'M') {
                         const blockNumber = scxView.getUint32(fieldOffset, true);

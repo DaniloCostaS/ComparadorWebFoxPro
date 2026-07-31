@@ -4,6 +4,7 @@ import { handleTextProcess, generateDiffHtml } from './textComparator.ts';
 import { FoxProParser } from './foxproParser.ts';
 import { handleCodeReferencesSearch, renderTreeResults } from './codeReferences.ts';
 import { beautifyText, minifyText } from './beautifier.ts';
+import { analyzeRepositoryCustomizations, type AnalysisSummary, type CustomizedItem } from './customizationAnalyzer.ts';
 import { saveAs } from 'file-saver';
 import baseHtmlTemplate from './base.html?raw';
 import baseConsolidatedHtmlTemplate from './baseConsolidated.html?raw';
@@ -16,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabFoxpro = document.getElementById('tab-foxpro') as HTMLButtonElement;
   const tabFoxproBatch = document.getElementById('tab-foxpro-batch') as HTMLButtonElement;
   const tabCodeReferences = document.getElementById('tab-code-references') as HTMLButtonElement;
+  const tabCustomizations = document.getElementById('tab-customizations') as HTMLButtonElement;
 
   const sectionBatch = document.getElementById('section-batch') as HTMLElement;
   const sectionText = document.getElementById('section-text') as HTMLElement;
@@ -23,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const sectionFoxpro = document.getElementById('section-foxpro') as HTMLElement;
   const sectionFoxproBatch = document.getElementById('section-foxpro-batch') as HTMLElement;
   const sectionCodeReferences = document.getElementById('section-code-references') as HTMLElement;
+  const sectionCustomizations = document.getElementById('section-customizations') as HTMLElement;
 
   // Batch Elements
   const compareFilesInput = document.getElementById('compare-files') as HTMLInputElement;
@@ -51,8 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Tab Logic ---
   function resetTabs() {
-    [tabBatch, tabText, tabBeautifier, tabFoxpro, tabFoxproBatch, tabCodeReferences].forEach(t => t?.classList.replace('tab-active', 'tab-inactive'));
-    [sectionBatch, sectionText, sectionBeautifier, sectionFoxpro, sectionFoxproBatch, sectionCodeReferences].forEach(s => s?.classList.add('hidden'));
+    [tabBatch, tabText, tabBeautifier, tabFoxpro, tabFoxproBatch, tabCodeReferences, tabCustomizations].forEach(t => t?.classList.replace('tab-active', 'tab-inactive'));
+    [sectionBatch, sectionText, sectionBeautifier, sectionFoxpro, sectionFoxproBatch, sectionCodeReferences, sectionCustomizations].forEach(s => s?.classList.add('hidden'));
   }
 
   tabBatch.addEventListener('click', () => {
@@ -89,6 +92,12 @@ document.addEventListener('DOMContentLoaded', () => {
     resetTabs();
     tabCodeReferences.classList.replace('tab-inactive', 'tab-active');
     sectionCodeReferences.classList.remove('hidden');
+  });
+
+  tabCustomizations?.addEventListener('click', () => {
+    resetTabs();
+    tabCustomizations.classList.replace('tab-inactive', 'tab-active');
+    sectionCustomizations.classList.remove('hidden');
   });
 
   // --- Batch Logic Validation ---
@@ -862,6 +871,266 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       textModified.value = res.formatted;
       textModified.dispatchEvent(new Event('input'));
+    }
+  });
+
+  // --- Analisar Customizações Logic ---
+  const customFolderInput = document.getElementById('custom-folder-input') as HTMLInputElement;
+  const customFolderCount = document.getElementById('custom-folder-count') as HTMLElement;
+  const customProgressContainer = document.getElementById('custom-progress-container') as HTMLElement;
+  const customProgressMessage = document.getElementById('custom-progress-message') as HTMLElement;
+  const customProgressPercent = document.getElementById('custom-progress-percent') as HTMLElement;
+  const customProgressBar = document.getElementById('custom-progress-bar') as HTMLElement;
+  const customResultsContainer = document.getElementById('custom-results-container') as HTMLElement;
+
+  const customStatTotal = document.getElementById('custom-stat-total') as HTMLElement;
+  const customStatChanged = document.getElementById('custom-stat-changed') as HTMLElement;
+  const customStatUnchanged = document.getElementById('custom-stat-unchanged') as HTMLElement;
+  const customStatForms = document.getElementById('custom-stat-forms') as HTMLElement;
+  const customStatPrgs = document.getElementById('custom-stat-prgs') as HTMLElement;
+  const customStatReports = document.getElementById('custom-stat-reports') as HTMLElement;
+
+  const cntFilterAll = document.getElementById('cnt-filter-all') as HTMLElement;
+  const cntFilterChanged = document.getElementById('cnt-filter-changed') as HTMLElement;
+  const cntFilterUnchanged = document.getElementById('cnt-filter-unchanged') as HTMLElement;
+  const cntFilterForms = document.getElementById('cnt-filter-forms') as HTMLElement;
+  const cntFilterPrgs = document.getElementById('cnt-filter-prgs') as HTMLElement;
+  const cntFilterReports = document.getElementById('cnt-filter-reports') as HTMLElement;
+
+  const customItemsTbody = document.getElementById('custom-items-tbody') as HTMLTableSectionElement;
+  const customSearchInput = document.getElementById('custom-search-input') as HTMLInputElement;
+
+  const customDiffModal = document.getElementById('custom-diff-modal') as HTMLElement;
+  const customModalTitle = document.getElementById('custom-modal-title') as HTMLElement;
+  const customModalSubtitle = document.getElementById('custom-modal-subtitle') as HTMLElement;
+  const customModalIframe = document.getElementById('custom-modal-iframe') as HTMLIFrameElement;
+  const btnCloseCustomModal = document.getElementById('btn-close-custom-modal') as HTMLButtonElement;
+  const btnDownloadCustomModal = document.getElementById('btn-download-custom-modal') as HTMLButtonElement;
+
+  let activeSummary: AnalysisSummary | null = null;
+  let activeFilter: string = 'all';
+  let activeSearchTerm: string = '';
+  let activeModalItem: CustomizedItem | null = null;
+
+  customFolderInput?.addEventListener('change', async (e) => {
+    const files = (e.target as HTMLInputElement).files;
+    if (!files || files.length === 0) return;
+
+    if (customFolderCount) {
+      customFolderCount.textContent = `${files.length.toLocaleString()} arquivos carregados do repositório`;
+      customFolderCount.classList.remove('hidden');
+    }
+
+    if (customProgressContainer) customProgressContainer.classList.remove('hidden');
+    if (customResultsContainer) customResultsContainer.classList.add('hidden');
+
+    if (customProgressMessage) customProgressMessage.textContent = 'Carregando arquivos do repositório...';
+    if (customProgressPercent) customProgressPercent.textContent = '0%';
+    if (customProgressBar) customProgressBar.style.width = '0%';
+
+    // Yield para garantir a renderização imediata do container de carregamento no navegador
+    await new Promise(r => setTimeout(r, 50));
+
+    try {
+      activeSummary = await analyzeRepositoryCustomizations(files, (msg, percent) => {
+        if (customProgressMessage) customProgressMessage.textContent = msg;
+        if (percent !== undefined) {
+          if (customProgressPercent) customProgressPercent.textContent = `${percent}%`;
+          if (customProgressBar) customProgressBar.style.width = `${percent}%`;
+        }
+      });
+
+      renderCustomSummary(activeSummary);
+      if (customResultsContainer) customResultsContainer.classList.remove('hidden');
+    } catch (err: any) {
+      console.error(err);
+      alert(`Erro ao analisar repositório: ${err?.message || err}`);
+    } finally {
+      if (customProgressContainer) customProgressContainer.classList.add('hidden');
+    }
+  });
+
+  function renderCustomSummary(summary: AnalysisSummary) {
+    if (customStatTotal) customStatTotal.textContent = summary.totalCustomizations.toString();
+    if (customStatChanged) customStatChanged.textContent = summary.hasChangesCount.toString();
+    if (customStatUnchanged) customStatUnchanged.textContent = summary.noChangesCount.toString();
+    if (customStatForms) customStatForms.textContent = summary.formCount.toString();
+    if (customStatPrgs) customStatPrgs.textContent = summary.prgCount.toString();
+    if (customStatReports) customStatReports.textContent = summary.reportCount.toString();
+
+    if (cntFilterAll) cntFilterAll.textContent = summary.totalCustomizations.toString();
+    if (cntFilterChanged) cntFilterChanged.textContent = summary.hasChangesCount.toString();
+    if (cntFilterUnchanged) cntFilterUnchanged.textContent = summary.noChangesCount.toString();
+    if (cntFilterForms) cntFilterForms.textContent = summary.formCount.toString();
+    if (cntFilterPrgs) cntFilterPrgs.textContent = summary.prgCount.toString();
+    if (cntFilterReports) cntFilterReports.textContent = summary.reportCount.toString();
+
+    renderCustomItemsTable();
+  }
+
+  function renderCustomItemsTable() {
+    if (!activeSummary || !customItemsTbody) return;
+
+    const filtered = activeSummary.items.filter(item => {
+      // Filtro por categoria / status
+      if (activeFilter === 'changed' && !item.hasChanges) return false;
+      if (activeFilter === 'unchanged' && item.hasChanges) return false;
+      if (activeFilter === 'form' && item.category !== 'FORM') return false;
+      if (activeFilter === 'prg' && item.category !== 'PRG') return false;
+      if (activeFilter === 'report' && item.category !== 'REPORT') return false;
+
+      // Filtro por texto de busca
+      if (activeSearchTerm.trim()) {
+        const term = activeSearchTerm.toLowerCase();
+        const matchName = item.name.toLowerCase().includes(term);
+        const matchCustomPath = item.relativePathCustom.toLowerCase().includes(term);
+        const matchStdPath = item.relativePathStandard.toLowerCase().includes(term);
+        if (!matchName && !matchCustomPath && !matchStdPath) return false;
+      }
+
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      customItemsTbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="px-4 py-8 text-center text-gray-500 italic">
+            Nenhuma customização encontrada para os filtros selecionados.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    customItemsTbody.innerHTML = filtered.map(item => {
+      let categoryBadge = '';
+      if (item.category === 'FORM') {
+        categoryBadge = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-indigo-100 text-indigo-800">FORM</span>`;
+      } else if (item.category === 'PRG') {
+        categoryBadge = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-teal-100 text-teal-800">PRG</span>`;
+      } else if (item.category === 'REPORT') {
+        categoryBadge = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-purple-100 text-purple-800">REPORT</span>`;
+      } else {
+        categoryBadge = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-800">OUTRO</span>`;
+      }
+
+      let statusBadge = '';
+      if (item.error) {
+        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">Erro</span>`;
+      } else if (item.hasChanges) {
+        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-800">Com Alteração</span>`;
+      } else {
+        statusBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">Sem Alteração</span>`;
+      }
+
+      return `
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 whitespace-nowrap">${categoryBadge}</td>
+          <td class="px-4 py-3 font-bold text-gray-800 whitespace-nowrap">${item.name}</td>
+          <td class="px-4 py-3 text-xs text-gray-600 font-mono">${item.relativePathCustom}</td>
+          <td class="px-4 py-3 text-xs text-gray-500 font-mono">${item.relativePathStandard}</td>
+          <td class="px-4 py-3 text-center whitespace-nowrap">${statusBadge}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap space-x-2">
+            <button type="button" class="btn-view-custom-diff bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs py-1.5 px-3 rounded-lg shadow transition-colors" data-id="${item.id}">
+              Ver Alterações
+            </button>
+            <button type="button" class="btn-download-custom-diff bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 transition-colors" data-id="${item.id}" title="Baixar HTML da comparação">
+              📥
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Event listeners dos botões da tabela
+    customItemsTbody.querySelectorAll('.btn-view-custom-diff').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+        openCustomDiffModal(id);
+      });
+    });
+
+    customItemsTbody.querySelectorAll('.btn-download-custom-diff').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+        downloadCustomDiffHtml(id);
+      });
+    });
+  }
+
+  // Event Listeners dos cards de métricas para aplicar filtros rápidos
+  document.getElementById('custom-card-total')?.addEventListener('click', () => setCustomFilter('all'));
+  document.getElementById('custom-card-changed')?.addEventListener('click', () => setCustomFilter('changed'));
+  document.getElementById('custom-card-unchanged')?.addEventListener('click', () => setCustomFilter('unchanged'));
+  document.getElementById('custom-card-forms')?.addEventListener('click', () => setCustomFilter('form'));
+  document.getElementById('custom-card-prgs')?.addEventListener('click', () => setCustomFilter('prg'));
+  document.getElementById('custom-card-reports')?.addEventListener('click', () => setCustomFilter('report'));
+
+  // Event Listeners dos botões de filtro
+  document.querySelectorAll('.custom-filter-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const filter = (e.currentTarget as HTMLElement).getAttribute('data-filter');
+      if (filter) setCustomFilter(filter);
+    });
+  });
+
+  function setCustomFilter(filter: string) {
+    activeFilter = filter;
+    document.querySelectorAll('.custom-filter-btn').forEach(btn => {
+      const btnFilter = btn.getAttribute('data-filter');
+      if (btnFilter === filter) {
+        btn.classList.replace('bg-gray-200', 'bg-blue-700');
+        btn.classList.replace('text-gray-700', 'text-white');
+      } else {
+        btn.classList.replace('bg-blue-700', 'bg-gray-200');
+        btn.classList.replace('text-white', 'text-gray-700');
+      }
+    });
+    renderCustomItemsTable();
+  }
+
+  customSearchInput?.addEventListener('input', (e) => {
+    activeSearchTerm = (e.target as HTMLInputElement).value;
+    renderCustomItemsTable();
+  });
+
+  function openCustomDiffModal(itemId: string | null) {
+    if (!activeSummary || !itemId) return;
+    const item = activeSummary.items.find(i => i.id === itemId);
+    if (!item) return;
+
+    activeModalItem = item;
+    const stdText = item.standardText || '';
+    const custText = item.customText || '';
+
+    const htmlContent = generateDiffHtml(stdText, custText, baseHtmlTemplate, item.name, 'CUSTOMIZADO');
+
+    if (customModalTitle) customModalTitle.textContent = `Customização: ${item.name} (${item.category})`;
+    if (customModalSubtitle) customModalSubtitle.textContent = `${item.relativePathCustom} vs ${item.relativePathStandard}`;
+    if (customModalIframe) customModalIframe.srcdoc = htmlContent;
+
+    if (customDiffModal) customDiffModal.classList.remove('hidden');
+  }
+
+  function downloadCustomDiffHtml(itemId: string | null) {
+    if (!activeSummary || !itemId) return;
+    const item = activeSummary.items.find(i => i.id === itemId);
+    if (!item) return;
+
+    const stdText = item.standardText || '';
+    const custText = item.customText || '';
+    handleTextProcess(stdText, custText, baseHtmlTemplate, item.name, 'CUSTOMIZADO');
+  }
+
+  btnCloseCustomModal?.addEventListener('click', () => {
+    if (customDiffModal) customDiffModal.classList.add('hidden');
+    if (customModalIframe) customModalIframe.srcdoc = '';
+    activeModalItem = null;
+  });
+
+  btnDownloadCustomModal?.addEventListener('click', () => {
+    if (activeModalItem) {
+      downloadCustomDiffHtml(activeModalItem.id);
     }
   });
 

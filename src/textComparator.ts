@@ -12,17 +12,26 @@ function escapeHtml(unsafe: string) {
          .replace(/ /g, "&nbsp;");
 }
 
-export function generateDiffRows(originalText: string, modifiedText: string): string {
-    const differences = diff.diffLines(originalText, modifiedText);
+export function generateDiffRows(originalText: string, modifiedText: string, ignoreCase: boolean = true): string {
+    const differences = (diff as any).diffLines(originalText, modifiedText, { ignoreCase });
     
     let htmlRows = '';
     function renderModifiedLine(oldLine: string, newLine: string) {
-        const wordDiff = diff.diffWordsWithSpace(oldLine, newLine);
+        if (ignoreCase && oldLine.toLowerCase() === newLine.toLowerCase()) {
+            return `
+<tr class="SectionMiddle">
+<td class="TextItemSame Wrap">${escapeHtml(oldLine)}</td>
+<td class="AlignCenter Wrap">=</td>
+<td class="TextItemSame Wrap">${escapeHtml(newLine)}</td>
+</tr>`;
+        }
+
+        const wordDiff = (diff as any).diffWordsWithSpace(oldLine, newLine, { ignoreCase });
         
         let leftHtml = '';
         let rightHtml = '';
         
-        wordDiff.forEach(part => {
+        wordDiff.forEach((part: any) => {
             const escaped = escapeHtml(part.value);
             if (part.removed) {
                 leftHtml += `<span class="TextSegSigDiff">${escaped}</span>`;
@@ -90,7 +99,7 @@ export function generateDiffRows(originalText: string, modifiedText: string): st
         const lines = part.value.split('\n');
         if (lines[lines.length - 1] === '') lines.pop();
 
-        lines.forEach(line => {
+        lines.forEach((line: string) => {
             const escapedLine = escapeHtml(line) || '&nbsp;';
             if (part.added) {
                 htmlRows += `
@@ -120,8 +129,8 @@ export function generateDiffRows(originalText: string, modifiedText: string): st
     return htmlRows.trim();
 }
 
-export function generateDiffHtml(originalText: string, modifiedText: string, baseContent: string, fileName: string, customPrefix: string = ''): string {
-    const htmlRows = generateDiffRows(originalText, modifiedText);
+export function generateDiffHtml(originalText: string, modifiedText: string, baseContent: string, fileName: string, customPrefix: string = '', ignoreCase: boolean = true): string {
+    const htmlRows = generateDiffRows(originalText, modifiedText, ignoreCase);
 
     // Substitui no template
     let finalHtml = baseContent.replace('[[CONTEUDO_COMPARADO]]', () => htmlRows);
