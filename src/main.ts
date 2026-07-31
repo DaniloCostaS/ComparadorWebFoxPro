@@ -573,6 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Code References Logic ---
   const crFolderInput = document.getElementById('cr-folder-input') as HTMLInputElement;
   const crFolderCount = document.getElementById('cr-folder-count') as HTMLElement;
+  const crRootPathInput = document.getElementById('cr-root-path') as HTMLInputElement;
   const crSearchTerm = document.getElementById('cr-search-term') as HTMLInputElement;
   const btnCrAddTerm = document.getElementById('btn-cr-add-term') as HTMLButtonElement;
   const crSearchTags = document.getElementById('cr-search-tags') as HTMLElement;
@@ -584,6 +585,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const crResultsContainer = document.getElementById('cr-results-container') as HTMLElement;
   const crResultsStats = document.getElementById('cr-results-stats') as HTMLElement;
   const crTreeView = document.getElementById('cr-tree-view') as HTMLElement;
+
+  // Restaurar e persistir caminho raiz local (Padrão: C:\TestesVF)
+  if (crRootPathInput) {
+      const savedRoot = localStorage.getItem('crRootPath');
+      if (savedRoot !== null && savedRoot.trim().length > 0) {
+          crRootPathInput.value = savedRoot;
+      } else {
+          crRootPathInput.value = 'C:\\TestesVF';
+          localStorage.setItem('crRootPath', 'C:\\TestesVF');
+      }
+      crRootPathInput.addEventListener('input', () => {
+          localStorage.setItem('crRootPath', crRootPathInput.value.trim());
+      });
+  }
 
   const btnCrExpand = document.getElementById('btn-cr-expand') as HTMLButtonElement;
   const btnCrCollapse = document.getElementById('btn-cr-collapse') as HTMLButtonElement;
@@ -690,7 +705,8 @@ document.addEventListener('DOMContentLoaded', () => {
           );
           
           crResultsStats.textContent = `Encontrados ${results.length} resultados.`;
-          renderTreeResults(results, crTreeView);
+          const rootPath = crRootPathInput ? crRootPathInput.value.trim() : '';
+          renderTreeResults(results, crTreeView, rootPath);
       } catch (err: any) {
           console.error(err);
           crResultsStats.textContent = 'Erro ao pesquisar.';

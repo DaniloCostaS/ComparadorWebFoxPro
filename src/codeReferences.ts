@@ -191,7 +191,73 @@ export async function handleCodeReferencesSearch(
     return results;
 }
 
-export function renderTreeResults(results: SearchResult[], container: HTMLElement) {
+export async function openLocalFile(fullPath: string, line: number = 1, target: 'foxpro' | 'vscode' | 'system' = 'foxpro') {
+    try {
+        const res = await fetch(`/api/open-file?file=${encodeURIComponent(fullPath)}&line=${line}&target=${target}`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success) return true;
+        } else {
+            const errData = await res.json().catch(() => ({}));
+            if (errData.error) {
+                alert(`⚠️ Erro ao abrir arquivo:\n${errData.error}`);
+                return false;
+            }
+        }
+    } catch (e) {
+        // Backend Vite não disponível (HTML estático)
+    }
+
+    // Fallbacks via protocolo registrado no SO
+    if (target === 'vscode') {
+        window.location.href = `vscode://file/${fullPath.replace(/\\/g, '/')}:${line}`;
+    } else if (target === 'foxpro') {
+        window.location.href = `foxpro://open?file=${encodeURIComponent(fullPath)}&line=${line}`;
+    }
+    return false;
+}
+
+export function combinePaths(rootPath: string, relativePath: string): string {
+    const cleanRoot = rootPath.trim().replace(/[\/\\]+$/, '');
+    if (!cleanRoot) return relativePath.replace(/\//g, '\\');
+
+    const rootParts = cleanRoot.split(/[\/\\]/).filter(Boolean);
+    const relParts = relativePath.split(/[\/\\]/).filter(Boolean);
+
+    const lastRootFolder = rootParts[rootParts.length - 1]?.toLowerCase();
+    const firstRelFolder = relParts[0]?.toLowerCase();
+
+    if (lastRootFolder && firstRelFolder && lastRootFolder === firstRelFolder) {
+        relParts.shift();
+    }
+
+    return `${cleanRoot}\\${relParts.join('\\')}`;
+}
+
+export function getFoxProCommand(fullPath: string, line?: number): string {
+    const ext = fullPath.split('.').pop()?.toLowerCase() || '';
+    if (ext === 'scx' || ext === 'sct') {
+        return `MODIFY FORM "${fullPath}"`;
+    } else if (ext === 'vcx' || ext === 'vct') {
+        return `MODIFY CLASS ? OF "${fullPath}"`;
+    } else if (ext === 'frx' || ext === 'frt') {
+        return `MODIFY REPORT "${fullPath}"`;
+    } else if (ext === 'prg') {
+        return (line && line > 1) ? `MODIFY COMMAND "${fullPath}" RANGE ${line}` : `MODIFY COMMAND "${fullPath}"`;
+    }
+    return `MODIFY COMMAND "${fullPath}"`;
+}
+
+function showCopyFeedback(btn: HTMLElement, originalText: string) {
+    btn.textContent = '✓ Copiado!';
+    btn.classList.add('bg-green-100', 'text-green-800');
+    setTimeout(() => {
+        btn.textContent = originalText;
+        btn.classList.remove('bg-green-100', 'text-green-800');
+    }, 1500);
+}
+
+export function renderTreeResults(results: SearchResult[], container: HTMLElement, rootPath: string = '') {
     container.innerHTML = '';
     
     if (results.length === 0) {
@@ -218,22 +284,81 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
     ul.className = 'divide-y divide-gray-200';
 
     for (const [filePath, methods] of Array.from(tree.entries()).sort()) {
+        const fullPath = combinePaths(rootPath, filePath);
+
         const fileLi = document.createElement('li');
         fileLi.className = 'bg-gray-50';
 
         const fileHeader = document.createElement('div');
-        fileHeader.className = 'flex items-center px-4 py-2 cursor-pointer hover:bg-gray-100 font-bold text-gray-700 select-none';
+        fileHeader.className = 'flex items-center justify-between px-4 py-2 hover:bg-gray-100 font-bold text-gray-700 select-none cursor-pointer';
         
+        const fileHeaderLeft = document.createElement('div');
+        fileHeaderLeft.className = 'flex items-center flex-1 overflow-hidden mr-2';
+
         const fileIcon = document.createElement('span');
-        fileIcon.innerHTML = `<svg class="w-4 h-4 mr-2 text-blue-600 transition-transform transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`;
+        fileIcon.innerHTML = `<svg class="w-4 h-4 mr-2 text-blue-600 transition-transform transform rotate-90 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`;
         
-        fileHeader.appendChild(fileIcon);
-        fileHeader.appendChild(document.createTextNode(filePath));
-        
-        const methodsUl = document.createElement('ul');
-        methodsUl.className = 'pl-6 divide-y divide-gray-100';
+        const fileNameSpan = document.createElement('span');
+        fileNameSpan.className = 'truncate';
+        fileNameSpan.textContent = filePath;
+        fileNameSpan.title = fullPath;
+
+        fileHeaderLeft.appendChild(fileIcon);
+        fileHeaderLeft.appendChild(fileNameSpan);
+
+        // Botões de ação no cabeçalho do arquivo
+        const fileActions = document.createElement('div');
+        fileActions.className = 'flex items-center space-x-1 flex-shrink-0';
+        fileActions.addEventListener('click', (e) => e.stopPropagation());
+
+        // Botão FoxPro
+        const btnFox = document.createElement('button');
+        btnFox.type = 'button';
+        btnFox.className = 'px-2 py-0.5 text-xs bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded font-semibold transition-colors flex items-center gap-1 cursor-pointer';
+        btnFox.title = `Abrir no Visual FoxPro: ${fullPath}`;
+        btnFox.innerHTML = `🦊 FoxPro`;
+        btnFox.addEventListener('click', () => openLocalFile(fullPath, 1, 'foxpro'));
+
+        // Botão VS Code
+        const btnCode = document.createElement('button');
+        btnCode.type = 'button';
+        btnCode.className = 'px-2 py-0.5 text-xs bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300 rounded font-semibold transition-colors flex items-center gap-1 cursor-pointer';
+        btnCode.title = `Abrir no VS Code: ${fullPath}`;
+        btnCode.innerHTML = `📝 VS Code`;
+        btnCode.addEventListener('click', () => openLocalFile(fullPath, 1, 'vscode'));
+
+        // Copiar Comando VFP
+        const btnCopyCmd = document.createElement('button');
+        btnCopyCmd.type = 'button';
+        btnCopyCmd.className = 'px-2 py-0.5 text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 rounded font-semibold transition-colors cursor-pointer';
+        btnCopyCmd.title = 'Copiar Comando FoxPro (MODIFY FORM/COMMAND)';
+        btnCopyCmd.textContent = '💬 Cmd VFP';
+        btnCopyCmd.addEventListener('click', () => {
+            const cmd = getFoxProCommand(fullPath);
+            navigator.clipboard.writeText(cmd);
+            showCopyFeedback(btnCopyCmd, '💬 Cmd VFP');
+        });
+
+        // Copiar Caminho
+        const btnCopyPath = document.createElement('button');
+        btnCopyPath.type = 'button';
+        btnCopyPath.className = 'px-2 py-0.5 text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 rounded font-semibold transition-colors cursor-pointer';
+        btnCopyPath.title = 'Copiar Caminho Absoluto do Arquivo';
+        btnCopyPath.textContent = '📋 Caminho';
+        btnCopyPath.addEventListener('click', () => {
+            navigator.clipboard.writeText(fullPath);
+            showCopyFeedback(btnCopyPath, '📋 Caminho');
+        });
 
         let fileTotalMatches = 0;
+
+        fileActions.appendChild(btnFox);
+        fileActions.appendChild(btnCode);
+        fileActions.appendChild(btnCopyCmd);
+        fileActions.appendChild(btnCopyPath);
+
+        const methodsUl = document.createElement('ul');
+        methodsUl.className = 'pl-6 divide-y divide-gray-100';
 
         for (const [methodName, matches] of Array.from(methods.entries()).sort()) {
             fileTotalMatches += matches.length;
@@ -254,17 +379,63 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
             
             for (const match of matches) {
                 const matchLi = document.createElement('li');
-                matchLi.className = 'px-4 py-1 flex flex-col font-mono text-xs hover:bg-yellow-50 text-gray-600 border-l-2 border-transparent hover:border-yellow-400';
+                matchLi.className = 'px-4 py-2 flex flex-col font-mono text-xs hover:bg-yellow-50 text-gray-600 border-l-2 border-transparent hover:border-yellow-400 group';
                 
+                const lineRow = document.createElement('div');
+                lineRow.className = 'flex items-center justify-between mb-1';
+
                 const lineInfo = document.createElement('span');
-                lineInfo.className = 'text-gray-400 text-[10px] mb-0.5';
+                lineInfo.className = 'text-gray-400 text-[11px] font-bold';
                 lineInfo.textContent = `Linha ${match.lineNumber}`;
-                
+
+                // Action buttons inline for the line
+                const lineActions = document.createElement('div');
+                lineActions.className = 'flex items-center space-x-1 opacity-90 group-hover:opacity-100 transition-opacity';
+
+                const btnLineFox = document.createElement('button');
+                btnLineFox.type = 'button';
+                btnLineFox.className = 'px-1.5 py-0.5 text-[10px] bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded font-semibold cursor-pointer';
+                btnLineFox.title = `Abrir no FoxPro na Linha ${match.lineNumber}`;
+                btnLineFox.textContent = '🦊 FoxPro';
+                btnLineFox.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openLocalFile(fullPath, match.lineNumber, 'foxpro');
+                });
+
+                const btnLineCode = document.createElement('button');
+                btnLineCode.type = 'button';
+                btnLineCode.className = 'px-1.5 py-0.5 text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300 rounded font-semibold cursor-pointer';
+                btnLineCode.title = `Abrir no VS Code na Linha ${match.lineNumber}`;
+                btnLineCode.textContent = '📝 VS Code';
+                btnLineCode.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openLocalFile(fullPath, match.lineNumber, 'vscode');
+                });
+
+                const btnLineCmd = document.createElement('button');
+                btnLineCmd.type = 'button';
+                btnLineCmd.className = 'px-1.5 py-0.5 text-[10px] bg-gray-200 hover:bg-gray-300 text-gray-800 rounded font-semibold cursor-pointer';
+                btnLineCmd.title = 'Copiar Comando FoxPro da Linha';
+                btnLineCmd.textContent = '💬 Cmd VFP';
+                btnLineCmd.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const cmd = getFoxProCommand(fullPath, match.lineNumber);
+                    navigator.clipboard.writeText(cmd);
+                    showCopyFeedback(btnLineCmd, '💬 Cmd VFP');
+                });
+
+                lineActions.appendChild(btnLineFox);
+                lineActions.appendChild(btnLineCode);
+                lineActions.appendChild(btnLineCmd);
+
+                lineRow.appendChild(lineInfo);
+                lineRow.appendChild(lineActions);
+
                 const codeSpan = document.createElement('span');
-                codeSpan.className = 'whitespace-pre-wrap break-all';
+                codeSpan.className = 'whitespace-pre-wrap break-all bg-amber-50/50 p-1.5 rounded border border-amber-100 text-gray-800';
                 codeSpan.textContent = match.code;
                 
-                matchLi.appendChild(lineInfo);
+                matchLi.appendChild(lineRow);
                 matchLi.appendChild(codeSpan);
                 matchesUl.appendChild(matchLi);
             }
@@ -281,8 +452,11 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
         }
 
         const fileBadge = document.createElement('span');
-        fileBadge.className = 'ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded';
+        fileBadge.className = 'ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded';
         fileBadge.textContent = fileTotalMatches.toString();
+
+        fileHeader.appendChild(fileHeaderLeft);
+        fileHeader.appendChild(fileActions);
         fileHeader.appendChild(fileBadge);
 
         fileHeader.addEventListener('click', () => {
