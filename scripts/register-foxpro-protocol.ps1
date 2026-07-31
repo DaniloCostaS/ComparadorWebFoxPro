@@ -55,9 +55,9 @@ $vfpCmd = switch ($ext) {
 
 $opened = $false
 
-# 1. Tenta COM Ativo (Janela do Visual FoxPro já aberta)
+# Abre SEMPRE uma NOVA instância do Visual FoxPro (ComObject cria novo processo)
 try {
-    $vfp = [System.Runtime.InteropServices.Marshal]::GetActiveObject("VisualFoxPro.Application")
+    $vfp = New-Object -ComObject VisualFoxPro.Application
     if ($vfp) {
         $vfp.Visible = $true
         $vfp.DoCmd("SET DEFAULT TO '$fileDir'")
@@ -66,20 +66,7 @@ try {
     }
 } catch {}
 
-# 2. Tenta Novo Objeto COM
-if (-not $opened) {
-    try {
-        $vfp = New-Object -ComObject VisualFoxPro.Application
-        if ($vfp) {
-            $vfp.Visible = $true
-            $vfp.DoCmd("SET DEFAULT TO '$fileDir'")
-            $vfp.DoCmd($vfpCmd)
-            $opened = $true
-        }
-    } catch {}
-}
-
-# 3. Fallback para vfp9.exe ou associação do SO
+# Fallback para vfp9.exe executável se COM falhar
 if (-not $opened) {
     $vfpExe = "C:\Program Files (x86)\Microsoft Visual FoxPro 9\vfp9.exe"
     if (Test-Path $vfpExe) {
@@ -91,13 +78,13 @@ if (-not $opened) {
     }
 }
 
-# Foca a janela do Visual FoxPro para trazer para a frente
+# Foca a nova janela do Visual FoxPro para trazer para a frente
 try {
-    Start-Sleep -Milliseconds 300
+    Start-Sleep -Milliseconds 400
     $wshell = New-Object -ComObject WScript.Shell
-    $vfpProc = Get-Process vfp9 -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($vfpProc) {
-        $wshell.AppActivate($vfpProc.Id)
+    $vfpProcs = Get-Process vfp9 -ErrorAction SilentlyContinue | Sort-Object StartTime -Descending
+    if ($vfpProcs) {
+        $wshell.AppActivate($vfpProcs[0].Id)
     } else {
         $wshell.AppActivate("Visual FoxPro")
     }
@@ -112,7 +99,7 @@ try {
     $cmdValue = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$launcherPath`" `"%1`""
     New-ItemProperty -Path $CommandPath -Name "(default)" -Value $cmdValue -PropertyType String -Force | Out-Null
 
-    Write-Host "✅ Protocolo foxpro:// registrado com sucesso no Windows!" -ForegroundColor Green
+    Write-Host "✅ Protocolo foxpro:// registrado com sucesso no Windows (Modo Nova Instância)!" -ForegroundColor Green
     Write-Host "Launcher salvo em: $launcherPath" -ForegroundColor Cyan
 } catch {
     Write-Host "❌ Erro ao registrar protocolo foxpro://: $_" -ForegroundColor Red

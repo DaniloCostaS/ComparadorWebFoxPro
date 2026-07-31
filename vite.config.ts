@@ -115,7 +115,7 @@ $vfpCmd = "${vfpCmd.replace(/"/g, '`"')}";
 $opened = $false;
 
 try {
-    $vfp = [System.Runtime.InteropServices.Marshal]::GetActiveObject("VisualFoxPro.Application");
+    $vfp = New-Object -ComObject VisualFoxPro.Application;
     if ($vfp) {
         $vfp.Visible = $true;
         $vfp.DoCmd("SET DEFAULT TO '$fileDir'");
@@ -123,18 +123,6 @@ try {
         $opened = $true;
     }
 } catch {}
-
-if (-not $opened) {
-    try {
-        $vfp = New-Object -ComObject VisualFoxPro.Application;
-        if ($vfp) {
-            $vfp.Visible = $true;
-            $vfp.DoCmd("SET DEFAULT TO '$fileDir'");
-            $vfp.DoCmd($vfpCmd);
-            $opened = $true;
-        }
-    } catch {}
-}
 
 if (-not $opened) {
     $tempPrg = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "vfp_open_file.prg");
