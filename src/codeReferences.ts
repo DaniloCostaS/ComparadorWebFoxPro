@@ -192,28 +192,56 @@ export async function handleCodeReferencesSearch(
 }
 
 export async function openLocalFile(fullPath: string, line: number = 1, target: 'foxpro' | 'vscode' | 'system' = 'foxpro') {
+    let apiResponded = false;
     try {
         const res = await fetch(`/api/open-file?file=${encodeURIComponent(fullPath)}&line=${line}&target=${target}`);
+        
+        let data: any = null;
+        try {
+            data = await res.json();
+        } catch {}
+
+        if (res.ok && data?.success) {
+            return true;
+        }
+
+        if (data && data.success === false && data.error) {
+            alert(`⚠️ Erro ao abrir arquivo:\n${data.error}`);
+            return false;
+        }
+
         if (res.ok) {
-            const data = await res.json();
-            if (data.success) return true;
-        } else {
-            const errData = await res.json().catch(() => ({}));
-            if (errData.error) {
-                alert(`⚠️ Erro ao abrir arquivo:\n${errData.error}`);
-                return false;
-            }
+            apiResponded = true;
         }
     } catch (e) {
-        // Backend Vite não disponível (HTML estático)
+        // Backend Vite não disponível (servidor estático ou file://)
     }
+
+    // Se o backend chamou e retornou sucesso falso com mensagem tratada, cancela fallback
+    if (apiResponded) return false;
 
     // Fallbacks via protocolo registrado no SO
     if (target === 'vscode') {
-        window.location.href = `vscode://file/${fullPath.replace(/\\/g, '/')}:${line}`;
+        try {
+            window.location.href = `vscode://file/${fullPath.replace(/\\/g, '/')}:${line}`;
+            return true;
+        } catch {}
     } else if (target === 'foxpro') {
-        window.location.href = `foxpro://open?file=${encodeURIComponent(fullPath)}&line=${line}`;
+        try {
+            window.location.href = `foxpro://open?file=${encodeURIComponent(fullPath)}&line=${line}`;
+            return true;
+        } catch {}
     }
+
+    // Se não houver backend ativo e o protocolo falhar, copia o comando FoxPro para a área de transferência
+    const vfpCmd = getFoxProCommand(fullPath, line);
+    try {
+        await navigator.clipboard.writeText(vfpCmd);
+        alert(`ℹ️ O servidor local Vite não respondeu. O comando FoxPro foi copiado para a área de transferência:\n\n${vfpCmd}`);
+    } catch {
+        alert(`ℹ️ Comando FoxPro:\n${vfpCmd}`);
+    }
+
     return false;
 }
 
