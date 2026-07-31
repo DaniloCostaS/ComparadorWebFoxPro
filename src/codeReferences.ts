@@ -192,35 +192,38 @@ export async function handleCodeReferencesSearch(
 }
 
 export async function openLocalFile(fullPath: string, line: number = 1, target: 'foxpro' | 'vscode' | 'system' = 'foxpro') {
-    let apiResponded = false;
-    try {
-        const res = await fetch(`/api/open-file?file=${encodeURIComponent(fullPath)}&line=${line}&target=${target}`);
-        
-        let data: any = null;
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+    if (isLocalhost) {
         try {
-            data = await res.json();
-        } catch {}
+            const res = await fetch(`/api/open-file?file=${encodeURIComponent(fullPath)}&line=${line}&target=${target}`);
+            let data: any = null;
+            try { data = await res.json(); } catch {}
 
-        if (res.ok && data?.success) {
-            return true;
+            if (res.ok && data?.success) return true;
+            if (data && data.success === false && data.error) {
+                alert(`⚠️ Erro ao abrir arquivo:\n${data.error}`);
+                return false;
+            }
+        } catch (e) {
+            // Backend Vite local indisponível
         }
-
-        if (data && data.success === false && data.error) {
-            alert(`⚠️ Erro ao abrir arquivo:\n${data.error}`);
-            return false;
+    } else {
+        // Se a aplicação estiver hospedada na nuvem (ex: Render.com), tenta se há um dev server Vite local ativo na porta 5173
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 600);
+            const res = await fetch(`http://localhost:5173/api/open-file?file=${encodeURIComponent(fullPath)}&line=${line}&target=${target}`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            let data: any = null;
+            try { data = await res.json(); } catch {}
+            if (res.ok && data?.success) return true;
+        } catch (e) {
+            // Servidor Vite local não está escutando na porta 5173
         }
-
-        if (res.ok) {
-            apiResponded = true;
-        }
-    } catch (e) {
-        // Backend Vite não disponível (servidor estático ou file://)
     }
 
-    // Se o backend chamou e retornou sucesso falso com mensagem tratada, cancela fallback
-    if (apiResponded) return false;
-
-    // Fallbacks via protocolo registrado no SO
+    // Fallback nativo via esquema de protocolo do SO (foxpro:// ou vscode://)
     if (target === 'vscode') {
         try {
             window.location.href = `vscode://file/${fullPath.replace(/\\/g, '/')}:${line}`;
@@ -233,11 +236,11 @@ export async function openLocalFile(fullPath: string, line: number = 1, target: 
         } catch {}
     }
 
-    // Se não houver backend ativo e o protocolo falhar, copia o comando FoxPro para a área de transferência
+    // Se falhar tudo, copia o comando FoxPro para a área de transferência
     const vfpCmd = getFoxProCommand(fullPath, line);
     try {
         await navigator.clipboard.writeText(vfpCmd);
-        alert(`ℹ️ O servidor local Vite não respondeu. O comando FoxPro foi copiado para a área de transferência:\n\n${vfpCmd}`);
+        alert(`ℹ️ O comando FoxPro foi copiado para a área de transferência:\n\n${vfpCmd}`);
     } catch {
         alert(`ℹ️ Comando FoxPro:\n${vfpCmd}`);
     }

@@ -27,7 +27,10 @@ if ($raw -match "line=([^&]+)") {
 }
 
 if (-not $file -or -not (Test-Path $file)) {
-    [System.Windows.Forms.MessageBox]::Show("Arquivo não encontrado no disco:`n$file", "FoxPro Protocol Launcher", 0, 48)
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        [System.Windows.Forms.MessageBox]::Show("Arquivo não encontrado no disco:`n$file", "FoxPro Protocol Launcher", 0, 48)
+    } catch {}
     exit
 }
 
@@ -87,6 +90,18 @@ if (-not $opened) {
         Start-Process -FilePath "`"$file`""
     }
 }
+
+# Foca a janela do Visual FoxPro para trazer para a frente
+try {
+    Start-Sleep -Milliseconds 300
+    $wshell = New-Object -ComObject WScript.Shell
+    $vfpProc = Get-Process vfp9 -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($vfpProc) {
+        $wshell.AppActivate($vfpProc.Id)
+    } else {
+        $wshell.AppActivate("Visual FoxPro")
+    }
+} catch {}
 '@
 
     # Grava o launcher script na pasta do usuário
