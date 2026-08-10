@@ -11,12 +11,37 @@ function escapeRegExp(str: string) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function buildSearchRegex(term: string, matchExact: boolean, matchCase: boolean, ignoreSpaces: boolean): RegExp {
+    const flags = matchCase ? '' : 'i';
+    
+    if (!ignoreSpaces) {
+        const escaped = escapeRegExp(term);
+        const pattern = matchExact ? `\\b${escaped}\\b` : escaped;
+        return new RegExp(pattern, flags);
+    }
+
+    // Se ignoreSpaces for verdadeiro: permite \s* entre tokens, palavras e símbolos
+    const tokens = term.trim().split(/(\s+|[^a-zA-Z0-9_])/).filter(t => t.length > 0);
+    const patternParts = tokens.map(t => {
+        if (/^\s+$/.test(t)) return '\\s*';
+        if (/^[^a-zA-Z0-9_]$/.test(t)) return '\\s*' + escapeRegExp(t) + '\\s*';
+        return escapeRegExp(t);
+    });
+
+    let pattern = patternParts.join('').replace(/(\\s\*)+/g, '\\s*');
+    if (matchExact) {
+        pattern = `\\b${pattern}\\b`;
+    }
+    return new RegExp(pattern, flags);
+}
+
 export async function handleCodeReferencesSearch(
     files: FileList,
     searchTerms: string[],
     matchExact: boolean,
     matchCase: boolean,
     matchSameMethod: boolean,
+    ignoreSpaces: boolean,
     onProgress: (msg: string) => void
 ): Promise<SearchResult[]> {
     const parser = new FoxProParser();
@@ -24,6 +49,12 @@ export async function handleCodeReferencesSearch(
 
     const terms = searchTerms.filter(t => t.trim().length > 0);
     if (terms.length === 0) return [];
+
+    const termMatchers = terms.map(term => ({
+        term,
+        regex: buildSearchRegex(term, matchExact, matchCase, ignoreSpaces),
+        termClean: matchCase ? term.replace(/\s+/g, '') : term.toLowerCase().replace(/\s+/g, '')
+    }));
 
     const fileGroups = new Map<string, { scx?: File, sct?: File, vcx?: File, vct?: File, frx?: File, frt?: File, prg?: File, folderPath: string }>();
 
@@ -120,27 +151,23 @@ export async function handleCodeReferencesSearch(
                 if (trimmed === '') continue;
 
                 let lineHasAnyTerm = false;
-                const searchLine = matchCase ? line : line.toLowerCase();
 
-                for (const term of terms) {
-                    const searchTerm = matchCase ? term : term.toLowerCase();
-                    let termMatched = false;
+                for (const matcher of termMatchers) {
+                    // Reinicia o índice de busca da regex global/case
+                    matcher.regex.lastIndex = 0;
+                    let termMatched = matcher.regex.test(line);
 
-                    if (matchExact) {
-                        const regex = new RegExp(`\\b${escapeRegExp(searchTerm)}\\b`);
-                        if (regex.test(searchLine)) {
-                            termMatched = true;
-                        }
-                    } else {
-                        if (searchLine.includes(searchTerm)) {
+                    if (!termMatched && ignoreSpaces && !matchExact) {
+                        const searchLineClean = matchCase ? line.replace(/\s+/g, '') : line.toLowerCase().replace(/\s+/g, '');
+                        if (searchLineClean.includes(matcher.termClean)) {
                             termMatched = true;
                         }
                     }
 
                     if (termMatched) {
                         lineHasAnyTerm = true;
-                        currentMethod.foundTerms.add(term);
-                        fileFoundTerms.add(term);
+                        currentMethod.foundTerms.add(matcher.term);
+                        fileFoundTerms.add(matcher.term);
                     }
                 }
 
@@ -192,28 +219,59 @@ export async function handleCodeReferencesSearch(
 }
 
 export async function openLocalFile(fullPath: string, line: number = 1, target: 'foxpro' | 'vscode' | 'system' = 'foxpro') {
-    try {
-        const res = await fetch(`/api/open-file?file=${encodeURIComponent(fullPath)}&line=${line}&target=${target}`);
-        if (res.ok) {
-            const data = await res.json();
-            if (data.success) return true;
-        } else {
-            const errData = await res.json().catch(() => ({}));
-            if (errData.error) {
-                alert(`⚠️ Erro ao abrir arquivo:\n${errData.error}`);
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+    if (isLocalhost) {
+        try {
+            const res = await fetch(`/api/open-file?file=${encodeURIComponent(fullPath)}&line=${line}&target=${target}`);
+            let data: any = null;
+            try { data = await res.json(); } catch {}
+
+            if (res.ok && data?.success) return true;
+            if (data && data.success === false && data.error) {
+                alert(`⚠️ Erro ao abrir arquivo:\n${data.error}`);
                 return false;
             }
+        } catch (e) {
+            // Backend Vite local indisponível
         }
-    } catch (e) {
-        // Backend Vite não disponível (HTML estático)
+    } else {
+        // Se a aplicação estiver hospedada na nuvem (ex: Render.com), tenta se há um dev server Vite local ativo na porta 5173
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 600);
+            const res = await fetch(`http://localhost:5173/api/open-file?file=${encodeURIComponent(fullPath)}&line=${line}&target=${target}`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            let data: any = null;
+            try { data = await res.json(); } catch {}
+            if (res.ok && data?.success) return true;
+        } catch (e) {
+            // Servidor Vite local não está escutando na porta 5173
+        }
     }
 
-    // Fallbacks via protocolo registrado no SO
+    // Fallback nativo via esquema de protocolo do SO (foxpro:// ou vscode://)
     if (target === 'vscode') {
-        window.location.href = `vscode://file/${fullPath.replace(/\\/g, '/')}:${line}`;
+        try {
+            window.location.href = `vscode://file/${fullPath.replace(/\\/g, '/')}:${line}`;
+            return true;
+        } catch {}
     } else if (target === 'foxpro') {
-        window.location.href = `foxpro://open?file=${encodeURIComponent(fullPath)}&line=${line}`;
+        try {
+            window.location.href = `foxpro://open?file=${encodeURIComponent(fullPath)}&line=${line}`;
+            return true;
+        } catch {}
     }
+
+    // Se falhar tudo, copia o comando FoxPro para a área de transferência
+    const vfpCmd = getFoxProCommand(fullPath, line);
+    try {
+        await navigator.clipboard.writeText(vfpCmd);
+        alert(`ℹ️ O comando FoxPro foi copiado para a área de transferência:\n\n${vfpCmd}`);
+    } catch {
+        alert(`ℹ️ Comando FoxPro:\n${vfpCmd}`);
+    }
+
     return false;
 }
 

@@ -668,6 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const crMatchExact = document.getElementById('cr-match-exact') as HTMLInputElement;
   const crMatchCase = document.getElementById('cr-match-case') as HTMLInputElement;
   const crMatchSameMethod = document.getElementById('cr-match-same-method') as HTMLInputElement;
+  const crIgnoreSpaces = document.getElementById('cr-ignore-spaces') as HTMLInputElement;
   const btnProcessCr = document.getElementById('btn-process-cr') as HTMLButtonElement;
   const crResultsContainer = document.getElementById('cr-results-container') as HTMLElement;
   const crResultsStats = document.getElementById('cr-results-stats') as HTMLElement;
@@ -786,6 +787,7 @@ document.addEventListener('DOMContentLoaded', () => {
               crMatchExact.checked,
               crMatchCase.checked,
               crMatchSameMethod.checked,
+              crIgnoreSpaces ? crIgnoreSpaces.checked : false,
               (msg) => {
                   crResultsStats.textContent = msg;
               }
