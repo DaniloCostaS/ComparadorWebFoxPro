@@ -1,15 +1,20 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" class="h-full">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Web App Comparador PWI</title>
-    <!-- Tailwind via CDN para simplificar a paridade visual com o seu modelo -->
+    <!-- Tailwind via CDN com suporte a Dark Mode -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class'
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
       :root {
         --pwi-blue: #004fa3;
@@ -19,139 +24,215 @@
       }
       body {
         font-family: 'Lato', sans-serif;
-        background-color: var(--pwi-light-gray);
-        color: var(--pwi-dark-gray);
       }
-      .tab-active {
-        border-bottom: 2px solid var(--pwi-blue);
-        color: var(--pwi-blue);
-        font-weight: bold;
+      .tab-active, .sidebar-active {
+        background-color: #004fa3 !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 79, 163, 0.3);
       }
-      .tab-inactive {
-        color: #6b7280;
-        border-bottom: 2px solid transparent;
+      .tab-inactive, .sidebar-inactive {
+        color: #94a3b8;
       }
-      .tab-inactive:hover {
-        color: var(--pwi-blue);
-        border-bottom: 2px solid #e5e7eb;
+      .tab-inactive:hover, .sidebar-inactive:hover {
+        background-color: #1e293b;
+        color: #ffffff;
       }
     </style>
   </head>
-  <body>
-    <header class="bg-white p-4 shadow-md border-b border-gray-200 sticky top-0 z-10">
-      <div class="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-y-4">
-        <div class="flex items-center space-x-3">
-          <!-- Logo simplificado -->
-          <svg class="h-8 text-blue-800 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <h1 class="text-xl font-bold text-gray-700">Ferramenta de Comparação</h1>
-        </div>
-        <nav class="flex space-x-6">
-          <button id="tab-batch" class="pb-2 px-1 tab-active transition-colors">Modo Lote (FoxCompare)</button>
-          <button id="tab-text" class="pb-2 px-1 tab-inactive transition-colors">Comparador Texto Nativo</button>
-          <button id="tab-beautifier" class="pb-2 px-1 tab-inactive transition-colors">Embelezador de Texto</button>
-          <button id="tab-foxpro" class="pb-2 px-1 tab-inactive transition-colors">Comparador FoxPro Único</button>
-          <button id="tab-foxpro-batch" class="pb-2 px-1 tab-inactive transition-colors">Lote FoxPro (.SCX)</button>
-          <button id="tab-code-references" class="pb-2 px-1 tab-inactive transition-colors">Code References</button>
-          <button id="tab-customizations" class="pb-2 px-1 tab-inactive transition-colors">Analisar Customizações</button>
-        </nav>
-      </div>
-    </header>
+  <body class="bg-gray-100 dark:bg-slate-950 text-gray-800 dark:text-slate-100 font-sans h-full flex overflow-hidden transition-colors duration-200">
+    
+    <!-- Backdrop Overlay para Mobile -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-slate-900/60 z-30 hidden md:hidden transition-opacity"></div>
 
-    <main class="container mx-auto p-4 mt-6">
+    <!-- Menu Lateral (Sidebar Navigation) -->
+    <aside id="app-sidebar" class="w-64 bg-slate-900 text-slate-200 flex flex-col flex-shrink-0 z-40 fixed md:relative inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out border-r border-slate-800 shadow-xl">
+      
+      <!-- Cabeçalho do Menu Lateral -->
+      <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="p-2 bg-blue-600 rounded-lg text-white shadow-md">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-base font-bold text-white leading-tight">Comparador PWI</h1>
+            <span class="text-[10px] text-blue-400 font-semibold uppercase tracking-wider">Desenvolvimento & QA</span>
+          </div>
+        </div>
+        <button id="sidebar-close-btn" class="md:hidden text-slate-400 hover:text-white p-1">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <!-- Navegação de Ferramentas -->
+      <nav class="flex-1 overflow-y-auto p-4 space-y-1.5 font-medium text-sm">
+        <button id="tab-batch" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-active">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+          <span class="truncate">Modo Lote (FoxCompare)</span>
+        </button>
+
+        <button id="tab-text" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          <span class="truncate">Comparador Texto</span>
+        </button>
+
+        <button id="tab-beautifier" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+          <span class="truncate">Embelezador de Texto</span>
+        </button>
+
+        <button id="tab-foxpro" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
+          <span class="truncate">FoxPro Único</span>
+        </button>
+
+        <button id="tab-foxpro-batch" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+          <span class="truncate">Lote FoxPro (.SCX)</span>
+        </button>
+
+        <button id="tab-code-references" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <span class="truncate">Code References</span>
+        </button>
+
+        <button id="tab-customizations" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+          <span class="truncate">Analisar Customizações</span>
+        </button>
+
+        <button id="tab-xml-validator" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
+          <svg class="w-5 h-5 flex-shrink-0 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+          <span class="truncate font-semibold text-blue-300">Validador de XML</span>
+        </button>
+      </nav>
+
+      <!-- Rodapé do Menu Lateral com Alternador Dark Mode -->
+      <div class="p-4 border-t border-slate-800 space-y-3">
+        <button id="theme-toggle-btn" type="button" class="w-full flex items-center justify-between px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition-all border border-slate-700 shadow-sm cursor-pointer">
+          <span class="flex items-center gap-2">
+            <!-- Ícone Sol (Modo Claro) -->
+            <svg id="theme-icon-sun" class="w-4 h-4 text-amber-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            <!-- Ícone Lua (Modo Escuro) -->
+            <svg id="theme-icon-moon" class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+            <span id="theme-toggle-label">Modo Escuro</span>
+          </span>
+          <span class="text-[10px] bg-slate-700 px-2 py-0.5 rounded text-slate-300 font-mono uppercase">Tema</span>
+        </button>
+
+        <div class="text-[11px] text-slate-500 text-center font-mono">
+          Comparador PWI v2.0
+        </div>
+      </div>
+    </aside>
+
+    <!-- Conteúdo Principal -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-gray-100 dark:bg-slate-950 transition-colors">
+      <!-- Topbar Mobile -->
+      <header class="md:hidden bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 p-4 flex items-center justify-between">
+        <button id="sidebar-open-btn" class="text-gray-600 dark:text-slate-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+        <h1 class="text-base font-bold text-gray-800 dark:text-slate-100">Comparador PWI</h1>
+        <div class="w-8"></div>
+      </header>
+
+      <!-- Container Rolável das Seções -->
+      <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
       
       <!-- Seção: Processamento em Lote -->
-      <section id="section-batch" class="block bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 class="text-2xl font-bold mb-4 text-blue-800">Processamento em Lote</h2>
-        <p class="text-gray-600 mb-6">Selecione o arquivo <code class="bg-gray-100 px-1 rounded">ComparadorBase - Interativo.html</code> e em seguida os arquivos HTML com as comparações geradas pelo BeyondCompare. A ferramenta vai extrair o conteúdo e gerar um arquivo ZIP com todos os HTMLs finais.</p>
+      <section id="section-batch" class="block bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
+        <h2 class="text-2xl font-bold mb-4 text-blue-800 dark:text-blue-400">Processamento em Lote</h2>
+        <p class="text-gray-600 dark:text-slate-400 mb-6">Selecione o arquivo <code class="bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 px-1.5 py-0.5 rounded border border-gray-200 dark:border-slate-700">ComparadorBase - Interativo.html</code> e em seguida os arquivos HTML com as comparações geradas pelo BeyondCompare. A ferramenta vai extrair o conteúdo e gerar um arquivo ZIP com todos os HTMLs finais.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-1 gap-6 mb-6">
           <!-- Arquivos Comparados -->
-          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
+          <div class="border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-xl p-6 text-center hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
             <label for="compare-files" class="cursor-pointer flex flex-col items-center">
-              <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
-              <span class="text-blue-600 font-semibold">1. Selecionar HTMLs (BeyondCompare)</span>
-              <span class="text-xs text-gray-500 mt-1">Você pode selecionar múltiplos arquivos. A base (ComparadorBase) já está embutida.</span>
+              <svg class="w-12 h-12 text-gray-400 dark:text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
+              <span class="text-blue-600 dark:text-blue-400 font-semibold">1. Selecionar HTMLs (BeyondCompare)</span>
+              <span class="text-xs text-gray-500 dark:text-slate-400 mt-1">Você pode selecionar múltiplos arquivos. A base (ComparadorBase) já está embutida.</span>
               <input type="file" id="compare-files" class="hidden" accept=".html" multiple />
             </label>
-            <div id="compare-files-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 arquivos carregados</div>
+            <div id="compare-files-count" class="mt-2 text-sm text-green-600 dark:text-green-400 font-medium hidden">0 arquivos carregados</div>
           </div>
         </div>
 
         <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div class="w-full sm:w-1/2">
-            <label for="batch-custom-prefix" class="block text-sm font-bold text-gray-700 mb-1">Prefixo / Texto Adicional para o Título (opcional)</label>
-            <input type="text" id="batch-custom-prefix" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Ex: 4.209">
+            <label for="batch-custom-prefix" class="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-1">Prefixo / Texto Adicional para o Título (opcional)</label>
+            <input type="text" id="batch-custom-prefix" class="w-full p-2.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Ex: 4.209">
           </div>
 
-          <label class="flex items-center space-x-2 cursor-pointer select-none bg-blue-50 border border-blue-200 p-3 rounded-lg hover:bg-blue-100 transition-colors">
+          <label class="flex items-center space-x-2 cursor-pointer select-none bg-blue-50 dark:bg-slate-800/80 border border-blue-200 dark:border-slate-700 p-3 rounded-lg hover:bg-blue-100 dark:hover:bg-slate-800 transition-colors">
             <input type="checkbox" id="batch-consolidated-check" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-            <span class="text-sm font-semibold text-blue-900">Gerar único arquivo HTML agrupado (com menu lateral)</span>
+            <span class="text-sm font-semibold text-blue-900 dark:text-blue-300">Gerar único arquivo HTML agrupado (com menu lateral)</span>
           </label>
         </div>
 
         <div class="flex justify-end">
-          <button id="btn-process-batch" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+          <button id="btn-process-batch" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
             Processar e Baixar ZIP
           </button>
         </div>
         
-        <div id="batch-logs" class="mt-4 text-sm text-gray-600 max-h-40 overflow-y-auto hidden bg-gray-50 p-3 rounded border border-gray-200">
+        <div id="batch-logs" class="mt-4 text-sm text-gray-600 dark:text-slate-400 max-h-40 overflow-y-auto hidden bg-gray-50 dark:bg-slate-800 p-3 rounded-lg border border-gray-200 dark:border-slate-700">
         </div>
       </section>
 
       <!-- Seção: Comparador de Texto -->
-      <section id="section-text" class="hidden bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 class="text-2xl font-bold mb-4 text-blue-800">Comparador Nativo de Texto</h2>
-        <p class="text-gray-600 mb-6">Cole o código original e o código modificado abaixo. A ferramenta irá gerar o arquivo HTML final sem a necessidade do BeyondCompare.</p>
+      <section id="section-text" class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
+        <h2 class="text-2xl font-bold mb-4 text-blue-800 dark:text-blue-400">Comparador Nativo de Texto</h2>
+        <p class="text-gray-600 dark:text-slate-400 mb-6">Cole o código original e o código modificado abaixo. A ferramenta irá gerar o arquivo HTML final sem a necessidade do BeyondCompare.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <div class="flex justify-between items-center mb-2">
-              <label class="block text-sm font-bold text-gray-700">Código Original</label>
-              <button type="button" id="btn-format-original" class="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-2 py-1 rounded font-semibold cursor-pointer flex items-center gap-1" title="Formata JSON ou XML desformatado">
+              <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Código Original</label>
+              <button type="button" id="btn-format-original" class="text-xs bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-700 border border-blue-200 dark:border-slate-700 px-2 py-1 rounded-lg font-semibold cursor-pointer flex items-center gap-1">
                 ✨ Formatar JSON/XML
               </button>
             </div>
-            <textarea id="text-original" class="w-full h-64 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-none" placeholder="Cole o texto original aqui..."></textarea>
+            <textarea id="text-original" class="w-full h-64 p-3 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm resize-none" placeholder="Cole o texto original aqui..."></textarea>
           </div>
           <div>
             <div class="flex justify-between items-center mb-2">
-              <label class="block text-sm font-bold text-gray-700">Código Modificado</label>
-              <button type="button" id="btn-format-modified" class="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-2 py-1 rounded font-semibold cursor-pointer flex items-center gap-1" title="Formata JSON ou XML desformatado">
+              <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Código Modificado</label>
+              <button type="button" id="btn-format-modified" class="text-xs bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-700 border border-blue-200 dark:border-slate-700 px-2 py-1 rounded-lg font-semibold cursor-pointer flex items-center gap-1">
                 ✨ Formatar JSON/XML
               </button>
             </div>
-            <textarea id="text-modified" class="w-full h-64 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-none" placeholder="Cole o texto modificado aqui..."></textarea>
+            <textarea id="text-modified" class="w-full h-64 p-3 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm resize-none" placeholder="Cole o texto modificado aqui..."></textarea>
           </div>
         </div>
         
         <div class="flex flex-col sm:flex-row items-center gap-4 mb-6">
           <div class="w-full sm:w-1/2">
-             <label class="block text-sm font-bold text-gray-700 mb-2">Nome do Arquivo (opcional)</label>
-             <input type="text" id="text-file-name" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Ex: FORM_NOVO">
+             <label class="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Nome do Arquivo (opcional)</label>
+             <input type="text" id="text-file-name" class="w-full p-2.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Ex: FORM_NOVO">
           </div>
         </div>
 
         <div class="flex justify-end gap-3">
-          <button id="btn-preview-text" class="bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300 font-bold py-2 px-6 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2" disabled>
-            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+          <button id="btn-preview-text" class="bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 border border-gray-300 dark:border-slate-700 font-bold py-2.5 px-6 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2" disabled>
+            <svg class="w-5 h-5 text-gray-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
             Visualizar na Tela
           </button>
-          <button id="btn-process-text" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer" disabled>
+          <button id="btn-process-text" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer" disabled>
             Comparar e Baixar HTML
           </button>
         </div>
 
         <!-- Container da Visualização na Tela -->
-        <div id="text-preview-container" class="mt-6 border border-gray-300 rounded-lg overflow-hidden hidden bg-white shadow-md">
-          <div class="bg-gray-100 px-4 py-3 border-b border-gray-300 flex items-center justify-between">
+        <div id="text-preview-container" class="mt-6 border border-gray-300 dark:border-slate-700 rounded-xl overflow-hidden hidden bg-white dark:bg-slate-900 shadow-md">
+          <div class="bg-gray-100 dark:bg-slate-800 px-4 py-3 border-b border-gray-300 dark:border-slate-700 flex items-center justify-between">
             <div class="flex items-center space-x-2">
-              <span class="text-sm font-bold text-gray-700">Visualização Interativa na Tela:</span>
-              <span id="text-preview-filename" class="text-sm font-bold text-blue-800"></span>
+              <span class="text-sm font-bold text-gray-700 dark:text-slate-300">Visualização Interativa na Tela:</span>
+              <span id="text-preview-filename" class="text-sm font-bold text-blue-800 dark:text-blue-400"></span>
             </div>
-            <button id="btn-close-text-preview" class="text-xs bg-white hover:bg-red-50 text-red-600 border border-red-200 font-bold px-3 py-1.5 rounded-md transition-colors cursor-pointer flex items-center gap-1">
+            <button id="btn-close-text-preview" class="text-xs bg-white dark:bg-slate-700 hover:bg-red-50 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1">
               ✕ Fechar Visualização
             </button>
           </div>
@@ -160,17 +241,17 @@
       </section>
 
       <!-- Seção: Embelezador de Texto -->
-      <section id="section-beautifier" class="hidden bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <section id="section-beautifier" class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
-            <h2 class="text-2xl font-bold text-blue-800">Embelezador / Formatador de Texto</h2>
-            <p class="text-gray-600 text-sm mt-1">Formate textos brutos ou minificados como JSON, XML e SQL com indentação limpa e legível.</p>
+            <h2 class="text-2xl font-bold text-blue-800 dark:text-blue-400">Embelezador / Formatador de Texto</h2>
+            <p class="text-gray-600 dark:text-slate-400 text-sm mt-1">Formate textos brutos ou minificados como JSON, XML e SQL com indentação limpa e legível.</p>
           </div>
           
-          <div class="flex flex-wrap items-center gap-3 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+          <div class="flex flex-wrap items-center gap-3 bg-gray-50 dark:bg-slate-800 p-2.5 rounded-lg border border-gray-200 dark:border-slate-700">
             <div>
-              <label class="block text-xs font-bold text-gray-600 mb-1">Formato</label>
-              <select id="beautifier-type" class="p-1.5 border border-gray-300 rounded text-xs bg-white font-semibold cursor-pointer">
+              <label class="block text-xs font-bold text-gray-600 dark:text-slate-400 mb-1">Formato</label>
+              <select id="beautifier-type" class="p-1.5 border border-gray-300 dark:border-slate-700 rounded text-xs bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100 font-semibold cursor-pointer">
                 <option value="auto">Auto-Detectar</option>
                 <option value="json">JSON</option>
                 <option value="xml">XML</option>
@@ -179,8 +260,8 @@
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-gray-600 mb-1">Recuo / Indentação</label>
-              <select id="beautifier-indent" class="p-1.5 border border-gray-300 rounded text-xs bg-white font-semibold cursor-pointer">
+              <label class="block text-xs font-bold text-gray-600 dark:text-slate-400 mb-1">Recuo / Indentação</label>
+              <select id="beautifier-indent" class="p-1.5 border border-gray-300 dark:border-slate-700 rounded text-xs bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100 font-semibold cursor-pointer">
                 <option value="2">2 Espaços</option>
                 <option value="4">4 Espaços</option>
                 <option value="tab">Tabulação (\t)</option>
@@ -192,33 +273,33 @@
         <!-- Painel de Status / Validação -->
         <div id="beautifier-status" class="hidden mb-4 p-3 rounded-lg text-sm border font-medium flex items-center justify-between">
           <span id="beautifier-status-text"></span>
-          <span id="beautifier-detected-badge" class="text-xs bg-white px-2 py-0.5 rounded border border-gray-300 font-bold uppercase text-gray-600"></span>
+          <span id="beautifier-detected-badge" class="text-xs bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-gray-300 dark:border-slate-700 font-bold uppercase text-gray-600 dark:text-slate-300"></span>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <!-- Entrada -->
           <div class="flex flex-col">
             <div class="flex justify-between items-center mb-2">
-              <label class="block text-sm font-bold text-gray-700">Texto de Entrada (Sem Formatação / Minificado)</label>
-              <span id="beautifier-input-stats" class="text-xs text-gray-500 font-mono">0 lin | 0 car</span>
+              <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Texto de Entrada (Sem Formatação / Minificado)</label>
+              <span id="beautifier-input-stats" class="text-xs text-gray-500 dark:text-slate-400 font-mono">0 lin | 0 car</span>
             </div>
-            <textarea id="beautifier-input" class="w-full h-80 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-none" placeholder="Cole aqui seu JSON sem formatação, XML em linha única ou código SQL..."></textarea>
+            <textarea id="beautifier-input" class="w-full h-80 p-3 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm resize-none" placeholder="Cole aqui seu JSON sem formatação, XML em linha única ou código SQL..."></textarea>
           </div>
 
           <!-- Saída -->
           <div class="flex flex-col">
             <div class="flex justify-between items-center mb-2">
-              <label class="block text-sm font-bold text-gray-700">Resultado Formatado</label>
-              <span id="beautifier-output-stats" class="text-xs text-gray-500 font-mono">0 lin | 0 car</span>
+              <label class="block text-sm font-bold text-gray-700 dark:text-slate-300">Resultado Formatado</label>
+              <span id="beautifier-output-stats" class="text-xs text-gray-500 dark:text-slate-400 font-mono">0 lin | 0 car</span>
             </div>
-            <textarea id="beautifier-output" readonly class="w-full h-80 p-3 border border-gray-300 rounded-lg bg-gray-50 font-mono text-sm resize-none" placeholder="O resultado formatado aparecerá aqui..."></textarea>
+            <textarea id="beautifier-output" readonly class="w-full h-80 p-3 bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-800 text-gray-800 dark:text-slate-100 font-mono text-sm resize-none" placeholder="O resultado formatado aparecerá aqui..."></textarea>
           </div>
         </div>
 
         <!-- Barra de Botões -->
         <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
           <div class="flex items-center gap-2">
-            <button id="btn-beautifier-clear" class="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 font-semibold py-2 px-4 rounded-lg transition-colors text-sm cursor-pointer flex items-center gap-1">
+            <button id="btn-beautifier-clear" class="bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 border border-gray-300 dark:border-slate-700 font-semibold py-2 px-4 rounded-lg transition-colors text-sm cursor-pointer flex items-center gap-1">
               🗑️ Limpar
             </button>
           </div>
@@ -241,41 +322,41 @@
       </section>
 
       <!-- Seção: Comparador de FoxPro -->
-      <section id="section-foxpro" class="hidden bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 class="text-2xl font-bold mb-4 text-blue-800">Comparador Nativo FoxPro Único</h2>
-        <p class="text-gray-600 mb-6">Selecione os arquivos do FoxPro. Suporta Formulários (<code>.SCX/.SCT</code>), Relatórios (<code>.FRX/.FRT</code>) e Códigos (<code>.PRG</code>). Para binários, envie o par completo (ex: .scx e .sct).</p>
+      <section id="section-foxpro" class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
+        <h2 class="text-2xl font-bold mb-4 text-blue-800 dark:text-blue-400">Comparador Nativo FoxPro Único</h2>
+        <p class="text-gray-600 dark:text-slate-400 mb-6">Selecione os arquivos do FoxPro. Suporta Formulários (<code>.SCX/.SCT</code>), Relatórios (<code>.FRX/.FRT</code>) e Códigos (<code>.PRG</code>). Para binários, envie o par completo (ex: .scx e .sct).</p>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <!-- Versão Original -->
-          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
+          <div class="border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-xl p-6 text-center hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
             <label for="fox-antes-files" class="cursor-pointer flex flex-col items-center">
-              <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-              <span class="text-blue-600 font-semibold">Versão Original (Antes)</span>
-              <span class="text-xs text-gray-500 mt-1">Selecione os arquivos correspondentes</span>
+              <svg class="w-12 h-12 text-gray-400 dark:text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+              <span class="text-blue-600 dark:text-blue-400 font-semibold">Versão Original (Antes)</span>
+              <span class="text-xs text-gray-500 dark:text-slate-400 mt-1">Selecione os arquivos correspondentes</span>
               <input type="file" id="fox-antes-files" class="hidden" accept=".scx,.sct,.frx,.frt,.prg" multiple />
             </label>
-            <div id="fox-antes-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 arquivos carregados</div>
+            <div id="fox-antes-count" class="mt-2 text-sm text-green-600 dark:text-green-400 font-medium hidden">0 arquivos carregados</div>
           </div>
 
           <!-- Versão Modificada -->
-          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
+          <div class="border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-xl p-6 text-center hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
             <label for="fox-depois-files" class="cursor-pointer flex flex-col items-center">
-              <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-              <span class="text-blue-600 font-semibold">Versão Modificada (Depois)</span>
-              <span class="text-xs text-gray-500 mt-1">Selecione os arquivos correspondentes</span>
+              <svg class="w-12 h-12 text-gray-400 dark:text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+              <span class="text-blue-600 dark:text-blue-400 font-semibold">Versão Modificada (Depois)</span>
+              <span class="text-xs text-gray-500 dark:text-slate-400 mt-1">Selecione os arquivos correspondentes</span>
               <input type="file" id="fox-depois-files" class="hidden" accept=".scx,.sct,.frx,.frt,.prg" multiple />
             </label>
-            <div id="fox-depois-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 arquivos carregados</div>
+            <div id="fox-depois-count" class="mt-2 text-sm text-green-600 dark:text-green-400 font-medium hidden">0 arquivos carregados</div>
           </div>
         </div>
 
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
           <div class="w-full sm:w-1/2">
-             <label class="block text-sm font-bold text-gray-700 mb-2">Nome do Arquivo Final</label>
-             <input type="text" id="fox-file-name" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Ex: FORM_NOVO">
+             <label class="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Nome do Arquivo Final</label>
+             <input type="text" id="fox-file-name" class="w-full p-2.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Ex: FORM_NOVO">
           </div>
           <div class="w-full sm:w-auto flex items-end">
-            <button id="btn-process-foxpro" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            <button id="btn-process-foxpro" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
               Comparar e Baixar HTML
             </button>
           </div>
@@ -283,82 +364,82 @@
       </section>
 
       <!-- Seção: Comparador de Pastas (Em Lote) FoxPro -->
-      <section id="section-foxpro-batch" class="hidden bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 class="text-2xl font-bold mb-4 text-orange-800">Comparador Lote FoxPro (Pastas)</h2>
-        <p class="text-gray-600 mb-6">Selecione as <strong>pastas completas</strong> que contém seus arquivos do FoxPro. Suporta Formulários (<code>.SCX/.SCT</code>), Relatórios (<code>.FRX/.FRT</code>) e Programas (<code>.PRG</code>). O sistema irá varrer todas as subpastas automaticamente, comparar os arquivos que possuírem o mesmo nome e gerar um único `.ZIP` contendo todos os HTMLs interativos resultantes.</p>
+      <section id="section-foxpro-batch" class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
+        <h2 class="text-2xl font-bold mb-4 text-orange-800 dark:text-orange-400">Comparador Lote FoxPro (Pastas)</h2>
+        <p class="text-gray-600 dark:text-slate-400 mb-6">Selecione as <strong>pastas completas</strong> que contém seus arquivos do FoxPro. Suporta Formulários (<code>.SCX/.SCT</code>), Relatórios (<code>.FRX/.FRT</code>) e Programas (<code>.PRG</code>). O sistema irá varrer todas as subpastas automaticamente, comparar os arquivos que possuírem o mesmo nome e gerar um único `.ZIP` contendo todos os HTMLs interativos resultantes.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <!-- Pasta Original -->
-          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
+          <div class="border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-xl p-6 text-center hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
             <label for="fox-batch-antes-dir" class="cursor-pointer flex flex-col items-center">
-              <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-              <span class="text-orange-600 font-semibold">Pasta Original (Antes)</span>
-              <span class="text-xs text-gray-500 mt-1">Selecione o diretório com a versão antiga</span>
+              <svg class="w-12 h-12 text-gray-400 dark:text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+              <span class="text-orange-600 dark:text-orange-400 font-semibold">Pasta Original (Antes)</span>
+              <span class="text-xs text-gray-500 dark:text-slate-400 mt-1">Selecione o diretório com a versão antiga</span>
               <input type="file" id="fox-batch-antes-dir" class="hidden" webkitdirectory directory multiple />
             </label>
-            <div id="fox-batch-antes-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 objetos encontrados</div>
+            <div id="fox-batch-antes-count" class="mt-2 text-sm text-green-600 dark:text-green-400 font-medium hidden">0 objetos encontrados</div>
           </div>
 
           <!-- Pasta Modificada -->
-          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
+          <div class="border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-xl p-6 text-center hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
             <label for="fox-batch-depois-dir" class="cursor-pointer flex flex-col items-center">
-              <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-              <span class="text-orange-600 font-semibold">Pasta Modificada (Depois)</span>
-              <span class="text-xs text-gray-500 mt-1">Selecione o diretório com a versão nova</span>
+              <svg class="w-12 h-12 text-gray-400 dark:text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+              <span class="text-orange-600 dark:text-orange-400 font-semibold">Pasta Modificada (Depois)</span>
+              <span class="text-xs text-gray-500 dark:text-slate-400 mt-1">Selecione o diretório com a versão nova</span>
               <input type="file" id="fox-batch-depois-dir" class="hidden" webkitdirectory directory multiple />
             </label>
-            <div id="fox-batch-depois-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 objetos encontrados</div>
+            <div id="fox-batch-depois-count" class="mt-2 text-sm text-green-600 dark:text-green-400 font-medium hidden">0 objetos encontrados</div>
           </div>
         </div>
 
         <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div class="w-full sm:w-1/2">
-            <label for="fox-batch-custom-prefix" class="block text-sm font-bold text-gray-700 mb-1">Prefixo / Texto Adicional para o Título (opcional)</label>
-            <input type="text" id="fox-batch-custom-prefix" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Ex: 4.209">
+            <label for="fox-batch-custom-prefix" class="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-1">Prefixo / Texto Adicional para o Título (opcional)</label>
+            <input type="text" id="fox-batch-custom-prefix" class="w-full p-2.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Ex: 4.209">
           </div>
 
-          <label class="flex items-center space-x-2 cursor-pointer select-none bg-orange-50 border border-orange-200 p-3 rounded-lg hover:bg-orange-100 transition-colors">
+          <label class="flex items-center space-x-2 cursor-pointer select-none bg-orange-50 dark:bg-slate-800/80 border border-orange-200 dark:border-slate-700 p-3 rounded-lg hover:bg-orange-100 dark:hover:bg-slate-800 transition-colors">
             <input type="checkbox" id="fox-batch-consolidated-check" class="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500">
-            <span class="text-sm font-semibold text-orange-900">Gerar único arquivo HTML agrupado (com menu lateral)</span>
+            <span class="text-sm font-semibold text-orange-900 dark:text-orange-300">Gerar único arquivo HTML agrupado (com menu lateral)</span>
           </label>
         </div>
 
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
           <label class="flex items-center space-x-2 cursor-pointer select-none">
             <input type="checkbox" id="fox-batch-check-missing" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-            <span class="text-sm font-medium text-gray-700">Verificar arquivos ausentes (que existem no Antes, mas não no Depois)</span>
+            <span class="text-sm font-medium text-gray-700 dark:text-slate-300">Verificar arquivos ausentes (que existem no Antes, mas não no Depois)</span>
           </label>
 
-          <button id="btn-process-foxpro-batch" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+          <button id="btn-process-foxpro-batch" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
             Comparar Lote e Baixar ZIP
           </button>
         </div>
 
         <!-- Área de Resumo e Estatísticas da Comparação em Lote FoxPro -->
-        <div id="foxpro-batch-summary" class="hidden mb-6 flex flex-col gap-4 border-t border-gray-200 pt-6">
-          <h3 class="text-lg font-bold text-gray-800">Resumo da Comparação em Lote</h3>
+        <div id="foxpro-batch-summary" class="hidden mb-6 flex flex-col gap-4 border-t border-gray-200 dark:border-slate-800 pt-6">
+          <h3 class="text-lg font-bold text-gray-800 dark:text-slate-200">Resumo da Comparação em Lote</h3>
           
           <!-- Cards de Métricas -->
           <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <div id="fox-card-changed" class="bg-green-50 border border-green-200 rounded-lg p-3 text-center cursor-pointer hover:bg-green-100 transition-colors">
-              <span class="block text-2xl font-bold text-green-700" id="fox-count-changed">0</span>
-              <span class="text-xs font-semibold text-green-800">Com Alterações (No ZIP)</span>
+            <div id="fox-card-changed" class="bg-green-50 dark:bg-slate-800 border border-green-200 dark:border-slate-700 rounded-lg p-3 text-center cursor-pointer hover:bg-green-100 dark:hover:bg-slate-700 transition-colors">
+              <span class="block text-2xl font-bold text-green-700 dark:text-green-400" id="fox-count-changed">0</span>
+              <span class="text-xs font-semibold text-green-800 dark:text-green-300">Com Alterações (No ZIP)</span>
             </div>
-            <div id="fox-card-unchanged" class="bg-gray-100 border border-gray-300 rounded-lg p-3 text-center cursor-pointer hover:bg-gray-200 transition-colors">
-              <span class="block text-2xl font-bold text-gray-700" id="fox-count-unchanged">0</span>
-              <span class="text-xs font-semibold text-gray-800">Sem Alterações (Iguais)</span>
+            <div id="fox-card-unchanged" class="bg-gray-100 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg p-3 text-center cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">
+              <span class="block text-2xl font-bold text-gray-700 dark:text-slate-300" id="fox-count-unchanged">0</span>
+              <span class="text-xs font-semibold text-gray-800 dark:text-slate-400">Sem Alterações (Iguais)</span>
             </div>
-            <div id="fox-card-new" class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center cursor-pointer hover:bg-yellow-100 transition-colors">
-              <span class="block text-2xl font-bold text-yellow-700" id="fox-count-new">0</span>
-              <span class="text-xs font-semibold text-yellow-800">Novos (Apenas Depois)</span>
+            <div id="fox-card-new" class="bg-yellow-50 dark:bg-slate-800 border border-yellow-200 dark:border-slate-700 rounded-lg p-3 text-center cursor-pointer hover:bg-yellow-100 dark:hover:bg-slate-700 transition-colors">
+              <span class="block text-2xl font-bold text-yellow-700 dark:text-yellow-400" id="fox-count-new">0</span>
+              <span class="text-xs font-semibold text-yellow-800 dark:text-yellow-300">Novos (Apenas Depois)</span>
             </div>
-            <div id="fox-card-missing" class="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center cursor-pointer hover:bg-purple-100 transition-colors">
-              <span class="block text-2xl font-bold text-purple-700" id="fox-count-missing">0</span>
-              <span class="text-xs font-semibold text-purple-800">Ausentes (Apenas Antes)</span>
+            <div id="fox-card-missing" class="bg-purple-50 dark:bg-slate-800 border border-purple-200 dark:border-slate-700 rounded-lg p-3 text-center cursor-pointer hover:bg-purple-100 dark:hover:bg-slate-700 transition-colors">
+              <span class="block text-2xl font-bold text-purple-700 dark:text-purple-400" id="fox-count-missing">0</span>
+              <span class="text-xs font-semibold text-purple-800 dark:text-purple-300">Ausentes (Apenas Antes)</span>
             </div>
-            <div id="fox-card-error" class="bg-red-50 border border-red-200 rounded-lg p-3 text-center cursor-pointer hover:bg-red-100 transition-colors">
-              <span class="block text-2xl font-bold text-red-700" id="fox-count-error">0</span>
-              <span class="text-xs font-semibold text-red-800">Erros / Incompletos</span>
+            <div id="fox-card-error" class="bg-red-50 dark:bg-slate-800 border border-red-200 dark:border-slate-700 rounded-lg p-3 text-center cursor-pointer hover:bg-red-100 dark:hover:bg-slate-700 transition-colors">
+              <span class="block text-2xl font-bold text-red-700 dark:text-red-400" id="fox-count-error">0</span>
+              <span class="text-xs font-semibold text-red-800 dark:text-red-300">Erros / Incompletos</span>
             </div>
           </div>
 
@@ -366,16 +447,16 @@
           <div class="flex flex-wrap gap-2 items-center justify-between mt-2">
             <div class="flex flex-wrap gap-2" id="fox-batch-filter-container">
               <button type="button" id="fox-btn-filter-all" class="fox-batch-filter-btn bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="all">Todos (<span id="fox-filter-count-all">0</span>)</button>
-              <button type="button" id="fox-btn-filter-changed" class="fox-batch-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="changed">Com Alteração (<span id="fox-filter-count-changed">0</span>)</button>
-              <button type="button" id="fox-btn-filter-unchanged" class="fox-batch-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="unchanged">Sem Alteração (<span id="fox-filter-count-unchanged">0</span>)</button>
-              <button type="button" id="fox-btn-filter-new" class="fox-batch-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="new">Novos (Depois) (<span id="fox-filter-count-new">0</span>)</button>
-              <button type="button" id="fox-btn-filter-missing" class="fox-batch-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="missing">Ausentes (Antes) (<span id="fox-filter-count-missing">0</span>)</button>
-              <button type="button" id="fox-btn-filter-error" class="fox-batch-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="error">Erros (<span id="fox-filter-count-error">0</span>)</button>
+              <button type="button" id="fox-btn-filter-changed" class="fox-batch-filter-btn bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="changed">Com Alteração (<span id="fox-filter-count-changed">0</span>)</button>
+              <button type="button" id="fox-btn-filter-unchanged" class="fox-batch-filter-btn bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="unchanged">Sem Alteração (<span id="fox-filter-count-unchanged">0</span>)</button>
+              <button type="button" id="fox-btn-filter-new" class="fox-batch-filter-btn bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="new">Novos (Depois) (<span id="fox-filter-count-new">0</span>)</button>
+              <button type="button" id="fox-btn-filter-missing" class="fox-batch-filter-btn bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="missing">Ausentes (Antes) (<span id="fox-filter-count-missing">0</span>)</button>
+              <button type="button" id="fox-btn-filter-error" class="fox-batch-filter-btn bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors" data-category="error">Erros (<span id="fox-filter-count-error">0</span>)</button>
             </div>
           </div>
 
           <!-- Lista Detalhada dos Objetos Processados -->
-          <div id="foxpro-batch-items-list" class="max-h-72 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100 bg-white shadow-inner p-2">
+          <div id="foxpro-batch-items-list" class="max-h-72 overflow-y-auto border border-gray-200 dark:border-slate-800 rounded-lg divide-y divide-gray-100 dark:divide-slate-800 bg-white dark:bg-slate-900 shadow-inner p-2">
           </div>
         </div>
 
@@ -385,29 +466,29 @@
       </section>
 
       <!-- Seção: Code References -->
-      <section id="section-code-references" class="hidden bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 class="text-2xl font-bold mb-4 text-blue-800">Code References (Busca em Lote)</h2>
-        <p class="text-gray-600 mb-6">Busque por termos específicos em todos os arquivos de um diretório. Suporta <code>.PRG</code>, <code>.SCX/.SCT</code>, <code>.VCX/.VCT</code>, <code>.FRX/.FRT</code>.</p>
+      <section id="section-code-references" class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
+        <h2 class="text-2xl font-bold mb-4 text-blue-800 dark:text-blue-400">Code References (Busca em Lote)</h2>
+        <p class="text-gray-600 dark:text-slate-400 mb-6">Busque por termos específicos em todos os arquivos de um diretório. Suporta <code>.PRG</code>, <code>.SCX/.SCT</code>, <code>.VCX/.VCT</code>, <code>.FRX/.FRT</code>.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <!-- Seleção de Pasta -->
-          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
+          <div class="border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-xl p-6 text-center hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
             <label for="cr-folder-input" class="cursor-pointer flex flex-col items-center">
-              <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-              <span class="text-blue-600 font-semibold">Selecionar Pasta Base</span>
-              <span class="text-xs text-gray-500 mt-1">Todos os arquivos FoxPro dentro da pasta e subpastas serão lidos</span>
+              <svg class="w-12 h-12 text-gray-400 dark:text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+              <span class="text-blue-600 dark:text-blue-400 font-semibold">Selecionar Pasta Base</span>
+              <span class="text-xs text-gray-500 dark:text-slate-400 mt-1">Todos os arquivos FoxPro dentro da pasta e subpastas serão lidos</span>
               <input type="file" id="cr-folder-input" class="hidden" webkitdirectory directory multiple />
             </label>
-            <div id="cr-folder-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 arquivos encontrados</div>
+            <div id="cr-folder-count" class="mt-2 text-sm text-green-600 dark:text-green-400 font-medium hidden">0 arquivos encontrados</div>
           </div>
 
           <!-- Parâmetros da Busca -->
           <div class="flex flex-col gap-4">
             <div>
-              <label class="block text-sm font-bold text-gray-700 mb-2">Termos/Frases de Busca (AND)</label>
+              <label class="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Termos/Frases de Busca (AND)</label>
               <div class="flex space-x-2">
-                <input type="text" id="cr-search-term" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Ex: DtInclusão = .T.">
-                <button type="button" id="btn-cr-add-term" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors text-sm">Adicionar</button>
+                <input type="text" id="cr-search-term" class="w-full p-2.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Ex: DtInclusão = .T.">
+                <button type="button" id="btn-cr-add-term" class="bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 font-bold py-2.5 px-4 rounded-lg transition-colors text-sm">Adicionar</button>
               </div>
               <div id="cr-search-tags" class="mt-2 flex flex-wrap gap-2"></div>
             </div>
@@ -415,7 +496,7 @@
             <div class="flex flex-col gap-2">
               <label class="flex items-center space-x-2 cursor-pointer">
                 <input type="checkbox" id="cr-match-exact" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-                <span class="text-sm text-gray-700 font-medium">Buscar palavra exata (Match whole word)</span>
+                <span class="text-sm text-gray-700 dark:text-slate-300 font-medium">Buscar palavra exata (Match whole word)</span>
               </label>
               <label class="flex items-center space-x-2 cursor-pointer">
                 <input type="checkbox" id="cr-match-case" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
@@ -430,38 +511,38 @@
         </div>
 
         <!-- Caminho Raiz para Abertura Local -->
-        <div class="mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
-          <label for="cr-root-path" class="block text-sm font-bold text-gray-700 mb-1 flex items-center justify-between">
+        <div class="mb-6 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+          <label for="cr-root-path" class="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-1 flex items-center justify-between">
             <span class="flex items-center gap-1.5">
-              📂 Caminho Raiz no Disco <span class="text-xs font-normal text-gray-500">(para habilitar "Abrir no FoxPro/VS Code")</span>
+              📂 Caminho Raiz no Disco <span class="text-xs font-normal text-gray-500 dark:text-slate-400">(para habilitar "Abrir no FoxPro/VS Code")</span>
             </span>
-            <span class="text-xs text-blue-600 font-normal">Salvo automaticamente</span>
+            <span class="text-xs text-blue-600 dark:text-blue-400 font-normal">Salvo automaticamente</span>
           </label>
-          <input type="text" id="cr-root-path" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono" value="C:\TestesVF" placeholder="Ex: C:\TestesVF">
-          <p class="text-xs text-gray-500 mt-1 flex items-center gap-2">
+          <input type="text" id="cr-root-path" class="w-full p-2.5 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 text-gray-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm" value="C:\TestesVF" placeholder="Ex: C:\TestesVF">
+          <p class="text-xs text-gray-500 dark:text-slate-400 mt-1 flex items-center gap-2">
             💡 Informe o caminho da pasta raiz no Windows (padrão <code>C:\TestesVF</code>) onde ficam seus repositórios/pastas.
           </p>
         </div>
 
-        <div class="flex justify-end border-b border-gray-200 pb-4 mb-4">
-          <button id="btn-process-cr" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+        <div class="flex justify-end border-b border-gray-200 dark:border-slate-800 pb-4 mb-4">
+          <button id="btn-process-cr" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
             Pesquisar
           </button>
         </div>
 
         <!-- Área de Resultados -->
         <div id="cr-results-container" class="hidden">
-            <h3 class="text-lg font-bold text-gray-800 mb-2">Resultados da Busca</h3>
+            <h3 class="text-lg font-bold text-gray-800 dark:text-slate-200 mb-2">Resultados da Busca</h3>
             
             <div class="flex justify-between items-center mb-4">
-                <div id="cr-results-stats" class="text-sm text-gray-600">Encontrados 0 resultados.</div>
+                <div id="cr-results-stats" class="text-sm text-gray-600 dark:text-slate-400">Encontrados 0 resultados.</div>
                 <div class="space-x-3">
-                    <button id="btn-cr-expand" class="text-sm text-blue-600 hover:text-blue-800 hover:underline">Expandir Todos</button>
-                    <button id="btn-cr-collapse" class="text-sm text-blue-600 hover:text-blue-800 hover:underline">Retrair Todos</button>
+                    <button id="btn-cr-expand" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">Expandir Todos</button>
+                    <button id="btn-cr-collapse" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">Retrair Todos</button>
                 </div>
             </div>
             
-            <div class="bg-white border border-gray-300 rounded-md overflow-hidden text-sm">
+            <div class="bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-800 rounded-xl overflow-hidden text-sm">
                 <!-- A árvore de resultados será injetada aqui via JavaScript -->
                 <div id="cr-tree-view" class="max-h-[500px] overflow-y-auto">
                     
@@ -471,41 +552,41 @@
       </section>
 
       <!-- Seção: Analisar Customizações -->
-      <section id="section-customizations" class="hidden bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 class="text-2xl font-bold mb-2 text-blue-800">Analisar Customizações</h2>
-        <p class="text-gray-600 mb-6">
+      <section id="section-customizations" class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
+        <h2 class="text-2xl font-bold mb-2 text-blue-800 dark:text-blue-400">Analisar Customizações</h2>
+        <p class="text-gray-600 dark:text-slate-400 mb-6">
           Selecione a pasta raiz do repositório (ex: <code>VolpeHomolog</code>). A ferramenta irá comparar automaticamente os fontes customizados (fora da <code>STOB</code>) com seus respectivos arquivos padrão (dentro da <code>STOB</code>). Desenvolvimentos novos/paralelos que não possuem cópia na <code>STOB</code> são ignorados.
         </p>
 
         <!-- Seleção da Pasta Raiz -->
         <div class="grid grid-cols-1 md:grid-cols-1 gap-6 mb-6">
-          <div class="border-2 border-dashed border-blue-200 bg-blue-50/40 rounded-lg p-6 text-center hover:bg-blue-50 transition-colors">
+          <div class="border-2 border-dashed border-blue-200 dark:border-slate-700 bg-blue-50/40 dark:bg-slate-800/50 rounded-xl p-6 text-center hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors">
             <label for="custom-folder-input" class="cursor-pointer flex flex-col items-center">
-              <svg class="w-12 h-12 text-blue-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-              <span class="text-blue-700 font-bold text-lg">Selecionar Pasta do Repositório (ex: VolpeHomolog)</span>
-              <span class="text-xs text-gray-500 mt-1">Busca automática por FORMs na raiz, PRGs em OBJETOS, REPORTS em REPORTS e outros pares STOB</span>
+              <svg class="w-12 h-12 text-blue-600 dark:text-blue-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+              <span class="text-blue-700 dark:text-blue-300 font-bold text-lg">Selecionar Pasta do Repositório (ex: VolpeHomolog)</span>
+              <span class="text-xs text-gray-500 dark:text-slate-400 mt-1">Busca automática por FORMs na raiz, PRGs em OBJETOS, REPORTS em REPORTS e outros pares STOB</span>
               <input type="file" id="custom-folder-input" class="hidden" webkitdirectory directory multiple />
             </label>
-            <div id="custom-folder-count" class="mt-2 text-sm text-green-600 font-medium hidden">0 arquivos carregados</div>
+            <div id="custom-folder-count" class="mt-2 text-sm text-green-600 dark:text-green-400 font-medium hidden">0 arquivos carregados</div>
           </div>
         </div>
 
         <!-- Feedback de progresso -->
-        <div id="custom-progress-container" class="hidden mb-6 bg-blue-50 border border-blue-200 p-5 rounded-xl text-sm text-blue-900 shadow-sm">
+        <div id="custom-progress-container" class="hidden mb-6 bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 p-5 rounded-xl text-sm text-blue-900 dark:text-blue-200 shadow-sm">
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center space-x-3">
-              <svg class="animate-spin h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg class="animate-spin h-5 w-5 text-blue-700 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <span id="custom-progress-message" class="font-bold text-blue-900">Aguarde, lendo e analisando arquivos do repositório...</span>
+              <span id="custom-progress-message" class="font-bold text-blue-900 dark:text-blue-200">Aguarde, lendo e analisando arquivos do repositório...</span>
             </div>
-            <span id="custom-progress-percent" class="font-bold text-blue-700 text-xs bg-blue-100 px-2.5 py-1 rounded-md">0%</span>
+            <span id="custom-progress-percent" class="font-bold text-blue-700 dark:text-blue-300 text-xs bg-blue-100 dark:bg-slate-700 px-2.5 py-1 rounded-md">0%</span>
           </div>
-          <div class="w-full bg-blue-200 h-2.5 rounded-full overflow-hidden mt-1">
+          <div class="w-full bg-blue-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden mt-1">
             <div id="custom-progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-200" style="width: 0%"></div>
           </div>
-          <p class="text-xs text-blue-600 mt-2 font-normal">
+          <p class="text-xs text-blue-600 dark:text-blue-400 mt-2 font-normal">
             ⏳ Repositórios grandes podem levar alguns segundos. Por favor, aguarde o término do processamento.
           </p>
         </div>
@@ -515,62 +596,62 @@
           
           <!-- Cards com Estatísticas -->
           <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center cursor-pointer hover:bg-blue-100 transition-colors" id="custom-card-total">
-              <span class="block text-2xl font-bold text-blue-800" id="custom-stat-total">0</span>
-              <span class="text-xs font-semibold text-blue-900">Total Customizados</span>
+            <div class="bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-lg p-3 text-center cursor-pointer hover:bg-blue-100 dark:hover:bg-slate-700 transition-colors" id="custom-card-total">
+              <span class="block text-2xl font-bold text-blue-800 dark:text-blue-400" id="custom-stat-total">0</span>
+              <span class="text-xs font-semibold text-blue-900 dark:text-blue-300">Total Customizados</span>
             </div>
-            <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center cursor-pointer hover:bg-orange-100 transition-colors" id="custom-card-changed">
-              <span class="block text-2xl font-bold text-orange-700" id="custom-stat-changed">0</span>
-              <span class="text-xs font-semibold text-orange-800">Com Alteração</span>
+            <div class="bg-orange-50 dark:bg-slate-800 border border-orange-200 dark:border-slate-700 rounded-lg p-3 text-center cursor-pointer hover:bg-orange-100 dark:hover:bg-slate-700 transition-colors" id="custom-card-changed">
+              <span class="block text-2xl font-bold text-orange-700 dark:text-orange-400" id="custom-stat-changed">0</span>
+              <span class="text-xs font-semibold text-orange-800 dark:text-orange-300">Com Alteração</span>
             </div>
-            <div class="bg-green-50 border border-green-200 rounded-lg p-3 text-center cursor-pointer hover:bg-green-100 transition-colors" id="custom-card-unchanged">
-              <span class="block text-2xl font-bold text-green-700" id="custom-stat-unchanged">0</span>
-              <span class="text-xs font-semibold text-green-800">Sem Alteração</span>
+            <div class="bg-green-50 dark:bg-slate-800 border border-green-200 dark:border-slate-700 rounded-lg p-3 text-center cursor-pointer hover:bg-green-100 dark:hover:bg-slate-700 transition-colors" id="custom-card-unchanged">
+              <span class="block text-2xl font-bold text-green-700 dark:text-green-400" id="custom-stat-unchanged">0</span>
+              <span class="text-xs font-semibold text-green-800 dark:text-green-300">Sem Alteração</span>
             </div>
-            <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-center cursor-pointer hover:bg-indigo-100 transition-colors" id="custom-card-forms">
-              <span class="block text-2xl font-bold text-indigo-700" id="custom-stat-forms">0</span>
-              <span class="text-xs font-semibold text-indigo-800">FORMs (.SCX)</span>
+            <div class="bg-indigo-50 dark:bg-slate-800 border border-indigo-200 dark:border-slate-700 rounded-lg p-3 text-center cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" id="custom-card-forms">
+              <span class="block text-2xl font-bold text-indigo-700 dark:text-indigo-400" id="custom-stat-forms">0</span>
+              <span class="text-xs font-semibold text-indigo-800 dark:text-indigo-300">FORMs (.SCX)</span>
             </div>
-            <div class="bg-teal-50 border border-teal-200 rounded-lg p-3 text-center cursor-pointer hover:bg-teal-100 transition-colors" id="custom-card-prgs">
-              <span class="block text-2xl font-bold text-teal-700" id="custom-stat-prgs">0</span>
-              <span class="text-xs font-semibold text-teal-800">PRGs (.PRG)</span>
+            <div class="bg-teal-50 dark:bg-slate-800 border border-teal-200 dark:border-slate-700 rounded-lg p-3 text-center cursor-pointer hover:bg-teal-100 dark:hover:bg-slate-700 transition-colors" id="custom-card-prgs">
+              <span class="block text-2xl font-bold text-teal-700 dark:text-teal-400" id="custom-stat-prgs">0</span>
+              <span class="text-xs font-semibold text-teal-800 dark:text-teal-300">PRGs (.PRG)</span>
             </div>
-            <div class="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center cursor-pointer hover:bg-purple-100 transition-colors" id="custom-card-reports">
-              <span class="block text-2xl font-bold text-purple-700" id="custom-stat-reports">0</span>
-              <span class="text-xs font-semibold text-purple-800">REPORTS (.FRX)</span>
+            <div class="bg-purple-50 dark:bg-slate-800 border border-purple-200 dark:border-slate-700 rounded-lg p-3 text-center cursor-pointer hover:bg-purple-100 dark:hover:bg-slate-700 transition-colors" id="custom-card-reports">
+              <span class="block text-2xl font-bold text-purple-700 dark:text-purple-400" id="custom-stat-reports">0</span>
+              <span class="text-xs font-semibold text-purple-800 dark:text-purple-300">REPORTS (.FRX)</span>
             </div>
           </div>
 
           <!-- Barra de Filtros e Busca -->
-          <div class="flex flex-col sm:flex-row gap-3 items-center justify-between mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+          <div class="flex flex-col sm:flex-row gap-3 items-center justify-between mb-4 bg-gray-50 dark:bg-slate-800 p-3 rounded-lg border border-gray-200 dark:border-slate-700">
             <div class="flex flex-wrap gap-1.5" id="custom-filter-buttons">
               <button type="button" data-filter="all" class="custom-filter-btn bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">Todos (<span id="cnt-filter-all">0</span>)</button>
-              <button type="button" data-filter="changed" class="custom-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">Com Alteração (<span id="cnt-filter-changed">0</span>)</button>
-              <button type="button" data-filter="unchanged" class="custom-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">Sem Alteração (<span id="cnt-filter-unchanged">0</span>)</button>
-              <button type="button" data-filter="form" class="custom-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">Forms (<span id="cnt-filter-forms">0</span>)</button>
-              <button type="button" data-filter="prg" class="custom-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">PRGs (<span id="cnt-filter-prgs">0</span>)</button>
-              <button type="button" data-filter="report" class="custom-filter-btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">Reports (<span id="cnt-filter-reports">0</span>)</button>
+              <button type="button" data-filter="changed" class="custom-filter-btn bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">Com Alteração (<span id="cnt-filter-changed">0</span>)</button>
+              <button type="button" data-filter="unchanged" class="custom-filter-btn bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">Sem Alteração (<span id="cnt-filter-unchanged">0</span>)</button>
+              <button type="button" data-filter="form" class="custom-filter-btn bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">Forms (<span id="cnt-filter-forms">0</span>)</button>
+              <button type="button" data-filter="prg" class="custom-filter-btn bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">PRGs (<span id="cnt-filter-prgs">0</span>)</button>
+              <button type="button" data-filter="report" class="custom-filter-btn bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">Reports (<span id="cnt-filter-reports">0</span>)</button>
             </div>
 
             <div class="w-full sm:w-64">
-              <input type="text" id="custom-search-input" class="w-full p-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Filtrar por nome...">
+              <input type="text" id="custom-search-input" class="w-full p-2 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 text-gray-800 dark:text-slate-100 rounded-lg text-xs focus:ring-2 focus:ring-blue-500" placeholder="Filtrar por nome...">
             </div>
           </div>
 
           <!-- Tabela com a lista de customizações -->
-          <div class="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
-            <table class="min-w-full divide-y divide-gray-200 text-sm">
-              <thead class="bg-gray-100">
+          <div class="overflow-x-auto border border-gray-200 dark:border-slate-800 rounded-xl shadow-sm">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-800 text-sm">
+              <thead class="bg-gray-100 dark:bg-slate-800">
                 <tr>
-                  <th scope="col" class="px-4 py-3 text-left font-bold text-gray-700">Tipo</th>
-                  <th scope="col" class="px-4 py-3 text-left font-bold text-gray-700">Nome / Tela</th>
-                  <th scope="col" class="px-4 py-3 text-left font-bold text-gray-700">Caminho Customizado (Fora STOB)</th>
-                  <th scope="col" class="px-4 py-3 text-left font-bold text-gray-700">Caminho Padrão (STOB)</th>
-                  <th scope="col" class="px-4 py-3 text-center font-bold text-gray-700">Status</th>
-                  <th scope="col" class="px-4 py-3 text-right font-bold text-gray-700">Ações</th>
+                  <th scope="col" class="px-4 py-3 text-left font-bold text-gray-700 dark:text-slate-300">Tipo</th>
+                  <th scope="col" class="px-4 py-3 text-left font-bold text-gray-700 dark:text-slate-300">Nome / Tela</th>
+                  <th scope="col" class="px-4 py-3 text-left font-bold text-gray-700 dark:text-slate-300">Caminho Customizado (Fora STOB)</th>
+                  <th scope="col" class="px-4 py-3 text-left font-bold text-gray-700 dark:text-slate-300">Caminho Padrão (STOB)</th>
+                  <th scope="col" class="px-4 py-3 text-center font-bold text-gray-700 dark:text-slate-300">Status</th>
+                  <th scope="col" class="px-4 py-3 text-right font-bold text-gray-700 dark:text-slate-300">Ações</th>
                 </tr>
               </thead>
-              <tbody id="custom-items-tbody" class="bg-white divide-y divide-gray-200">
+              <tbody id="custom-items-tbody" class="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
                 <!-- Injetado dinamicamente -->
               </tbody>
             </table>
@@ -578,7 +659,7 @@
 
           <!-- Modal de Visualização de Diff -->
           <div id="custom-diff-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden border border-gray-200 dark:border-slate-800">
               <div class="bg-gray-900 text-white px-6 py-4 flex items-center justify-between">
                 <div>
                   <h3 id="custom-modal-title" class="text-lg font-bold">Visualizador de Alterações</h3>
@@ -586,11 +667,11 @@
                 </div>
                 <button type="button" id="btn-close-custom-modal" class="text-gray-400 hover:text-white p-2 text-2xl font-bold">&times;</button>
               </div>
-              <div class="flex-1 bg-gray-100 relative">
+              <div class="flex-1 bg-gray-100 dark:bg-slate-950 relative">
                 <iframe id="custom-modal-iframe" class="w-full h-full border-0"></iframe>
               </div>
-              <div class="bg-gray-100 border-t border-gray-200 px-6 py-3 flex justify-between items-center">
-                <span class="text-xs text-gray-500">Comparação: Padrão (STOB - Esquerda) vs Customizado (Direita)</span>
+              <div class="bg-gray-100 dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 px-6 py-3 flex justify-between items-center">
+                <span class="text-xs text-gray-500 dark:text-slate-400">Comparação: Padrão (STOB - Esquerda) vs Customizado (Direita)</span>
                 <button type="button" id="btn-download-custom-modal" class="bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs py-2 px-4 rounded-lg shadow transition-colors">
                   Baixar HTML da Comparação
                 </button>
@@ -599,6 +680,211 @@
           </div>
 
         </div>
+      </section>
+
+      <!-- Seção: Validador de XML Unificado -->
+      <section id="section-xml-validator" class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
+        <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-gray-200 dark:border-slate-800 mb-6 gap-4">
+          <div>
+            <h2 class="text-2xl font-bold text-blue-800 dark:text-blue-400 flex items-center gap-2">
+              <svg class="w-7 h-7 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              Validador de XML Unificado
+            </h2>
+            <p class="text-gray-600 dark:text-slate-400 text-sm mt-1">Valide seus arquivos XML em relação aos esquemas oficiais XSD (libxml2 / WebAssembly) com suporte a NFS-e Padrão Nacional e outros modelos.</p>
+          </div>
+          <div class="flex items-center gap-2 bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 text-blue-900 dark:text-blue-300 text-xs px-3 py-2 rounded-lg">
+            <span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            <span class="font-medium">Engine XSD Client-Side Ativa</span>
+          </div>
+        </div>
+
+        <!-- Barra de Configuração do Schema -->
+        <div class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label for="xml-schema-category" class="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase mb-1">Padrão / Categoria do Documento</label>
+            <select id="xml-schema-category" class="w-full p-2.5 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-sm font-semibold text-gray-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500">
+              <option value="nfse_padrao_nacional_prod">NFS-e Padrão Nacional</option>
+            </select>
+          </div>
+          <div>
+            <label for="xml-schema-environment" class="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase mb-1">Ambiente / Versão</label>
+            <select id="xml-schema-environment" class="w-full p-2.5 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-sm font-semibold text-gray-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500">
+              <option value="prod">Produção (Schemas v1.01 / v1.00)</option>
+            </select>
+          </div>
+          <div>
+            <label for="xml-schema-target" class="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase mb-1">Esquema XSD Principal</label>
+            <select id="xml-schema-target" class="w-full p-2.5 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-sm font-semibold text-blue-900 dark:text-blue-300 focus:ring-2 focus:ring-blue-500">
+              <option value="auto">⚡ Detecção Automática (pela Tag Raiz)</option>
+              <option value="nfse">NFSe_v1.01.xsd (Nota Fiscal de Serviços)</option>
+              <option value="dps">DPS_v1.01.xsd (Declaração Prestação Serviços)</option>
+              <option value="evento">evento_v1.01.xsd (Evento de NFS-e)</option>
+              <option value="pedRegEvento">pedRegEvento_v1.01.xsd (Pedido Reg. Evento)</option>
+              <option value="cnc">CNC_v1.00.xsd (Cadastro Nacional Contribuintes)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Tabs de Modo de Entrada -->
+        <div class="mb-4 flex border-b border-gray-200 dark:border-slate-800">
+          <button id="xml-mode-btn-text" type="button" class="py-2 px-5 font-bold text-sm border-b-2 border-blue-600 text-blue-700 dark:text-blue-400 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            Cole o Código XML (Texto)
+          </button>
+          <button id="xml-mode-btn-file" type="button" class="py-2 px-5 font-bold text-sm border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+            Upload / Arraste Arquivos (Lote XML)
+          </button>
+        </div>
+
+        <!-- Modo Texto -->
+        <div id="xml-container-text" class="block">
+          <div class="flex items-center justify-between mb-2">
+            <label for="xml-input-text" class="text-xs font-bold text-gray-600 dark:text-slate-400 uppercase">Insira ou Cole seu XML abaixo:</label>
+            <div class="flex items-center gap-2">
+              <button id="btn-xml-sample-dps" type="button" class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold">Exemplo DPS</button>
+              <span class="text-gray-300 dark:text-slate-700">|</span>
+              <button id="btn-xml-sample-nfse" type="button" class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold">Exemplo NFS-e Nacional</button>
+              <span class="text-gray-300 dark:text-slate-700">|</span>
+              <button id="btn-xml-sample-sp-rps" type="button" class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold">Exemplo SP (RPS)</button>
+              <span class="text-gray-300 dark:text-slate-700">|</span>
+              <button id="btn-xml-sample-nfe-sefaz" type="button" class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold">Exemplo NF-e (SEFAZ)</button>
+              <span class="text-gray-300 dark:text-slate-700">|</span>
+              <button id="btn-xml-sample-guarulhos" type="button" class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold">Exemplo Guarulhos (ABRASF)</button>
+              <span class="text-gray-300 dark:text-slate-700">|</span>
+              <button id="btn-xml-format" type="button" class="text-xs text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 font-semibold">Formatar XML</button>
+              <span class="text-gray-300 dark:text-slate-700">|</span>
+              <button id="btn-xml-clear" type="button" class="text-xs text-red-600 dark:text-red-400 hover:underline font-semibold">Limpar</button>
+            </div>
+          </div>
+          <textarea id="xml-input-text" rows="12" class="w-full p-3 font-mono text-xs bg-gray-900 text-green-400 rounded-xl border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-inner" placeholder="<DPS xmlns=&quot;http://www.sped.fazenda.gov.br/nfse&quot;>..."></textarea>
+        </div>
+
+        <!-- Modo Arquivo / Lote -->
+        <div id="xml-container-file" class="hidden">
+          <div class="border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-xl p-8 text-center hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer" id="xml-drop-zone">
+            <label for="xml-input-files" class="cursor-pointer flex flex-col items-center">
+              <svg class="w-16 h-16 text-blue-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <span class="text-base font-bold text-gray-800 dark:text-slate-200">Clique para selecionar ou arraste arquivos XML aqui</span>
+              <span class="text-xs text-gray-500 dark:text-slate-400 mt-1">Você pode selecionar um ou múltiplos arquivos .xml ao mesmo tempo para validação em lote.</span>
+              <input type="file" id="xml-input-files" class="hidden" accept=".xml" multiple />
+            </label>
+          </div>
+          <div id="xml-files-summary" class="mt-3 text-sm text-gray-700 dark:text-slate-300 font-medium hidden flex items-center justify-between bg-blue-50 dark:bg-slate-800 p-3 rounded-lg border border-blue-200 dark:border-slate-700">
+            <span id="xml-files-count-badge" class="font-bold text-blue-900 dark:text-blue-300">0 arquivos selecionados</span>
+            <button id="btn-xml-clear-files" type="button" class="text-xs text-red-600 dark:text-red-400 hover:underline font-bold">Remover todos</button>
+          </div>
+          <div id="xml-files-list" class="mt-2 max-h-40 overflow-y-auto space-y-1 text-xs font-mono text-gray-600 dark:text-slate-400"></div>
+        </div>
+
+        <!-- Botão de Ação -->
+        <div class="mt-6 flex justify-end">
+          <button id="btn-validate-xml" type="button" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg shadow-md transition-all flex items-center gap-2 text-base cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            Validar XML contra Schema XSD
+          </button>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="xml-loading-indicator" class="hidden mt-6 p-6 bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-xl text-center">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent mb-2"></div>
+          <p id="xml-loading-text" class="text-sm font-bold text-blue-900 dark:text-blue-300">Carregando esquemas XSD e validando XML...</p>
+        </div>
+
+        <!-- Painel de Resultados da Validação -->
+        <div id="xml-results-container" class="hidden mt-8 border-t border-gray-200 dark:border-slate-800 pt-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+            <h3 class="text-xl font-bold text-gray-800 dark:text-slate-200">Resultado da Validação XSD</h3>
+            <div class="flex items-center gap-3">
+              <input type="text" id="xml-filter-input" placeholder="Filtrar por arquivo ou erro..." class="p-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-800 dark:text-slate-100 rounded-lg text-xs w-64 focus:ring-2 focus:ring-blue-500">
+              <button id="btn-copy-xml-report" type="button" class="bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 text-xs font-bold py-2 px-3 rounded-lg border border-gray-300 dark:border-slate-700 transition-colors">Copiar Relatório</button>
+            </div>
+          </div>
+
+          <!-- Cards Sintéticos de Estatísticas -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 p-4 rounded-xl text-center">
+              <div class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Total Analisado</div>
+              <div id="xml-stat-total" class="text-2xl font-black text-gray-800 dark:text-slate-100 mt-1">0</div>
+            </div>
+            <div class="bg-green-50 dark:bg-slate-800 border border-green-200 dark:border-slate-700 p-4 rounded-xl text-center">
+              <div class="text-xs font-bold text-green-700 dark:text-green-400 uppercase">Arquivos Válidos</div>
+              <div id="xml-stat-valid" class="text-2xl font-black text-green-600 dark:text-green-400 mt-1">0</div>
+            </div>
+            <div class="bg-red-50 dark:bg-slate-800 border border-red-200 dark:border-slate-700 p-4 rounded-xl text-center">
+              <div class="text-xs font-bold text-red-700 dark:text-red-400 uppercase">Arquivos com Erro</div>
+              <div id="xml-stat-invalid" class="text-2xl font-black text-red-600 dark:text-red-400 mt-1">0</div>
+            </div>
+            <div class="bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-slate-700 p-4 rounded-xl text-center">
+              <div class="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase">Total de Erros XSD</div>
+              <div id="xml-stat-errors-count" class="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">0</div>
+            </div>
+          </div>
+
+          <!-- Tabela de Resultados -->
+          <div class="overflow-x-auto border border-gray-200 dark:border-slate-800 rounded-xl shadow-sm mb-6">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-800 text-sm">
+              <thead class="bg-gray-100 dark:bg-slate-800">
+                <tr>
+                  <th scope="col" class="px-4 py-3 text-left font-bold text-gray-700 dark:text-slate-300">Arquivo</th>
+                  <th scope="col" class="px-4 py-3 text-left font-bold text-gray-700 dark:text-slate-300">Schema Utilizado</th>
+                  <th scope="col" class="px-4 py-3 text-center font-bold text-gray-700 dark:text-slate-300">Status</th>
+                  <th scope="col" class="px-4 py-3 text-center font-bold text-gray-700 dark:text-slate-300">Qtd. Erros</th>
+                  <th scope="col" class="px-4 py-3 text-right font-bold text-gray-700 dark:text-slate-300">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="xml-results-tbody" class="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
+                <!-- Injetado dinamicamente via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Modal de Detalhes dos Erros e Código XML -->
+        <div id="xml-detail-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div class="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden border border-gray-200 dark:border-slate-800">
+            <div class="bg-gray-900 text-white px-6 py-4 flex items-center justify-between border-b border-gray-800">
+              <div>
+                <h3 id="xml-modal-title" class="text-lg font-bold text-blue-400">Detalhes da Validação do XML</h3>
+                <p id="xml-modal-subtitle" class="text-xs text-gray-400 font-mono"></p>
+              </div>
+              <button type="button" id="btn-close-xml-modal" class="text-gray-400 hover:text-white p-2 text-2xl font-bold">&times;</button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50 dark:bg-slate-950">
+              <!-- Seção de Erros Encontrados -->
+              <div>
+                <h4 class="text-sm font-bold text-red-800 dark:text-red-400 uppercase mb-3 flex items-center gap-2">
+                  <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  Lista de Inconformidades XSD Encontradas
+                </h4>
+                <div id="xml-modal-errors-list" class="space-y-3">
+                  <!-- Injetado dinamicamente -->
+                </div>
+              </div>
+
+              <!-- Visualizador de Código XML com Números de Linha -->
+              <div>
+                <h4 class="text-sm font-bold text-gray-800 dark:text-slate-200 uppercase mb-2">Visualizador de Código XML</h4>
+                <div class="bg-gray-900 text-gray-200 rounded-lg p-4 font-mono text-xs overflow-x-auto max-h-96 shadow-inner border border-gray-800 leading-relaxed" id="xml-modal-code-viewer">
+                  <!-- Injetado com destaca de linha -->
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 px-6 py-3 flex justify-between items-center">
+              <span class="text-xs text-gray-500 dark:text-slate-400">Esquema: <strong id="xml-modal-xsd-info" class="text-gray-700 dark:text-slate-200 font-mono"></strong></span>
+              <button type="button" id="btn-close-xml-modal-footer" class="bg-gray-700 hover:bg-gray-800 text-white font-bold text-xs py-2 px-5 rounded-lg shadow transition-colors">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+
       </section>
     </main>
 
