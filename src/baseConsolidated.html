@@ -153,6 +153,36 @@
             padding: 0 !important;
             border: none !important;
         }
+
+        /* Estilos de Validação no Fonte do Cliente */
+        .val-applied {
+            background-color: rgba(34, 197, 94, 0.08) !important;
+        }
+        .val-missing {
+            background-color: rgba(239, 68, 68, 0.08) !important;
+        }
+        .val-badge {
+            display: inline-flex;
+            align-items: center;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 4px;
+            margin-left: 6px;
+            vertical-align: middle;
+            line-height: 1.2;
+            user-select: none;
+        }
+        .val-badge-applied {
+            background-color: #dcfce7;
+            color: #15803d;
+            border: 1px solid #86efac;
+        }
+        .val-badge-missing {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fca5a5;
+        }
     </style>
 </head>
 
@@ -164,7 +194,7 @@
         <!-- Sidebar Header -->
         <div class="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
             <div class="flex items-center space-x-3">
-                <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4gPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI4LjAuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgLS0+IDxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgdmVyc2lvbj0iMS4xIiBpZD0iQ2FtYWRhXzEiIHg9IjBweCIgeT0iMHB4IiB2aWV3Qm94PSIwIDAgMzAwIDg0IiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCAzMDAgODQ7IiB4bWw6c3BhY2U9InByZXNlcnZlIj4gPHN0eWxlIHR5cGU9InRleHQvY3NzIj4gLnN0MHtjbGlwLXBhdGg6dXJsKCNTVkdJRF8wMDAwMDEzODU2NTAxODE4ODY1OTU0NzQxMDAwMDAwNjY3OTE3MTA0NzI3OTk1NTYwOF8pO30gLnN0MXtmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMxNTMwNEQ7fSAuc3Qye2ZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzIzQkFFRDt9IC5zdDN7ZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7ZmlsbDojOTFCRTNFO30gLnN0NHtmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMwMDZCQUY7fSA8L3N0eWxlPiA8Zz4gPGRlZnM+IDxyZWN0IGlkPSJTVkdJRF8xXyIgeT0iMC4xIiB3aWR0aD0iMjk5LjgiIGhlaWdodD0iODMuNCI+PC9yZWN0PiA8L2RlZnM+IDxjbGlwUGF0aCBpZD0iU1ZHSURfMDAwMDAxODEwNjUzODU2MjgyNjcxMzg3NjAwMDAwMDIzOTMzNTA1ODYxMTg0NzEzMThfIj4gPHVzZSB4bGluazpocmVmPSIjU1ZHSURfMV8iIHN0eWxlPSJvdmVyZmxvdzp2aXNpYmxlOyI+PC91c2U+IDwvY2xpcFBhdGg+IDxnIHN0eWxlPSJjbGlwLXBhdGg6dXJsKCNTVkdJRF8wMDAwMDE4MTA2NTM4NTYyODI2NzEzODc2MDAwMDAwMjM5MzM1MDU4NjExODQ3MTMxOF8pOyI+IDxwYXRoIGNsYXNzPSJzdDEiIGQ9Ik0xNDguMiw0MS45YzE3LjEsMCwyMS45LTMuOSwyMS45LTE3LjhWMTljMC0xMy44LTUuMi0xOC45LTIxLjktMTguOWgtNDYuOHYxMS4yYzE1LjUsMCwzMC45LDAsNDYuNSwwIGM3LDAsOS4zLDEuOCw5LjMsOC4xdjRjMCw2LjItMi4yLDcuOC05LjEsNy44Yy0xNS43LDAtMzEsMC4yLTQ2LjYsMC4ydjI3LjFoMTNWNDEuOUwxNDguMiw0MS45TDE0OC4yLDQxLjl6IE0yNDMsNTMuMyBjMS41LDMuMywzLjksNS4zLDcuOSw1LjNjMy42LDAsNi0yLjIsNy40LTUuM2MzLjYtOC41LDE5LjEtNDQuNiwyMi45LTUzLjFoLTEzLjZsLTE3LDQxLjdsLTE2LTM2LjdjLTEuNi0zLjctMy42LTUtNy42LTUgcy01LjksMS4zLTcuNiw1bC0xNi43LDM2LjdMMTg2LjMsMC4xaC0xMy45bDIxLjgsNTMuMmMxLjMsMy4yLDMuNCw1LjMsNy41LDUuM2M4LDAsNi40LTIuMSw4LTUuM2wxNy4yLTM2LjFMMjQzLDUzLjNMMjQzLDUzLjN6IE0yOTkuOCw1OC42VjAuMWwtMTMsMC4xdjU4LjRMMjk5LjgsNTguNkwyOTkuOCw1OC42eiI+PC9wYXRoPiA8cGF0aCBjbGFzcz0ic3QyIiBkPSJNMTAuNSwzMS40YzIuNywwLDUuMSwxLDcuMSwzYzIsMiwzLjEsNC4zLDMuMiw3Yy0wLjEsNS43LDEuOSwxMC43LDUuOSwxNWM0LjEsNC4yLDksNi4zLDE0LjcsNi4zaDAuNSBjNS42LDAsMTAuNS0yLjEsMTQuNS02LjNjNC4yLTQuMiw2LjItOS4yLDYuMS0xNWMtMC4xLTUuNy0yLjItMTAuNi02LjQtMTQuNWMtNC4zLTQuMS05LjMtNi0xNS01LjljLTIuNy0wLjEtNS0xLjItNy0zLjIgYy0xLjktMi0yLjktNC41LTIuOS03LjNzMS01LjIsMy03LjNjMi0yLDQuNS0zLDcuNC0zYzIuOSwwLDUuMiwxLDcuMywzYzIsMiwzLDQuNSwzLDcuM2MwLDUuNSwyLDEwLjQsNS45LDE0LjcgYzQuMSw0LjEsOC45LDYuMSwxNC41LDYuM2MzLjgtMC4yLDYuNiwxLjEsOC42LDQuMWMyLDIuOCwyLjYsNS44LDEuOSw4LjljLTEuNSw1LjItNC44LDcuOC0xMCw3LjhoLTAuNSBjLTUuOCwwLjItMTAuNywyLjMtMTQuNSw2LjRjLTQsNC01LjksOC44LTUuOSwxNC41YzAsMi44LTEsNS4yLTMsNy4zYy0yLDItNC41LDMtNy4zLDNoLTAuM2MtMi44LDAtNS4yLTEtNy4yLTNjLTItMi0zLTQuNS0zLTcuMyBjMC01LjctMi0xMC42LTUuOS0xNC41Yy00LTQuMS04LjctNi4yLTE0LjQtNi40Yy0zLDAuMS01LjYtMC45LTcuNy0yLjljLTIuMS0yLTMuMi00LjYtMy4yLTcuNmMwLTIuOCwxLTUuMiwzLTcuMyBDNS4xLDMyLjQsNy41LDMxLjQsMTAuNSwzMS40TDEwLjUsMzEuNHoiPjwvcGF0aD4gPHBhdGggY2xhc3M9InN0MyIgZD0iTTExLjIsNjEuN2M2LDAsMTAuOCw0LjgsMTAuOCwxMC44cy00LjgsMTAuOC0xMC44LDEwLjhjLTYsMC0xMC48LTQuOC0xMC44LTEwLjhTNS4yLDYxLjcsMTEuMiw2MS43IEwxMS4yLDYxLjd6IE03Mi4zLDAuNmM2LDAsMTAuOCw0LjgsMTAuOCwxMC44YzAsNi00LjgsMTAuOC0xMC44LDEwLjhzLTEwLjgtNC44LTEwLjgtMTAuOEM2MS41LDUuNCw2Ni4zLDAuNiw3Mi4zLDAuNnoiPjwvcGF0aD4gPHBhdGggY2xhc3M9InN0NCIgZD0iTTcyLjMsNjEuN2M2LDAsMTAuOCw0LjgsMTAuOCwxMC44cy00LjgsMTAuOC0xMC44LDEwLjhzLTEwLjgtNC44LTEwLjgtMTAuOFM2Ni4zLDYxLjcsNzIuMyw2MS43eiBNMTEuMSwwLjUgYy0yLjgsMC01LjIsMS03LjMsM2MtMiwyLTMsNC41LTMsNy4zYzAsMywxLjEsNS41LDMuMiw3LjZjMi4xLDIsNC43LDMsNy42LDIuOWM1LjgsMC4yLDEwLjcsMi4zLDE0LjUsNi40YzQsNCw1LjksOC44LDUuOSwxNC41IGMwLDIuOCwxLDUuMiwzLDcuM2MyLDIsNC41LDMsNy40LDNzNS4yLTEsNy4zLTNjMi0yLDMtNC41LDMtNy4zUzUxLjksMzcsNTAsMzVjLTEuOS0yLTQuMi0zLjEtNy0zLjJjLTUuOSwwLjEtMTEtMS45LTE1LjItNi4xIGMtNC4zLTQuMy02LjQtOS4zLTYuMy0xNS4yYy0wLjEtMi43LTEuMS01LjEtMy4xLTdDMTYuNSwxLjUsMTQsMC41LDExLjEsMC41eiI+PC9wYXRoPiA8cGF0aCBjbGFzcz0ic3QzIiBkPSJNMTAxLjQsNzguNWwyLTAuMnYwLjFjMC4xLDAuNiwwLjIsMS4yLDAuNiwxLjdjMC4zLDAuNSwwLjgsMC44LDEuNCwxLjFjMC43LDAuMywxLjQsMC40LDIuMSwwLjQgYzAuNiwwLDEuMy0wLjEsMS45LTAuM2MwLjQtMC4yLDAuOS0wLjQsMS4yLTAuOGMwLjItMC4zLDAuNC0wLjcsMC40LTEuMmMwLTAuNC0wLjEtMC44LTAuNC0xLjFjLTAuMy0wLjQtMC44LTAuNi0xLjItMC44IGMtMC44LTAuMy0xLjctMC41LTIuNS0wLjdjLTAuOS0wLjItMi0wLjUtMi44LTAuOWMtMC42LTAuMy0xLjItMC44LTEuNi0xLjRjLTAuNC0wLjYtMC41LTEuMi0wLjUtMS44YzAtMC44LDAuMi0xLjUsMC42LTIuMSBjMC40LTAuNywxLjEtMS4yLDEuOS0xLjVjMC45LTAuMywxLjgtMC41LDIuNy0wLjVjMSwwLDIsMC4yLDIuOCwwLjVjMC44LDAuMywxLjUsMC44LDEuOSwxLjZjMC41LDAuNywwLjcsMS41LDAuNywyLjNWNzMgbC0yLjEsMC4ydi0wLjFjLTAuMS0wLjgtMC40LTEuNS0xLTJjLTAuNy0wLjUtMS42LTAuNy0yLjQtMC43Yy0wLjgsMC0xLjgsMC4xLTIuNCwwLjZjLTAuNSwwLjQtMC43LDAuOC0wLjcsMS40IGMwLDAuNSwwLjIsMC45LDAuNSwxLjJjMC41LDAuNSwyLjEsMC44LDIuOCwxYzEsMC4yLDIuMywwLjUsMy4yLDAuOWMwLjcsMC4zLDEuNCwwLjgsMS45LDEuNWMwLjQsMC42LDAuNiwxLjMsMC42LDIuMSBjMCwwLjgtMC4yLDEuNS0wLjcsMi4yYy0wLjUsMC43LTEuMSwxLjMtMS45LDEuNmMtMC45LDAuNC0xLjgsMC42LTIuOCwwLjZjLTEuMSwwLTIuMy0wLjEtMy4zLTAuNmMtMC45LTAuNC0xLjYtMC45LTIuMS0xLjggYy0wLjUtMC44LTAuOC0xLjctMC44LTIuNkwxMDEuNCw3OC41TDEwMS40LDc4LjV6IE0xMjkuOCw4My4zVjY4LjdoMi4ydjE0LjZIMTI5Ljh6IE0xNDguNCw3OC41bDItMC4ydjAuMSBjMC4xLDAuNiwwLjIsMS4yLDAuNiwxLjdjMC4zLDAuNSwwLjgsMC44LDEuNCwxLjFjMC43LDAuMywxLjQsMC40LDIuMSwwLjRjMC42LDAsMS4zLTAuMSwxLjktMC4zYzAuNC0wLjIsMC45LTAuNCwxLjItMC44IGMwLjItMC4zLDAuNC0wLjcsMC40LTEuMmMwLTAuNC0wLjEtMC44LTAuNC0xLjFjLTAuMy0wLjQtMC44LTAuNi0xLjItMC44Yy0wLjgtMC4zLTEuNy0wLjUtMi41LTAuN2MtMC45LTAuMi0yLTAuNS0yLjgtMC45IGMtMC42LTAuMy0xLjItMC44LTEuNi0xLjRjLTAuNC0wLjYtMC41LTEuMi0wLjUtMS44YzAtMC44LDAuMi0xLjUsMC42LTIuMWMwLjQtMC43LDEuMS0xLjIsMS45LTEuNWMwLjktMC4zLDEuOC0wLjUsMi43LTAuNSBjMSwwLDEuOSwwLjIsMi45LDAuNWMwLjgsMC4zLDEuNSwwLjgsMS45LDEuNmMwLjUsMC43LDAuNywxLjUsMC43LDIuM1Y3M2wtMi4xLDAuMnYtMC4xYy0wLjEtMC44LTAuNC0xLjUtMS0yIGMtMC43LTAuNS0xLjYtMC43LTIuNC0wLjdzLTEuOCwwLjEtMi40LDAuNmMtMC41LDAuNC0wLjcsMC44LTAuNywxLjRjMCwwLjUsMC4yLDAuOSwwLjUsMS4yYzAuNSwwLjUsMi4xLDAuOCwyLjgsMSBjMSwwLjIsMi4zLDAuNSwzLjIsMC45YzAuNywwLjMsMS40LDAuOCwxLjksMS41YzAuNCwwLjYsMC42LDEuMywwLjYsMi4xYzAsMC44LTAuMiwxLjUtMC43LDIuMmMtMC41LDAuNy0xLjEsMS4zLTEuOSwxLjYgYy0wLjksMC40LTEuOCwwLjYtMi44LDAuNmMtMS4xLDAtMi4zLTAuMS0zLjMtMC42Yy0wLjktMC40LTEuNi0wLjktMi4xLTEuOGMtMC41LTAuOC0wLjgtMS43LTAuOC0yLjZMMTQ4LjQsNzguNUwxNDguNCw3OC41eiBNMTgwLjEsNzAuN2gtNC43di0xLjloMTEuNnYxLjloLTQuN3YxMi42aC0yLjJWNzAuN3ogTTIwNC45LDcwLjd2NC4xaDcuOXYxLjloLTcuOXY0LjZoOC44djEuOWgtMTAuOVY2OC43aDEwLjZ2MS45SDIwNC45IEwyMDQuOSw3MC43eiBNMjM3LjEsODAuN2MwLjItMC42LDAuNC0xLjMsMC42LTEuOWwzLjUtMTBoMi44djE0LjZoLTIuMVY3MmwtNCwxMS4zaC0xLjlsLTMuOS0xMS41djExLjVoLTIuMVY2OC43aDMuMWwzLjQsMTAuMiBDMjM2LjcsNzkuNSwyMzYuOSw4MC Krieg3MSw4MC43TDIzNy4xLDgwLjd6IE0yNjguOSw3OUkyNjNsLTEuNiw0LjNoLTIsM2w1LjYtMTQuNmgyLjJsNS45LDE0LjZoLTIuNEwyNjguOSw3OUwyNjguOSw3OXogTTI4Ny42LDc4LjVsMi0wLjJ2MC4xYzAuMSwwLjYsMC4yLDEuMiwwLjYsMS43YzAuMywwLjUsMC44LDAuOCwxLjQsMS4xYzAuNywwLjMsMS40LDAuNCwyLjEsMC40YzAuNiwwLDEuMy0wLjEsMS45LTAuMyBjMC40LTAuMiwwLjktMC40LDEuMi0wLjhjMC4yLTAuMywwLjQtMC43LDAuNC0xLjJjMC0wLjQtMC4xLTAuOC0wLjQtMS4xYy0wLjMtMC40LTAuOC0wLjYtMS4yLTAuOGMtMC44LTAuMy0xLjctMC41LTIuNS0wLjcgYy0wLjktMC4yLTItMC41LTIuOC0wLjljLTAuNi0wLjMtMS4yLTAuOC0xLjYtMS40Yy0wLjQtMC42LTAuNS0xLjItMC41LTEuOGMwLTAuOCwwLjItMS41LDAuNi0yLjFjMC41LTAuNywxLjEtMS4yLDEuOS0xLjUgYzAuOS0wLjMsMS44LTAuNSwyLjctMC41YzEsMCwxLjksMC4yLDIuOCwwLjVjMC44LDAuMywxLjUsMC44LDEuOSwxLjZjMC41LDAuNywwLjcsMS41LDAuNywyLjNWNzMgbC0yLjEsMC4ydi0wLjEgYy0wLjEtMC44LTAuNC0xLjUtMS0yYy0wLjctMC41LTEuNi0wLjctMi40LTAuN2MtMC44LDAtMS44LDAuMS0yLjQsMC42Yy0wLjQsMC40LTAuNywwLjgtMC43LDEuNGMwLDAuNSwwLjIsMC45LDAuNSwxLjIgYzAuNSwwLjUsMi4xLDAuOCwyLjgsMWMxLDAuMiwyLjMsMC41LDMuMiwwLjljMC43LDAuMywxLjQsMC44LDEuOSwxLjVjMC40LDAuNiwwLjYsMS4zLDAuNiwyLjFjMCwwLjgtMC4yLDEuNS0wLjcsMi4y cC0wLjUsMC43LTEuMSwxLjMtMS45LDEuNmMtMC45LDAuNC0xLjgsMC42LTIuOCwwLjZjLTEuMSwwLTIuMy0wLjEtMy4zLTAuNmMtMC45LTAuNC0xLjYtMC45LTIuMS0xLjhjLTAuNS0wLjgtMC44LTEuNy0wLjgtMi42 LDI4Ny42LDc4LjVMMjg3LjYsNzguNXogTTI2My43LDc3LjJoNC41bC0xLjQtMy44Yy0wLjMtMC44LTAuNi0xLjctMC45LTIuNWMtMC4yLDAuOC0wLjQsMS41LTAuNywyLjNMMjYzLjcsNzcuMkwyNjMuNyw3Ny4yeiI+PC9wYXRoPiA8L2c+IDwvZz4gPC9zdmc+IA=="
+                <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4gPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI4LjAuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgLS0+IDxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgdmVyc2lvbj0iMS4xIiBpZD0iQ2FtYWRhXzEiIHg9IjBweCIgeT0iMHB4IiB2aWV3Qm94PSIwIDAgMzAwIDg0IiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCAzMDAgODQ7IiB4bWw6c3BhY2U9InByZXNlcnZlIj4gPHN0eWxlIHR5cGU9InRleHQvY3NzIj4gLnN0MHtjbGlwLXBhdGg6dXJsKCNTVkdJRF8wMDAwMDEzODU2NTAxODE4ODY1OTU0NzQxMDAwMDAwNjY3OTE3MTA0NzI3OTk1NTYwOF8pO30gLnN0MXtmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMxNTMwNEQ7fSAuc3Qye2ZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzIzQkFFRDt9IC5zdDN7ZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7ZmlsbDojOTFCRTNFO30gLnN0NHtmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtmaWxsOiMwMDZCQUY7fSA8L3N0eWxlPiA8Zz4gPGRlZnM+IDxyZWN0IGlkPSJTVkdJRF8xXyIgeT0iMC4xIiB3aWR0aD0iMjk5LjgiIGhlaWdodD0iODMuNCI+PC9yZWN0PiA8L2RlZnM+IDxjbGlwUGF0aCBpZD0iU1ZHSURfMDAwMDAxODEwNjUzODU2MjgyNjcxMzg3NjAwMDAwMDIzOTMzNTA1ODYxMTg0NzEzMThfIj4gPHVzZSB4bGluazpocmVmPSIjU1ZHSURfMV8iIHN0eWxlPSJvdmVyZmxvdzp2aXNpYmxlOyI+PC91c2U+IDwvY2xpcFBhdGg+IDxnIHN0eWxlPSJjbGlwLXBhdGg6dXJsKCNTVkdJRF8wMDAwMDE4MTA2NTM4NTYyODI2NzEzODc2MDAwMDAwMjM5MzM1MDU4NjExODQ3MTMxOF8pOyI+IDxwYXRoIGNsYXNzPSJzdDEiIGQ9Ik0xNDguMiw0MS45YzE3LjEsMCwyMS45LTMuOSwyMS45LTE3LjhWMTljMC0xMy44LTUuMi0xOC45LTIxLjktMTguOWgtNDYuOHYxMS4yYzE1LjUsMCwzMC45LDAsNDYuNSwwIGM3LDAsOS4zLDEuOCw5LjMsOC4xdjRjMCw2LjItMi4yLDcuOC05LjEsNy44Yy0xNS43LDAtMzEsMC4yLTQ2LjYsMC4ydjI3LjFoMTNWNDEuOUwxNDguMiw0MS45TDE0OC4yLDQxLjl6IE0yNDMsNTMuMyBjMS41LDMuMywzLjksNS4zLDcuOSw1LjNjMy42LDAsNi0yLjIsNy40LTUuM2MzLjYtOC41LDE5LjEtNDQuNiwyMi45LTUzLjFoLTEzLjZsLTE3LDQxLjdsLTE2LTM2LjdjLTEuNi0zLjctMy42LTUtNy42LTUgcy01LjksMS4zLTcuNiw1bC0xNi43LDM2LjdMMTg2LjMsMC4xaC0xMy45bDIxLjgsNTMuMmMxLjMsMy4yLDMuNCw1LjMsNy41LDUuM2M4LDAsNi40LTIuMSw4LTUuM2wxNy4yLTM2LjFMMjQzLDUzLjNMMjQzLDUzLjN6IE0yOTkuOCw1OC42VjAuMWwtMTMsMC4xdjU4LjRMMjk5LjgsNTguNkwyOTkuOCw1OC42eiI+PC9wYXRoPiA8cGF0aCBjbGFzcz0ic3QyIiBkPSJNMTAuNSwzMS40YzIuNywwLDUuMSwxLDcuMSwzYzIsMiwzLjEsNC4zLDMuMiw3Yy0wLjEsNS43LDEuOSwxMC43LDUuOSwxNWM0LjEsNC4yLDksNi4zLDE0LjcsNi4zaDAuNSBjNS42LDAsMTAuNS0yLjEsMTQuNS02LjNjNC4yLTQuMiw2LjItOS4yLDYuMS0xNWMtMC4xLTUuNy0yLjItMTAuNi02LjQtMTQuNWMtNC4zLTQuMS05LjMtNi0xNS01LjljLTIuNy0wLjEtNS0xLjItNy0zLjIgYy0xLjktMi0yLjktNC41LTIuOS03LjNzMS01LjIsMy03LjNjMi0yLDQuNS0zLDcuNC0zYzIuOSwwLDUuMiwxLDcuMywzYzIsMiwzLDQuNSwzLDcuM2MwLDUuNSwyLDEwLjQsNS45LDE0LjcgYzQuMSw0LjEsOC45LDYuMSwxNC41LDYuM2MzLjgtMC4yLDYuNiwxLjEsOC42LDQuMWMyLDIuOCwyLjYsNS44LDEuOSw4LjljLTEuNSw1LjItNC44LDcuOC0xMCw3LjhoLTAuNSBjLTUuOCwwLjItMTAuNywyLjMtMTQuNSw2LjRjLTQsNC01LjksOC44LTUuOSwxNC41YzAsMi44LTEsNS4yLTMsNy4zYy0yLDItNC41LDMtNy4zLDNoLTAuM2MtMi44LDAtNS4yLTEtNy4yLTNjLTItMi0zLTQuNS0zLTcuMyBjMC01LjctMi0xMC42LTUuOS0xNC41Yy00LTQuMS04LjctNi4yLTE0LjQtNi40Yy0zLDAuMS01LjYtMC45LTcuNy0yLjljLTIuMS0yLTMuMi00LjYtMy4yLTcuNmMwLTIuOCwxLTUuM2zLTcuMyBDNS4xLDMyLjQsNy41LDMxLjQsMTAuNSwzMS40TDEwLjUsMzEuNHoiPjwvcGF0aD4gPHBhdGggY2xhc3M9InN0MyIgZD0iTTExLjIsNjEuN2M2LDAsMTAuOCw0LjgsMTAuOCwxMC44cy00LjgsMTAuOC0xMC44LDEwLjhjLTYsMC0xMC44LTQuOC0xMC44LTEwLjhTNS4yLDYxLjcsMTEuMiw2MS43IEwxMS4yLDYxLjd6IE03Mi4zLDAuNmM2LDAsMTAuOCw0LjgsMTAuOCwxMC44YzAsNi00LjgsMTAuOC0xMC44LDEwLjhzLTEwLjgtNC44LTEwLjgtMTAuOEM2MS41LDUuNCw2Ni4zLDAuNiw3Mi4zLDAuNnoiPjwvcGF0aD4gPHBhdGggY2xhc3M9InN0NCIgZD0iTTcyLjMsNjEuN2M2LDAsMTAuOCw0LjgsMTAuOCwxMC44cy00LjgsMTAuOC0xMC44LDEwLjhzLTEwLjgtNC44LTEwLjgtMTAuOFM2Ni4zLDYxLjcsNzIuMyw2MS43eiBNMTEuMSwwLjUgYy0yLjgsMC01LjIsMS03LjMsM2MtMiwyLTMsNC41LTMsNy4zYzAsMywxLjEsNS41LDMuMiw3LjZjMi4xLDIsNC43LDMsNy42LDIuOWM1LjgsMC4yLDEuOSwyLjMsMTQuNSw2LjRjNCw0LDUuOSw4LjgsNS45LDE0LjUgYzAsMi44LDEsNS4yLDMsNy4zYzIsMiw0LjUsMyw3LjQsM3M1LjItMSw3LjMtM2MyLTIsMy00LjUsMy03LjNTNTEuOSwzNyw1MCwzNWMtMS45LTItNC4yLTMuMS03LTMuMmMtNS45LDAuMS0xMS0xLjktMTUuMi02LjEgYy00LjMtNC4zLTYuNC05LjMtNi4zLTE1LjJjLTAuMS0yLjctMS4xLTUuMS0zLjEtN0MxNi41LDEuNSwxNCwwLjUsMTEuMSwwLjV6Ij48L3BhdGg+IDxwYXRoIGNsYXNzPSJzdDMiIGQ9Ik0xMDEuNCw3OC41bDItMC4ydjAuMWMwLjEsMC42LDAuMiwxLjIsMC42LDEuN2MwLjMsMC41LDAuOCwwLjgsMS40LDEuMWMwLjcsMC4zLDEuNCwwLjQsMi4xLDAuNCBjMC42LDAsMS4zLTAuMSwxLjktMC4zYzAuNC0wLjIsMC45LTAuNCwxLjItMC44YzAuMi0wLjMsMC40LTAuNywwLjQtMS4yYzAtMC40LTAuMS0wLjgtMC40LTEuMWMtMC4zLTAuNC0wLjgtMC42LTEuMi0wLjggYy0wLjgtMC4zLTEuNy0wLjUtMi41LTAuN2MtMC45LTAuMi0yLTAuNS0yLjgtMC45Yy0wLjYtMC4zLTEuMi0wLjgtMS42LTEuNGMtMC40LTAuNi0wLjUtMS4yLTAuNS0xLjhjMC0wLjgsMC4yLTEuNSwwLjYtMi4xIGMwLjQtMC43LDEuMS0xLjIsMS45LTEuNWMwLjktMC4zLDEuOC0wLjUsMi43LTAuNWMxLDAsMiwwLjIsMi44LDAuNWMwLjgsMC4zLDEuNSwwLjgsMS45LDEuNmMwLjUsMC43LDAuNywxLjUsMC43LDIuM1Y3M2wtMi4xLDAuMnYtMC4xYzAtMC4xLTAuOC0wLjQtMS41LTFjLTAuNy0wLjUtMS42LTAuNy0yLjQtMC43Yy0wLjgsMC0xLjgsMC4xLTIuNCwwLjZjLTAuNSwwLjQtMC43LDAuOC0wLjcsMS40IGMwLDAuNSwwLjIsMC45LDAuNSwxLjJjMC41LDAuNSwyLjEsMC44LDIuOCwxYzEsMC4yLDIuMywwLjUsMy4yLDAuOWMwLjcsMC4zLDEuNCwwLjgsMS45LDEuNWMwLjQsMC42LDAuNiwxLjMsMC42LDIuMSBjMCwwLjgtMC4yLDEuNS0wLjcsMi4yYy0wLjUsMC43LTEuMSwxLjMtMS45LDEuNmMtMC45LDAuNC0xLjgsMC42LTIuOCwwLjZjLTEuMSwwLTIuMy0wLjEtMy4zLTAuNmMtMC45LTAuNC0xLjYtMC45LTIuMS0xLjggYy0wLjUtMC44LTAuOC0xLjctMC44LTIuNkwxMDEuNCw3OC41TDEwMS40LDc4LjV6IE0xMjkuOCw4My4zVjY4LjdoMi4ydjE0LjZIMTI5Ljh6IE0xNDguNCw3OC41bDItMC4ydjAuMSBjMC4xLDAuNiwwLjIsMS4yLDAuNiwxLjdjMC4zLDAuNSwwLjgsMC44LDEuNCwxLjFjMC43LDAuMywxLjQsMC40LDIuMSwwLjRjMC42LDAsMS4zLTAuMSwxLjktMC4zYzAuNC0wLjItMC45LTAuNCwxLjItMC44IGMwLjItMC4zLDAuNC0wLjcsMC40LTEuMmMwLTAuNC0wLjEtMC44LTAuNC0xLjFjLTAuMy0wLjQtMC44LTAuNi0xLjItMC44Yy0wLjgtMC4zLTEuNy0wLjUtMi41LTAuN2MtMC45LTAuMi0yLTAuNS0yLjgtMC45IGMtMC42LTAuMy0xLjItMC44LTEuNi0xLjRjLTAuNC0wLjYtMC41LTEuMi0wLjUtMS44YzAtMC44LDAuMi0xLjUsMC42LTIuMWMwLjQtMC43LDEuMS0xLjIsMS45LTEuNWMwLjktMC4zLDEuOC0wLjUsMi43LTAuNSBjMSwwLDEuOSwwLjIsMi45LDAuNWMwLjgsMC4zLDEuNSwwLjgsMS45LDEuNmMwLjUsMC43LDAuNywxLjUsMC43LDIuM1Y3M2wtMi4xLDAuMnYtMC4xYy0wLjEtMC44LTAuNC0xLjUtMS0yYy0wLjctMC41LTEuNi0wLjctMi40LTAuN2MtMC44LDAtMS44LDAuMS0yLjQsMC42Yy0wLjUsMC40LTAuNywwLjgtMC43LDEuNGMwLDAuNSwwLjIsMC45LDAuNSwxLjJjMC41LDAuNSwyLjEsMC44LDIuOCwxBjEsMC4yLDIuMywwLjUsMy4yLDAuOWMwLjcsMC4zLDEuNCwwLjgsMS45LDEuNWMwLjQsMC42LDAuNiwxLjMsMC42LDIuMWMwLDAuOC0wLjIsMS41LTAuNywyLjJjLTAuNSwwLjctMS4xLDEuMy0xLjksMS42IGMtMC45LDAuNC0xLjgsMC42LTIuOCwwLjZjLTEuMSwwLTIuMy0wLjEtMy4zLTAuNmMtMC45LTAuNC0xLjYtMC45LTIuMS0xLjhjLTAuNS0wLjgtMC44LTEuNy0wLjgtMi42TDE0OC40LDc4LjVMMTQ4LjQsNzguNXogTTE4MC4xLDcwLjdoLTQuN3YtMS45aDExLjZ2MS45aC00Ljd2MTIuNmgtMi4yVjcwLjd6IE0yMDQuOSw3MC43djQuMWg3Ljl2MS45aC03Ljl2NC42aDguOHYxLjloLTEwLjlWNjguN2gxMC42djEuOUgyMDQuOSBMMjA0LjksNzAuN3ogTTIzNy4xLDgwLjdjMC4yLTAuNiwwLjQtMS4zLDAuNi0xLjlsMy41LTEwaDIuOHYxNC42aC0yLjFWMzJsLTQsMTEuM2gtMS45bC0zLjktMTEuNXYxMS41aC0yLjFWNjguN2gzLjFsMy40LDEwLjIgQzIzNi43LDc5LjUsMjM2LjksODAuMSwyMzcuMSw4MC43TDIzNy4xLDgwLjd6IE0yNjguOSw3OUkyNjNsLTEuNiw0LjNoLTIsM2w1LjYtMTQuNmgyLjJsNS45LDE0LjZoLTIuNEwyNjguOSw3OUwyNjguOSw3OXogTTI4Ny42LDc4LjVsMi0wLjJ2MC4xYzAuMSwwLjYsMC4yLDEuMiwwLjYsMS43YzAuMywwLjUsMC44LDAuOCwxLjQsMS4xYzAuNywwLjMsMS40LDAuNCwyLjEsMC40YzAuNiwwLDEuMy0wLjEsMS45LTAuMyBjMC40LTAuMiwwLjktMC40LDEuMi0wLjhjMC4yLTAuMywwLjQtMC43LDAuNC0xLjJjMC0wLjQtMC4xLTAuOC0wLjQtMS4xYy0wLjMtMC40LTAuOC0wLjYtMS4yLTAuOGMtMC44LTAuMy0xLjctMC41LTIuNS0wLjcgYy0wLjktMC4yLTItMC41LTIuOC0wLjljLTAuNi0wLjMtMS4yLTAuOC0xLjYtMS40Yy0wLjQtMC42LTAuNS0xLjItMC41LTEuOGMwLTAuOCwwLjItMS41LDAuNi0yLjFjMC41LTAuNywxLjEtMS4yLDEuOS0xLjUgYzAuOS0wLjMsMS44LTAuNSwyLjctMC41YzEsMCwxLjksMC4yLDIuOCwwLjVjMC44LDAuMywxLjUsMC44LDEuOSwxLjZjMC41LDAuNywwLjcsMS41LDAuNywyLjNWNzMgbC0yLjEsMC4ydi0wLjEgYy0wLjEtMC44LTAuNC0xLjUtMS0yYy0wLjctMC41LTEuNi0wLjctMi40LTAuN2MtMC44LDAtMS44LDAuMS0yLjQsMC42Yy0wLjQsMC40LTAuNywwLjgtMC43LDEuNGMwLDAuNSwwLjIsMC45LDAuNSwxLjIgYzAuNSwwLjUsMi4xLDAuOCwyLjgsMWMxLDAuMiwyLjMsMC41LDMuMiwwLjljMC43LDAuMywxLjQsMC44LDEuOSwxLjVjMC40LDAuNiwwLjYsMS4zLDAuNiwyLjFjMCwwLjgtMC4yLDEuNS0wLjcsMi4y cC0wLjUsMC43LTEuMSwxLjMtMS45LDEuNmMtMC45LDAuNC0xLjgsMC42LTIuOCwwLjZjLTEuMSwwLTIuMy0wLjEtMy4zLTAuNmMtMC45LTAuNC0xLjYtMC45LTIuMS0xLjhjLTAuNS0wLjgtMC44LTEuNy0wLjgtMi42 LDI4Ny42LDc4LjVMMjg3LjYsNzguNXogTTI2My43LDc3LjJoNC41bC0xLjQtMy44Yy0wLjMtMC44LTAuNi0xLjctMC45LTIuNWMtMC4yLDAuOC0wLjQsMS41LTAuNywyLjNMMjYzLjcsNzcuMkwyNjMuNyw3Ny4yeiI+PC9wYXRoPiA8L2c+IDwvZz4gPC9zdmc+IA=="
                     alt="Logo da PWI" class="h-6 shrink-0">
                 <span class="font-bold text-gray-700 text-xs truncate">Lote[[PREFIXO_DIFERENCAS]]</span>
             </div>
@@ -172,6 +202,21 @@
                 <span id="completed-files-badge"
                     class="bg-green-100 text-green-800 text-[11px] font-bold px-2 py-0.5 rounded-full"
                     title="Progresso do Release">0 / [[TOTAL_ARQUIVOS]] vistos</span>
+            </div>
+        </div>
+
+        <!-- Sidebar Client Folder Selection -->
+        <div class="p-2.5 border-b border-gray-200 bg-blue-50/60">
+            <div class="flex flex-col gap-1.5">
+                <label id="btn-select-client-dir" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-md transition-colors cursor-pointer flex items-center justify-center space-x-1.5 text-xs shadow-xs">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                    <span id="client-folder-btn-label" class="truncate">Validar no Cliente</span>
+                    <input type="file" id="client-folder-input" webkitdirectory directory multiple class="hidden">
+                </label>
+                <div id="client-batch-status-banner" class="hidden flex items-center justify-between text-[11px] px-0.5 text-gray-700">
+                    <span id="client-batch-summary-text" class="font-bold text-blue-900 truncate"></span>
+                    <button id="btn-clear-client-val" class="text-gray-400 hover:text-red-600 font-bold shrink-0 cursor-pointer">&times; Limpar</button>
+                </div>
             </div>
         </div>
 
@@ -275,6 +320,21 @@
 
             <!-- Chips de ignorar -->
             <div id="ignore-list-container" class="flex flex-wrap gap-1 mt-2"></div>
+
+            <!-- Barra de Validação no Fonte do Cliente do Arquivo Ativo -->
+            <div id="client-active-file-bar" class="hidden flex flex-wrap items-center justify-between gap-2 text-xs mt-2 pt-2 border-t border-gray-200 bg-blue-50/40 p-2 rounded-lg">
+                <div class="flex items-center space-x-2">
+                    <span class="text-gray-500 font-medium">Arquivo no Cliente:</span>
+                    <span id="client-file-path-text" class="font-bold text-blue-800"></span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span id="client-val-badge" class="px-2 py-0.5 rounded-full font-bold text-[11px]"></span>
+                    <label class="flex items-center space-x-1 cursor-pointer bg-white px-2 py-0.5 rounded border border-gray-300">
+                        <input type="checkbox" id="show-only-unapplied" class="w-3.5 h-3.5 text-blue-600 rounded">
+                        <span class="text-gray-700 font-medium">Apenas Não Aplicadas</span>
+                    </label>
+                </div>
+            </div>
         </header>
 
         <!-- Main Tabela de Código -->
@@ -403,21 +463,37 @@
                     }
 
                     const isDone = completedFiles.has(fileItem.fileName);
+                    const cv = fileItem.clientValidation;
+
+                    let clientBadgeHtml = '';
+                    if (cv) {
+                        if (!cv.isFound) {
+                            clientBadgeHtml = `<span class="text-[10px] px-1.5 py-0.5 rounded font-bold bg-red-100 text-red-700 border border-red-200" title="Arquivo não localizado na pasta do cliente">Ausente</span>`;
+                        } else if (cv.total === 0) {
+                            clientBadgeHtml = `<span class="text-[10px] px-1.5 py-0.5 rounded font-bold bg-gray-100 text-gray-700" title="Sem alterações no comparador">0 diffs</span>`;
+                        } else if (cv.missing === 0) {
+                            clientBadgeHtml = `<span class="text-[10px] px-1.5 py-0.5 rounded font-bold bg-green-100 text-green-800 border border-green-300" title="100% das alterações aplicadas no cliente">✓ 100%</span>`;
+                        } else {
+                            clientBadgeHtml = `<span class="text-[10px] px-1.5 py-0.5 rounded font-bold bg-yellow-100 text-yellow-800 border border-yellow-300" title="${cv.applied} de ${cv.total} alterações aplicadas (${cv.missing} pendentes)">⚠ ${cv.applied}/${cv.total}</span>`;
+                        }
+                    }
 
                     const container = document.createElement('div');
-                    container.className = `w-full px-3 py-2.5 flex items-center justify-between hover:bg-gray-100 transition-colors text-xs border-b border-gray-100 cursor-pointer ${idx === activeFileIndex ? 'sidebar-item-active' : 'text-gray-700'}`;
+                    container.className = `w-full px-3 py-2 flex items-center justify-between hover:bg-gray-100 transition-colors text-xs border-b border-gray-100 cursor-pointer ${idx === activeFileIndex ? 'sidebar-item-active' : 'text-gray-700'}`;
 
                     container.innerHTML = `
-                        <div class="flex items-center space-x-2.5 min-w-0 flex-1 pr-2">
-                            <input type="checkbox" class="file-chk cursor-pointer w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 shrink-0" ${isDone ? 'checked' : ''} title="Marcar como alterado no release">
+                        <div class="flex items-center space-x-2 min-w-0 flex-1 pr-2">
+                            <input type="checkbox" class="file-chk cursor-pointer w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 shrink-0" ${isDone ? 'checked' : ''} title="Marcar como visto">
                             <span class="font-bold truncate ${isDone ? 'line-through text-gray-400' : ''}" title="${displayName}">${displayName}</span>
                         </div>
-                        <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 ${isDone ? 'bg-green-100 text-green-800 border border-green-300' : fileItem.isError ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}">
-                            ${isDone ? '✓ Visto' : fileItem.isError ? 'Erro' : 'Alterado'}
-                        </span>
+                        <div class="flex items-center space-x-1 shrink-0">
+                            ${clientBadgeHtml}
+                            <span class="text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${isDone ? 'bg-green-100 text-green-800 border border-green-300' : fileItem.isError ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}">
+                                ${isDone ? '✓ Visto' : fileItem.isError ? 'Erro' : 'Alterado'}
+                            </span>
+                        </div>
                     `;
 
-                    // Intercepta clique no checkbox para não forçar alteração da tela se for apenas marcação
                     const cb = container.querySelector('.file-chk');
                     cb.addEventListener('click', (e) => {
                         e.stopPropagation();
@@ -453,22 +529,30 @@
                 renderSidebarFiles(sidebarSearch.value);
                 detectAndTagBlocks();
                 rebuildAndRecalculate();
+
+                if (clientFilesIndex) {
+                    runClientValidationForActiveFile();
+                } else {
+                    document.getElementById('client-active-file-bar')?.classList.add('hidden');
+                }
             }
 
             function detectAndTagBlocks() {
                 let currentBlockName = '';
                 tableRows.forEach(row => {
-                    const text = row.textContent.trim();
-                    const cleanText = text.replace(/^[>=\s]+/, '');
+                    const cells = Array.from(row.querySelectorAll('td')).filter(td => !td.classList.contains('line-number') && !td.classList.contains('AlignCenter'));
+                    const leftText = cells[0] ? cells[0].textContent.replace(/\u00A0/g, ' ').trim() : '';
+                    const rightText = cells[1] ? cells[1].textContent.replace(/\u00A0/g, ' ').trim() : '';
+                    const codeText = rightText || leftText;
 
-                    let blockMatch = cleanText.match(/^<((?:Object\.[^\s]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+                    let blockMatch = codeText.match(/^<((?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
                     if (blockMatch) {
-                        currentBlockName = blockMatch[1];
+                        currentBlockName = blockMatch[1].toUpperCase();
                     }
                     if (currentBlockName) {
                         row.dataset.blockName = currentBlockName;
                     }
-                    if (currentBlockName && cleanText.toUpperCase().startsWith(`</${currentBlockName.toUpperCase()}>`)) {
+                    if (currentBlockName && (codeText.toUpperCase().startsWith(`</${currentBlockName}>`) || codeText.match(/^<\/(?:(?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i))) {
                         currentBlockName = '';
                     }
                 });
@@ -559,8 +643,20 @@
             }
 
             function rebuildAndRecalculate() {
+                detectAndTagBlocks();
                 allDiffElements = [];
-                tableRows.forEach(row => {
+                tableRows.forEach((row, index) => {
+                    const lineNumber = index + 1;
+                    row.dataset.lineNumber = lineNumber;
+                    
+                    let lineTd = row.querySelector('.line-number');
+                    if (!lineTd) {
+                        lineTd = document.createElement('td');
+                        lineTd.className = 'line-number';
+                        row.prepend(lineTd);
+                    }
+                    lineTd.textContent = lineNumber;
+
                     row.style.backgroundColor = '';
                     const diffType = classifyRow(row);
                     row.dataset.diffType = diffType;
@@ -580,6 +676,7 @@
 
             function applyFilters() {
                 const hideSame = showOnlyDiffCheckbox.checked;
+                const showOnlyUnapplied = document.getElementById('show-only-unapplied')?.checked || false;
                 const selectedMethod = methodFilter.value;
 
                 tableRows.forEach(row => {
@@ -587,8 +684,9 @@
                     const isSame = rowType === 'same';
                     const typeMatch = activeFilter === 'all' || rowType === activeFilter;
                     const blockMatch = !selectedMethod || row.dataset.blockName === selectedMethod;
+                    const unappliedMatch = !showOnlyUnapplied || (rowType !== 'same' && row.dataset.validationStatus === 'missing');
 
-                    if ((hideSame && isSame) || !typeMatch || !blockMatch) {
+                    if ((hideSame && isSame) || !typeMatch || !blockMatch || !unappliedMatch) {
                         row.classList.add('row-hidden');
                     } else {
                         row.classList.remove('row-hidden');
@@ -669,6 +767,7 @@
                         ignoreList = ignoreList.filter(t => t !== term);
                         renderIgnoreChips();
                         rebuildAndRecalculate();
+                        if (clientFilesIndex) runBatchClientValidation();
                     });
                     ignoreListContainer.appendChild(chip);
                 });
@@ -681,6 +780,7 @@
                     ignoreInput.value = '';
                     renderIgnoreChips();
                     rebuildAndRecalculate();
+                    if (clientFilesIndex) runBatchClientValidation();
                 }
             });
 
@@ -744,6 +844,781 @@
             searchInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') performSearch();
             });
+
+            // ==========================================
+            // FoxPro Parser e Validação no Fonte do Cliente (Lote)
+            // ==========================================
+            class FoxProParser {
+                decodeString(buffer, offset, length) {
+                    const slice = buffer.slice(offset, offset + length);
+                    const decoder = new TextDecoder('windows-1252');
+                    let str = decoder.decode(slice);
+                    const nullIdx = str.indexOf('\0');
+                    if (nullIdx !== -1) {
+                        str = str.substring(0, nullIdx);
+                    }
+                    return str.trim();
+                }
+
+                getMemoText(fptBuffer, blockNumber, blockSize) {
+                    if (blockNumber === 0) return '';
+                    const offset = blockNumber * blockSize;
+                    if (offset >= fptBuffer.byteLength) return '';
+
+                    const view = new DataView(fptBuffer);
+                    const blockType = view.getUint32(offset, false);
+                    const dataLength = view.getUint32(offset + 4, false);
+
+                    if (blockType !== 1) return '';
+                    return this.decodeString(fptBuffer, offset + 8, dataLength);
+                }
+
+                sortMethods(methodsText, objName) {
+                    const methodLines = methodsText.split(/\r?\n/);
+                    const methodBlocks = [];
+                    let currentName = '_TOP_LEVEL';
+                    let currentContent = [];
+
+                    for (const line of methodLines) {
+                        const match = line.match(/^\s*(?:PROCEDURE|PROC|FUNCTION|FUNC)\s+([a-zA-Z0-9_.]+)/i);
+                        if (match) {
+                            if (currentContent.length > 0) {
+                                methodBlocks.push({ name: currentName, content: currentContent });
+                            }
+                            currentName = match[1].toUpperCase();
+                            currentContent = [line];
+                        } else {
+                            currentContent.push(line);
+                        }
+                    }
+                    if (currentContent.length > 0) {
+                        methodBlocks.push({ name: currentName, content: currentContent });
+                    }
+
+                    methodBlocks.sort((a, b) => a.name.localeCompare(b.name));
+                    let output = '';
+                    for (const block of methodBlocks) {
+                        if (block.name === '_TOP_LEVEL') {
+                            if (block.content.join('').trim()) {
+                                output += `<Object.${objName} Method._TopLevel>\n`;
+                                output += block.content.join('\n').trimEnd() + '\n';
+                                output += `</Object.${objName} Method._TopLevel>\n\n`;
+                            }
+                        } else {
+                            output += `<Object.${objName} Method.${block.name}>\n`;
+                            output += block.content.join('\n').trimEnd() + '\n';
+                            output += `</Object.${objName} Method.${block.name}>\n\n`;
+                        }
+                    }
+                    return output.trimEnd() + '\n';
+                }
+
+                parsePrg(prgText) {
+                    const methodLines = prgText.split(/\r?\n/);
+                    const methodBlocks = [];
+                    let currentName = '_TOP_LEVEL';
+                    let currentContent = [];
+
+                    for (const line of methodLines) {
+                        const match = line.match(/^\s*(?:PROCEDURE|PROC|FUNCTION|FUNC)\s+([a-zA-Z0-9_.]+)/i);
+                        if (match) {
+                            if (currentContent.length > 0) {
+                                methodBlocks.push({ name: currentName, content: currentContent });
+                            }
+                            currentName = match[1].toUpperCase();
+                            currentContent = [line];
+                        } else {
+                            currentContent.push(line);
+                        }
+                    }
+                    if (currentContent.length > 0) {
+                        methodBlocks.push({ name: currentName, content: currentContent });
+                    }
+
+                    let output = '';
+                    for (const block of methodBlocks) {
+                        if (block.name === '_TOP_LEVEL') {
+                            if (block.content.join('').trim()) {
+                                output += `<PRG_TopLevel>\n`;
+                                output += block.content.join('\n').trimEnd() + '\n';
+                                output += `</PRG_TopLevel>\n\n`;
+                            }
+                        } else {
+                            output += `<PRG_Method ${block.name}>\n`;
+                            output += block.content.join('\n').trimEnd() + '\n';
+                            output += `</PRG_Method ${block.name}>\n\n`;
+                        }
+                    }
+                    return output.trimEnd() + '\n';
+                }
+
+                parse(scxBuffer, sctBuffer) {
+                    const scxView = new DataView(scxBuffer);
+                    const sctView = new DataView(sctBuffer);
+
+                    const blockSize = sctView.getUint16(6, false);
+                    const numRecords = scxView.getUint32(4, true);
+                    const headerLength = scxView.getUint16(8, true);
+                    const recordLength = scxView.getUint16(10, true);
+
+                    const fields = [];
+                    let currentOffset = 32;
+                    let recordOffset = 1;
+
+                    while (currentOffset < headerLength) {
+                        const firstByte = scxView.getUint8(currentOffset);
+                        if (firstByte === 0x0D) break;
+
+                        const name = this.decodeString(scxBuffer, currentOffset, 11);
+                        const type = String.fromCharCode(scxView.getUint8(currentOffset + 11));
+                        const length = scxView.getUint8(currentOffset + 16);
+
+                        fields.push({ name, type, length, offset: recordOffset });
+                        recordOffset += length;
+                        currentOffset += 32;
+                    }
+
+                    const objects = {};
+
+                    for (let i = 0; i < numRecords; i++) {
+                        const rowOffset = headerLength + (i * recordLength);
+                        if (rowOffset >= scxBuffer.byteLength) break;
+                        const isDeleted = scxView.getUint8(rowOffset) === 0x2A;
+                        if (isDeleted) continue;
+
+                        let objName = '';
+                        let parentName = '';
+                        let properties = '';
+                        let methods = '';
+                        let expr = '';
+                        let tag = '';
+                        let tag2 = '';
+                        let picture = '';
+
+                        for (const field of fields) {
+                            const fieldOffset = rowOffset + field.offset;
+                            if (field.name === 'OBJNAME' || field.name === 'NAME') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    objName = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                } else {
+                                    objName = this.decodeString(scxBuffer, fieldOffset, field.length);
+                                }
+                                objName = objName.toUpperCase();
+                            } else if (field.name === 'PARENT') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    parentName = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                } else {
+                                    parentName = this.decodeString(scxBuffer, fieldOffset, field.length);
+                                }
+                                parentName = parentName.toUpperCase();
+                            } else if (field.name === 'PROPERTIES') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    properties = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                }
+                            } else if (field.name === 'METHODS') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    methods = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                }
+                            } else if (field.name === 'EXPR') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    expr = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                }
+                            } else if (field.name === 'TAG') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    tag = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                }
+                            } else if (field.name === 'TAG2') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    tag2 = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                }
+                            } else if (field.name === 'PICTURE') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    picture = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                }
+                            }
+                        }
+
+                        if (!objName) objName = `Row_${i}`;
+
+                        if (objName) {
+                            if (parentName.trim()) {
+                                objName = `${parentName.trim()}.${objName.trim()}`;
+                            }
+                            if (objects[objName]) {
+                                let counter = 2;
+                                while (objects[`${objName}_${counter}`]) counter++;
+                                objName = `${objName}_${counter}`;
+                            }
+                            objects[objName] = { properties, methods, expr, tag, tag2, picture };
+                        }
+                    }
+
+                    let output = '';
+                    const sortedNames = Object.keys(objects).sort();
+
+                    for (const name of sortedNames) {
+                        const { properties, methods, expr, tag, tag2, picture } = objects[name];
+                        if (properties.trim()) {
+                            output += `<Object.${name} Properties>\n`;
+                            const lines = properties.split('\n');
+                            for (const line of lines) {
+                                if (line.trim()) output += `   ${line.trim()}\n`;
+                            }
+                            output += `</Object.${name} Properties>\n`;
+                        }
+                        const sortedMethods = this.sortMethods(methods, name);
+                        if (sortedMethods.trim()) {
+                            output += sortedMethods.trim() + '\n\n';
+                        }
+                        if (expr.trim()) {
+                            output += `<Object.${name} EXPR>\n`;
+                            const lines = expr.split('\n');
+                            for (const line of lines) {
+                                if (line.trim()) output += `   ${line.trim()}\n`;
+                            }
+                            output += `</Object.${name} EXPR>\n\n`;
+                        }
+                        if (tag.trim()) {
+                            output += `<Object.${name} TAG>\n`;
+                            const lines = tag.split('\n');
+                            for (const line of lines) {
+                                if (line.trim()) output += `   ${line.trim()}\n`;
+                            }
+                            output += `</Object.${name} TAG>\n\n`;
+                        }
+                        if (tag2.trim()) {
+                            output += `<Object.${name} TAG2>\n`;
+                            const lines = tag2.split('\n');
+                            for (const line of lines) {
+                                if (line.trim()) output += `   ${line.trim()}\n`;
+                            }
+                            output += `</Object.${name} TAG2>\n\n`;
+                        }
+                        if (picture.trim()) {
+                            output += `<Object.${name} PICTURE>\n`;
+                            const lines = picture.split('\n');
+                            for (const line of lines) {
+                                if (line.trim()) output += `   ${line.trim()}\n`;
+                            }
+                            output += `</Object.${name} PICTURE>\n\n`;
+                        }
+                    }
+                    return output;
+                }
+            }
+
+            let clientFilesIndex = null;
+
+            async function readFilesFromDirectoryHandle(dirHandle, path = '') {
+                const files = [];
+                for await (const entry of dirHandle.values()) {
+                    if (entry.kind === 'file') {
+                        const file = await entry.getFile();
+                        const relativePath = path ? `${path}/${file.name}` : `${dirHandle.name}/${file.name}`;
+                        Object.defineProperty(file, 'webkitRelativePath', {
+                            value: relativePath,
+                            writable: false,
+                            configurable: true
+                        });
+                        files.push(file);
+                    } else if (entry.kind === 'directory') {
+                        const subFiles = await readFilesFromDirectoryHandle(entry, path ? `${path}/${entry.name}` : `${dirHandle.name}/${entry.name}`);
+                        files.push(...subFiles);
+                    }
+                }
+                return files;
+            }
+
+            function indexClientFiles(files) {
+                const outsideStob = { byPath: new Map(), byBase: new Map() };
+                const insideStob = { byPath: new Map(), byBase: new Map() };
+
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const rawRel = (file.webkitRelativePath || file.name).replace(/\\/g, '/');
+                    const segments = rawRel.split('/');
+                    const internalPath = segments.length > 1 ? segments.slice(1).join('/') : rawRel;
+                    const upperInternal = internalPath.toUpperCase();
+
+                    const isStob = upperInternal.startsWith('STOB/') || upperInternal === 'STOB';
+                    const cleanInternal = isStob ? internalPath.substring(5) : internalPath;
+                    const cleanUpper = cleanInternal.toUpperCase();
+
+                    const lastDot = cleanInternal.lastIndexOf('.');
+                    if (lastDot === -1) continue;
+
+                    const ext = cleanInternal.substring(lastDot + 1).toLowerCase();
+                    const basePath = cleanInternal.substring(0, lastDot);
+                    const upperBasePath = cleanUpper.substring(0, lastDot);
+
+                    const fileNameOnly = cleanInternal.split('/').pop();
+                    const baseNameOnly = fileNameOnly.substring(0, fileNameOnly.lastIndexOf('.')).toUpperCase();
+
+                    const targetIndex = isStob ? insideStob : outsideStob;
+
+                    if (!targetIndex.byPath.has(upperBasePath)) {
+                        targetIndex.byPath.set(upperBasePath, {
+                            basePath,
+                            displayPath: internalPath,
+                            isStob,
+                            primaryFile: null,
+                            binaryMemoFile: null,
+                            ext: ''
+                        });
+                    }
+                    const pathEntry = targetIndex.byPath.get(upperBasePath);
+                    if (ext === 'scx' || ext === 'frx' || ext === 'vcx' || ext === 'prg') {
+                        pathEntry.primaryFile = file;
+                        pathEntry.ext = ext;
+                        pathEntry.displayPath = internalPath;
+                    } else if (ext === 'sct' || ext === 'frt' || ext === 'vct') {
+                        pathEntry.binaryMemoFile = file;
+                    }
+
+                    if (!targetIndex.byBase.has(baseNameOnly)) {
+                        targetIndex.byBase.set(baseNameOnly, pathEntry);
+                    } else {
+                        const existing = targetIndex.byBase.get(baseNameOnly);
+                        if (!existing.primaryFile && pathEntry.primaryFile) {
+                            targetIndex.byBase.set(baseNameOnly, pathEntry);
+                        }
+                    }
+                }
+
+                return { outsideStob, insideStob };
+            }
+
+            function resolveClientFile(targetName, clientIndex) {
+                if (!clientIndex) return null;
+                let raw = (targetName || '').trim().replace(/\\/g, '/');
+                raw = raw.replace(/\[\[NOME_FORM\]\]/g, '').trim();
+                const cleanTarget = raw.replace(/\.(scx|sct|frx|frt|prg|vcx|vct|html|txt)$/i, '');
+                const upperTarget = cleanTarget.toUpperCase();
+
+                const parts = cleanTarget.split('/');
+                const baseName = parts[parts.length - 1].toUpperCase();
+
+                const { outsideStob, insideStob } = clientIndex;
+
+                // 1. Prioridade: busca primeiro fora da pasta STOB (raiz, OBJETOS, REPORTS, etc.)
+                if (outsideStob.byPath.has(upperTarget) && outsideStob.byPath.get(upperTarget).primaryFile) {
+                    return outsideStob.byPath.get(upperTarget);
+                }
+                if (outsideStob.byBase.has(baseName) && outsideStob.byBase.get(baseName).primaryFile) {
+                    return outsideStob.byBase.get(baseName);
+                }
+
+                // 2. Não encontrou, busca na pasta STOB e suas subpastas
+                if (insideStob.byPath.has(upperTarget) && insideStob.byPath.get(upperTarget).primaryFile) {
+                    return insideStob.byPath.get(upperTarget);
+                }
+                if (insideStob.byBase.has(baseName) && insideStob.byBase.get(baseName).primaryFile) {
+                    return insideStob.byBase.get(baseName);
+                }
+
+                return null;
+            }
+
+            async function parseResolvedClientFile(resolvedItem, parser) {
+                if (!resolvedItem || !resolvedItem.primaryFile) return '';
+                const ext = (resolvedItem.ext || '').toLowerCase();
+
+                if (ext === 'prg') {
+                    const buf = await resolvedItem.primaryFile.arrayBuffer();
+                    const dec = new TextDecoder('windows-1252');
+                    return parser.parsePrg(dec.decode(buf));
+                }
+
+                if ((ext === 'scx' || ext === 'frx' || ext === 'vcx') && resolvedItem.binaryMemoFile) {
+                    const pBuf = await resolvedItem.primaryFile.arrayBuffer();
+                    const mBuf = await resolvedItem.binaryMemoFile.arrayBuffer();
+                    return parser.parse(pBuf, mBuf);
+                }
+
+                const buf = await resolvedItem.primaryFile.arrayBuffer();
+                const dec = new TextDecoder('windows-1252');
+                return dec.decode(buf);
+            }
+
+            function parseTextIntoBlocks(text) {
+                const lines = text.split(/\r?\n/);
+                const blockMap = new Map();
+                let currentBlock = '_GLOBAL';
+                blockMap.set(currentBlock, []);
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    const openMatch = trimmed.match(/^<((?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+                    if (openMatch) {
+                        currentBlock = openMatch[1].toUpperCase();
+                        if (!blockMap.has(currentBlock)) {
+                            blockMap.set(currentBlock, []);
+                        }
+                        continue;
+                    }
+                    if (currentBlock !== '_GLOBAL' && (trimmed.toUpperCase().startsWith(`</${currentBlock}>`) || trimmed.match(/^<\/(?:(?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i))) {
+                        currentBlock = '_GLOBAL';
+                        continue;
+                    }
+                    if (blockMap.has(currentBlock)) {
+                        blockMap.get(currentBlock).push(line);
+                    }
+                }
+                return { blockMap, allLines: lines };
+            }
+
+            function normalizeCode(str) {
+                if (!str) return '';
+                return str
+                    .replace(/\u00A0/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                    .toLowerCase();
+            }
+
+            function lineMatches(normLine, normTarget) {
+                if (!normLine || !normTarget) return false;
+                return normLine === normTarget || normLine.includes(normTarget);
+            }
+
+            async function runBatchClientValidation() {
+                if (!clientFilesIndex) return;
+
+                const parser = new FoxProParser();
+                let filesWithAllApplied = 0;
+                let filesFound = 0;
+
+                for (let i = 0; i < batchData.length; i++) {
+                    const item = batchData[i];
+                    const resolved = resolveClientFile(item.fileName, clientFilesIndex);
+
+                    if (!resolved) {
+                        item.clientValidation = {
+                            isFound: false,
+                            path: '',
+                            applied: 0,
+                            missing: 0,
+                            total: 0
+                        };
+                        continue;
+                    }
+
+                    filesFound++;
+                    const clientText = await parseResolvedClientFile(resolved, parser);
+                    const { blockMap, allLines } = parseTextIntoBlocks(clientText);
+
+                    // Cria tabela temporária para extrair linhas de diff do arquivo
+                    const tempDiv = document.createElement('tbody');
+                    tempDiv.innerHTML = item.rowsHtml || '';
+                    const rows = Array.from(tempDiv.querySelectorAll('tr'));
+
+                    let currBlock = '';
+                    rows.forEach(r => {
+                        const cells = Array.from(r.querySelectorAll('td')).filter(td => !td.classList.contains('line-number') && !td.classList.contains('AlignCenter'));
+                        const leftText = cells[0] ? cells[0].textContent.replace(/\u00A0/g, ' ').trim() : '';
+                        const rightText = cells[1] ? cells[1].textContent.replace(/\u00A0/g, ' ').trim() : '';
+                        const codeText = rightText || leftText;
+
+                        const blockMatch = codeText.match(/^<((?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+                        if (blockMatch) currBlock = blockMatch[1].toUpperCase();
+                        if (currBlock) r.dataset.blockName = currBlock;
+                        if (currBlock && (codeText.toUpperCase().startsWith(`</${currBlock}>`) || codeText.match(/^<\/(?:(?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i))) currBlock = '';
+                    });
+
+                    let applied = 0;
+                    let missing = 0;
+                    let total = 0;
+
+                    rows.forEach(r => {
+                        const diffType = classifyRow(r);
+                        if (diffType === 'same') return;
+                        total++;
+
+                        const cells = Array.from(r.querySelectorAll('td')).filter(td => !td.classList.contains('line-number') && !td.classList.contains('AlignCenter'));
+                        const leftText = cells[0] ? cells[0].textContent.replace(/\u00A0/g, ' ').trim() : '';
+                        const rightText = cells[1] ? cells[1].textContent.replace(/\u00A0/g, ' ').trim() : '';
+
+                        let targetLine = '';
+                        let isDeleted = false;
+                        if (diffType === 'added' || diffType === 'modified') {
+                            targetLine = rightText;
+                        } else if (diffType === 'deleted') {
+                            targetLine = leftText;
+                            isDeleted = true;
+                        }
+
+                        const normTarget = normalizeCode(targetLine);
+                        const blockName = r.dataset.blockName ? r.dataset.blockName.toUpperCase() : '';
+                        const blockLines = blockName && blockMap.has(blockName) ? blockMap.get(blockName) : null;
+                        const blockExistsInClient = blockName ? blockMap.has(blockName) : false;
+
+                        const isOpeningTag = targetLine.match(/^<((?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+                        const isClosingTag = targetLine.match(/^<\/(?:(?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+
+                        let isApp = false;
+                        if (isOpeningTag || isClosingTag) {
+                            isApp = isDeleted ? !blockExistsInClient : blockExistsInClient;
+                        } else if (!normTarget) {
+                            isApp = true;
+                        } else {
+                            if (blockName && blockName !== '_GLOBAL' && blockName !== 'PRG_TOPLEVEL') {
+                                if (blockLines && blockLines.length > 0) {
+                                    const foundInBlock = blockLines.some(l => lineMatches(normalizeCode(l), normTarget));
+                                    isApp = isDeleted ? !foundInBlock : foundInBlock;
+                                } else {
+                                    isApp = isDeleted ? true : false;
+                                }
+                            } else {
+                                const targetLines = (blockMap.has('PRG_TOPLEVEL') ? blockMap.get('PRG_TOPLEVEL') : null) 
+                                                 || (blockMap.has('_GLOBAL') ? blockMap.get('_GLOBAL') : null) 
+                                                 || allLines;
+                                const found = targetLines.some(l => lineMatches(normalizeCode(l), normTarget));
+                                isApp = isDeleted ? !found : found;
+                            }
+                        }
+
+                        if (isApp) applied++;
+                        else missing++;
+                    });
+
+                    item.clientValidation = {
+                        isFound: true,
+                        path: `${resolved.isStob ? 'STOB\\' : ''}${resolved.displayPath.replace(/\//g, '\\')}`,
+                        applied,
+                        missing,
+                        total
+                    };
+
+                    if (missing === 0 && total > 0) {
+                        filesWithAllApplied++;
+                    }
+                }
+
+                const banner = document.getElementById('client-batch-status-banner');
+                const summaryText = document.getElementById('client-batch-summary-text');
+                if (banner && summaryText) {
+                    banner.classList.remove('hidden');
+                    summaryText.textContent = `${filesWithAllApplied}/${batchData.length} arquivos 100% aplicados (${filesFound} encontrados)`;
+                }
+
+                renderSidebarFiles(sidebarSearch.value);
+                runClientValidationForActiveFile();
+            }
+
+            async function runClientValidationForActiveFile() {
+                if (!clientFilesIndex || activeFileIndex < 0 || activeFileIndex >= batchData.length) return;
+
+                const fileItem = batchData[activeFileIndex];
+                const resolved = resolveClientFile(fileItem.fileName, clientFilesIndex);
+
+                const activeBar = document.getElementById('client-active-file-bar');
+                const pathText = document.getElementById('client-file-path-text');
+                const valBadge = document.getElementById('client-val-badge');
+
+                if (!resolved) {
+                    if (activeBar) activeBar.classList.remove('hidden');
+                    if (pathText) {
+                        pathText.textContent = `Não encontrado no cliente: '${fileItem.fileName}' (nem fora nem dentro da STOB)`;
+                        pathText.className = 'font-bold text-red-600';
+                    }
+                    if (valBadge) {
+                        valBadge.className = 'px-2 py-0.5 rounded-full font-bold text-[11px] bg-red-100 text-red-800 border border-red-300';
+                        valBadge.textContent = 'Arquivo Ausente';
+                    }
+
+                    tableRows.forEach(r => {
+                        delete r.dataset.validationStatus;
+                        r.classList.remove('val-applied', 'val-missing');
+                        const b = r.querySelector('.val-badge');
+                        if (b) b.remove();
+                    });
+                    applyFilters();
+                    return;
+                }
+
+                if (activeBar) activeBar.classList.remove('hidden');
+                if (pathText) {
+                    pathText.textContent = `${resolved.isStob ? 'STOB\\' : ''}${resolved.displayPath.replace(/\//g, '\\')}`;
+                    pathText.className = 'font-bold text-blue-800';
+                }
+
+                const parser = new FoxProParser();
+                const clientText = await parseResolvedClientFile(resolved, parser);
+                const { blockMap, allLines } = parseTextIntoBlocks(clientText);
+
+                let appliedCount = 0;
+                let missingCount = 0;
+                let totalDiffRows = 0;
+
+                tableRows.forEach(row => {
+                    const diffType = row.dataset.diffType;
+                    const existingBadge = row.querySelector('.val-badge');
+                    if (existingBadge) existingBadge.remove();
+
+                    if (diffType === 'same' || !diffType) {
+                        delete row.dataset.validationStatus;
+                        row.classList.remove('val-applied', 'val-missing');
+                        return;
+                    }
+
+                    totalDiffRows++;
+
+                    const cells = Array.from(row.querySelectorAll('td')).filter(td => !td.classList.contains('line-number') && !td.classList.contains('AlignCenter'));
+                    const leftText = cells[0] ? cells[0].textContent.replace(/\u00A0/g, ' ').trim() : '';
+                    const rightText = cells[1] ? cells[1].textContent.replace(/\u00A0/g, ' ').trim() : '';
+
+                    let targetLine = '';
+                    let isDeleted = false;
+
+                    if (diffType === 'added' || diffType === 'modified') {
+                        targetLine = rightText;
+                    } else if (diffType === 'deleted') {
+                        targetLine = leftText;
+                        isDeleted = true;
+                    }
+
+                    const normTarget = normalizeCode(targetLine);
+                    const blockName = row.dataset.blockName ? row.dataset.blockName.toUpperCase() : '';
+                    const blockLines = blockName && blockMap.has(blockName) ? blockMap.get(blockName) : null;
+                    const blockExistsInClient = blockName ? blockMap.has(blockName) : false;
+
+                    const isOpeningTag = targetLine.match(/^<((?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+                    const isClosingTag = targetLine.match(/^<\/(?:(?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+
+                    let isApplied = false;
+
+                    if (isOpeningTag || isClosingTag) {
+                        isApplied = isDeleted ? !blockExistsInClient : blockExistsInClient;
+                    } else if (!normTarget) {
+                        isApplied = true;
+                    } else {
+                        if (blockName && blockName !== '_GLOBAL' && blockName !== 'PRG_TOPLEVEL') {
+                            if (blockLines && blockLines.length > 0) {
+                                const foundInBlock = blockLines.some(l => lineMatches(normalizeCode(l), normTarget));
+                                isApplied = isDeleted ? !foundInBlock : foundInBlock;
+                            } else {
+                                isApplied = isDeleted ? true : false;
+                            }
+                        } else {
+                            const targetLines = (blockMap.has('PRG_TOPLEVEL') ? blockMap.get('PRG_TOPLEVEL') : null) 
+                                             || (blockMap.has('_GLOBAL') ? blockMap.get('_GLOBAL') : null) 
+                                             || allLines;
+                            const found = targetLines.some(l => lineMatches(normalizeCode(l), normTarget));
+                            isApplied = isDeleted ? !found : found;
+                        }
+                    }
+
+                    row.dataset.validationStatus = isApplied ? 'applied' : 'missing';
+                    row.classList.toggle('val-applied', isApplied);
+                    row.classList.toggle('val-missing', !isApplied);
+
+                    const badge = document.createElement('span');
+                    badge.className = `val-badge ${isApplied ? 'val-badge-applied' : 'val-badge-missing'}`;
+                    badge.textContent = isApplied ? '✓ Aplicado' : '✗ Não Aplicado';
+                    badge.title = isApplied 
+                        ? `Alteração confirmada no fonte do cliente (${resolved.displayPath})` 
+                        : `Alteração NÃO encontrada no fonte do cliente (${resolved.displayPath})`;
+
+                    const lineNumTd = row.querySelector('.line-number');
+                    if (lineNumTd) {
+                        lineNumTd.appendChild(badge);
+                    }
+
+                    if (isApplied) appliedCount++;
+                    else missingCount++;
+                });
+
+                if (valBadge) {
+                    if (totalDiffRows === 0) {
+                        valBadge.className = 'px-2 py-0.5 rounded-full font-bold text-[11px] bg-gray-100 text-gray-700';
+                        valBadge.textContent = 'Sem alterações a validar';
+                    } else if (missingCount === 0) {
+                        valBadge.className = 'px-2 py-0.5 rounded-full font-bold text-[11px] bg-green-100 text-green-800 border border-green-300';
+                        valBadge.textContent = `✓ ${appliedCount}/${totalDiffRows} aplicadas (100%)`;
+                    } else {
+                        valBadge.className = 'px-2 py-0.5 rounded-full font-bold text-[11px] bg-yellow-100 text-yellow-800 border border-yellow-300';
+                        valBadge.textContent = `⚠ ${appliedCount}/${totalDiffRows} aplicadas (${missingCount} pendente${missingCount > 1 ? 's' : ''})`;
+                    }
+                }
+
+                applyFilters();
+            }
+
+            function clearClientValidation() {
+                clientFilesIndex = null;
+                document.getElementById('client-folder-btn-label').textContent = 'Validar no Cliente';
+                document.getElementById('client-batch-status-banner').classList.add('hidden');
+                document.getElementById('client-active-file-bar').classList.add('hidden');
+                const chk = document.getElementById('show-only-unapplied');
+                if (chk) chk.checked = false;
+
+                batchData.forEach(item => {
+                    delete item.clientValidation;
+                });
+
+                tableRows.forEach(r => {
+                    delete r.dataset.validationStatus;
+                    r.classList.remove('val-applied', 'val-missing');
+                    const b = r.querySelector('.val-badge');
+                    if (b) b.remove();
+                });
+
+                renderSidebarFiles(sidebarSearch.value);
+                applyFilters();
+            }
+
+            async function handleClientFolderSelected(files, folderName = '') {
+                if (!files || files.length === 0) return;
+                clientFilesIndex = indexClientFiles(files);
+                const labelEl = document.getElementById('client-folder-btn-label');
+                if (labelEl) {
+                    labelEl.textContent = folderName ? `📁 ${folderName}` : `📁 ${files.length} arquivos`;
+                }
+                await runBatchClientValidation();
+            }
+
+            const clientDirLabel = document.getElementById('btn-select-client-dir');
+            if (clientDirLabel && 'showDirectoryPicker' in window) {
+                clientDirLabel.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    try {
+                        const handle = await window.showDirectoryPicker({ id: 'client_source_dir' });
+                        const files = await readFilesFromDirectoryHandle(handle);
+                        await handleClientFolderSelected(files, handle.name);
+                    } catch (err) {
+                        if (err.name !== 'AbortError') console.error(err);
+                    }
+                });
+            }
+
+            const clientFolderInput = document.getElementById('client-folder-input');
+            if (clientFolderInput) {
+                clientFolderInput.addEventListener('change', async (e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) {
+                        const rootName = files[0].webkitRelativePath ? files[0].webkitRelativePath.split('/')[0] : '';
+                        await handleClientFolderSelected(Array.from(files), rootName);
+                    }
+                });
+            }
+
+            const btnClearClientVal = document.getElementById('btn-clear-client-val');
+            if (btnClearClientVal) {
+                btnClearClientVal.addEventListener('click', clearClientValidation);
+            }
+
+            const showOnlyUnappliedChk = document.getElementById('show-only-unapplied');
+            if (showOnlyUnappliedChk) {
+                showOnlyUnappliedChk.addEventListener('change', applyFilters);
+            }
 
             // Init
             renderIgnoreChips();

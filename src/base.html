@@ -180,6 +180,36 @@
         .ignore-badge button:hover {
             color: #dc2626;
         }
+
+        /* Estilos de Validação no Fonte do Cliente */
+        .val-applied {
+            background-color: rgba(34, 197, 94, 0.08) !important;
+        }
+        .val-missing {
+            background-color: rgba(239, 68, 68, 0.08) !important;
+        }
+        .val-badge {
+            display: inline-flex;
+            align-items: center;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+            vertical-align: middle;
+            line-height: 1.2;
+            user-select: none;
+        }
+        .val-badge-applied {
+            background-color: #dcfce7;
+            color: #15803d;
+            border: 1px solid #86efac;
+        }
+        .val-badge-missing {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fca5a5;
+        }
     </style>
 </head>
 
@@ -266,6 +296,37 @@
                         data-filter-type="deleted"></span>
                 </div>
             </div>
+
+            <!-- Barra de Validação no Fonte do Cliente -->
+            <div class="mt-2 pt-2.5 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 text-xs w-full">
+                <div class="flex items-center space-x-2 flex-wrap gap-y-2">
+                    <span class="font-bold text-gray-700 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Validar no Cliente:
+                    </span>
+                    <label id="btn-select-client-dir" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center space-x-1.5 shadow-xs">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                        <span id="client-folder-btn-label">Selecionar Pasta do Cliente</span>
+                        <input type="file" id="client-folder-input" webkitdirectory directory multiple class="hidden">
+                    </label>
+                    
+                    <div id="client-file-status-pill" class="hidden flex items-center space-x-1.5 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 text-gray-700">
+                        <span class="text-gray-500 font-medium">Arquivo:</span>
+                        <span id="client-file-path-text" class="font-bold text-blue-800"></span>
+                    </div>
+                </div>
+
+                <div id="client-validation-results" class="hidden flex items-center space-x-3">
+                    <span id="client-val-badge" class="px-2.5 py-1 rounded-full font-bold text-xs"></span>
+                    <label class="flex items-center space-x-1 cursor-pointer bg-white px-2 py-1 rounded border border-gray-300">
+                        <input type="checkbox" id="show-only-unapplied" class="w-3.5 h-3.5 text-blue-600 rounded">
+                        <span class="text-gray-700 font-medium">Apenas Não Aplicadas</span>
+                    </label>
+                    <button id="btn-clear-client-val" title="Limpar Validação" class="text-gray-400 hover:text-red-600 px-1 font-bold cursor-pointer">
+                        &times; Limpar
+                    </button>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -313,27 +374,31 @@
             let ignoreList = ['top', 'left', 'height', 'width', 'tabindex'];
 
             // Detect and Tag Blocks
-            let currentBlockName = '';
+            function detectAndTagBlocks() {
+                let currentBlockName = '';
 
-            tableRows.forEach(row => {
-                const text = row.textContent.trim();
-                const cleanText = text.replace(/^[>=\s]+/, '');
+                tableRows.forEach(row => {
+                    const cells = Array.from(row.querySelectorAll('td')).filter(td => !td.classList.contains('line-number') && !td.classList.contains('AlignCenter'));
+                    const leftText = cells[0] ? cells[0].textContent.replace(/\u00A0/g, ' ').trim() : '';
+                    const rightText = cells[1] ? cells[1].textContent.replace(/\u00A0/g, ' ').trim() : '';
+                    const codeText = rightText || leftText;
 
-                // Detection for block opening
-                let blockMatch = cleanText.match(/^<((?:Object\.[^\s]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
-                if (blockMatch) {
-                    currentBlockName = blockMatch[1];
-                }
+                    // Detection for block opening
+                    let blockMatch = codeText.match(/^<((?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+                    if (blockMatch) {
+                        currentBlockName = blockMatch[1].toUpperCase();
+                    }
 
-                if (currentBlockName) {
-                    row.dataset.blockName = currentBlockName;
-                }
+                    if (currentBlockName) {
+                        row.dataset.blockName = currentBlockName;
+                    }
 
-                // Detection for block closing
-                if (currentBlockName && cleanText.toUpperCase().startsWith(`</${currentBlockName.toUpperCase()}>`)) {
-                    currentBlockName = '';
-                }
-            });
+                    // Detection for block closing
+                    if (currentBlockName && (codeText.toUpperCase().startsWith(`</${currentBlockName}>`) || codeText.match(/^<\/(?:(?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i))) {
+                        currentBlockName = '';
+                    }
+                });
+            }
 
             const methodFilter = document.getElementById('method-filter');
             methodFilter.addEventListener('change', () => {
@@ -437,6 +502,7 @@
             }
 
             function rebuildAndRecalculate() {
+                detectAndTagBlocks();
                 // Reset stats and diff elements
                 allDiffElements = [];
 
@@ -463,6 +529,7 @@
 
             function applyFilters() {
                 const hideSame = showOnlyDiffCheckbox.checked;
+                const showOnlyUnapplied = document.getElementById('show-only-unapplied')?.checked || false;
                 const selectedMethod = methodFilter.value;
 
                 tableRows.forEach(row => {
@@ -470,8 +537,9 @@
                     const isSame = rowType === 'same';
                     const typeMatch = activeFilter === 'all' || rowType === activeFilter;
                     const blockMatch = !selectedMethod || row.dataset.blockName === selectedMethod;
+                    const unappliedMatch = !showOnlyUnapplied || (rowType !== 'same' && row.dataset.validationStatus === 'missing');
 
-                    if ((hideSame && isSame) || !typeMatch || !blockMatch) {
+                    if ((hideSame && isSame) || !typeMatch || !blockMatch || !unappliedMatch) {
                         row.classList.add('row-hidden');
                     } else {
                         row.classList.remove('row-hidden');
@@ -557,6 +625,10 @@
 
                 rebuildAndRecalculate();
 
+                if (clientFilesIndex) {
+                    runClientValidation();
+                }
+
                 if (getVisibleDiffs().length > 0) {
                     getVisibleDiffs()[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
@@ -624,6 +696,7 @@
                         ignoreList.splice(index, 1);
                         updateIgnoreListDisplay();
                         rebuildAndRecalculate();
+                        if (clientFilesIndex) runClientValidation();
                     };
                     badge.appendChild(removeBtn);
                     ignoreListContainer.appendChild(badge);
@@ -639,7 +712,6 @@
                 lineTd.textContent = lineNumber;
                 row.prepend(lineTd);
                 row.classList.add('diff-row');
-                // Store original type for resets
                 row.setAttribute('data-original-diff-type', classifyRow(row));
             });
             updateIgnoreListDisplay();
@@ -675,6 +747,7 @@
                     ignoreInput.value = '';
                     updateIgnoreListDisplay();
                     rebuildAndRecalculate();
+                    if (clientFilesIndex) runClientValidation();
                 }
             });
             ignoreInput.addEventListener('keydown', e => e.key === 'Enter' && (e.preventDefault(), ignoreBtn.click()));
@@ -700,6 +773,658 @@
                     navigate('prev');
                 }
             });
+
+            // ==========================================
+            // FoxPro Parser e Validação no Fonte do Cliente
+            // ==========================================
+            class FoxProParser {
+                decodeString(buffer, offset, length) {
+                    const slice = buffer.slice(offset, offset + length);
+                    const decoder = new TextDecoder('windows-1252');
+                    let str = decoder.decode(slice);
+                    const nullIdx = str.indexOf('\0');
+                    if (nullIdx !== -1) {
+                        str = str.substring(0, nullIdx);
+                    }
+                    return str.trim();
+                }
+
+                getMemoText(fptBuffer, blockNumber, blockSize) {
+                    if (blockNumber === 0) return '';
+                    const offset = blockNumber * blockSize;
+                    if (offset >= fptBuffer.byteLength) return '';
+
+                    const view = new DataView(fptBuffer);
+                    const blockType = view.getUint32(offset, false);
+                    const dataLength = view.getUint32(offset + 4, false);
+
+                    if (blockType !== 1) return '';
+                    return this.decodeString(fptBuffer, offset + 8, dataLength);
+                }
+
+                sortMethods(methodsText, objName) {
+                    const methodLines = methodsText.split(/\r?\n/);
+                    const methodBlocks = [];
+                    let currentName = '_TOP_LEVEL';
+                    let currentContent = [];
+
+                    for (const line of methodLines) {
+                        const match = line.match(/^\s*(?:PROCEDURE|PROC|FUNCTION|FUNC)\s+([a-zA-Z0-9_.]+)/i);
+                        if (match) {
+                            if (currentContent.length > 0) {
+                                methodBlocks.push({ name: currentName, content: currentContent });
+                            }
+                            currentName = match[1].toUpperCase();
+                            currentContent = [line];
+                        } else {
+                            currentContent.push(line);
+                        }
+                    }
+                    if (currentContent.length > 0) {
+                        methodBlocks.push({ name: currentName, content: currentContent });
+                    }
+
+                    methodBlocks.sort((a, b) => a.name.localeCompare(b.name));
+                    let output = '';
+                    for (const block of methodBlocks) {
+                        if (block.name === '_TOP_LEVEL') {
+                            if (block.content.join('').trim()) {
+                                output += `<Object.${objName} Method._TopLevel>\n`;
+                                output += block.content.join('\n').trimEnd() + '\n';
+                                output += `</Object.${objName} Method._TopLevel>\n\n`;
+                            }
+                        } else {
+                            output += `<Object.${objName} Method.${block.name}>\n`;
+                            output += block.content.join('\n').trimEnd() + '\n';
+                            output += `</Object.${objName} Method.${block.name}>\n\n`;
+                        }
+                    }
+                    return output.trimEnd() + '\n';
+                }
+
+                parsePrg(prgText) {
+                    const methodLines = prgText.split(/\r?\n/);
+                    const methodBlocks = [];
+                    let currentName = '_TOP_LEVEL';
+                    let currentContent = [];
+
+                    for (const line of methodLines) {
+                        const match = line.match(/^\s*(?:PROCEDURE|PROC|FUNCTION|FUNC)\s+([a-zA-Z0-9_.]+)/i);
+                        if (match) {
+                            if (currentContent.length > 0) {
+                                methodBlocks.push({ name: currentName, content: currentContent });
+                            }
+                            currentName = match[1].toUpperCase();
+                            currentContent = [line];
+                        } else {
+                            currentContent.push(line);
+                        }
+                    }
+                    if (currentContent.length > 0) {
+                        methodBlocks.push({ name: currentName, content: currentContent });
+                    }
+
+                    let output = '';
+                    for (const block of methodBlocks) {
+                        if (block.name === '_TOP_LEVEL') {
+                            if (block.content.join('').trim()) {
+                                output += `<PRG_TopLevel>\n`;
+                                output += block.content.join('\n').trimEnd() + '\n';
+                                output += `</PRG_TopLevel>\n\n`;
+                            }
+                        } else {
+                            output += `<PRG_Method ${block.name}>\n`;
+                            output += block.content.join('\n').trimEnd() + '\n';
+                            output += `</PRG_Method ${block.name}>\n\n`;
+                        }
+                    }
+                    return output.trimEnd() + '\n';
+                }
+
+                parse(scxBuffer, sctBuffer) {
+                    const scxView = new DataView(scxBuffer);
+                    const sctView = new DataView(sctBuffer);
+
+                    const blockSize = sctView.getUint16(6, false);
+                    const numRecords = scxView.getUint32(4, true);
+                    const headerLength = scxView.getUint16(8, true);
+                    const recordLength = scxView.getUint16(10, true);
+
+                    const fields = [];
+                    let currentOffset = 32;
+                    let recordOffset = 1;
+
+                    while (currentOffset < headerLength) {
+                        const firstByte = scxView.getUint8(currentOffset);
+                        if (firstByte === 0x0D) break;
+
+                        const name = this.decodeString(scxBuffer, currentOffset, 11);
+                        const type = String.fromCharCode(scxView.getUint8(currentOffset + 11));
+                        const length = scxView.getUint8(currentOffset + 16);
+
+                        fields.push({ name, type, length, offset: recordOffset });
+                        recordOffset += length;
+                        currentOffset += 32;
+                    }
+
+                    const objects = {};
+
+                    for (let i = 0; i < numRecords; i++) {
+                        const rowOffset = headerLength + (i * recordLength);
+                        if (rowOffset >= scxBuffer.byteLength) break;
+                        const isDeleted = scxView.getUint8(rowOffset) === 0x2A;
+                        if (isDeleted) continue;
+
+                        let objName = '';
+                        let parentName = '';
+                        let properties = '';
+                        let methods = '';
+                        let expr = '';
+                        let tag = '';
+                        let tag2 = '';
+                        let picture = '';
+
+                        for (const field of fields) {
+                            const fieldOffset = rowOffset + field.offset;
+                            if (field.name === 'OBJNAME' || field.name === 'NAME') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    objName = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                } else {
+                                    objName = this.decodeString(scxBuffer, fieldOffset, field.length);
+                                }
+                                objName = objName.toUpperCase();
+                            } else if (field.name === 'PARENT') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    parentName = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                } else {
+                                    parentName = this.decodeString(scxBuffer, fieldOffset, field.length);
+                                }
+                                parentName = parentName.toUpperCase();
+                            } else if (field.name === 'PROPERTIES') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    properties = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                }
+                            } else if (field.name === 'METHODS') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    methods = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                }
+                            } else if (field.name === 'EXPR') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    expr = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                }
+                            } else if (field.name === 'TAG') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    tag = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                }
+                            } else if (field.name === 'TAG2') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    tag2 = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                }
+                            } else if (field.name === 'PICTURE') {
+                                if (field.type === 'M') {
+                                    const blockNumber = scxView.getUint32(fieldOffset, true);
+                                    picture = this.getMemoText(sctBuffer, blockNumber, blockSize);
+                                }
+                            }
+                        }
+
+                        if (!objName) objName = `Row_${i}`;
+
+                        if (objName) {
+                            if (parentName.trim()) {
+                                objName = `${parentName.trim()}.${objName.trim()}`;
+                            }
+                            if (objects[objName]) {
+                                let counter = 2;
+                                while (objects[`${objName}_${counter}`]) counter++;
+                                objName = `${objName}_${counter}`;
+                            }
+                            objects[objName] = { properties, methods, expr, tag, tag2, picture };
+                        }
+                    }
+
+                    let output = '';
+                    const sortedNames = Object.keys(objects).sort();
+
+                    for (const name of sortedNames) {
+                        const { properties, methods, expr, tag, tag2, picture } = objects[name];
+                        if (properties.trim()) {
+                            output += `<Object.${name} Properties>\n`;
+                            const lines = properties.split('\n');
+                            for (const line of lines) {
+                                if (line.trim()) output += `   ${line.trim()}\n`;
+                            }
+                            output += `</Object.${name} Properties>\n`;
+                        }
+                        const sortedMethods = this.sortMethods(methods, name);
+                        if (sortedMethods.trim()) {
+                            output += sortedMethods.trim() + '\n\n';
+                        }
+                        if (expr.trim()) {
+                            output += `<Object.${name} EXPR>\n`;
+                            const lines = expr.split('\n');
+                            for (const line of lines) {
+                                if (line.trim()) output += `   ${line.trim()}\n`;
+                            }
+                            output += `</Object.${name} EXPR>\n\n`;
+                        }
+                        if (tag.trim()) {
+                            output += `<Object.${name} TAG>\n`;
+                            const lines = tag.split('\n');
+                            for (const line of lines) {
+                                if (line.trim()) output += `   ${line.trim()}\n`;
+                            }
+                            output += `</Object.${name} TAG>\n\n`;
+                        }
+                        if (tag2.trim()) {
+                            output += `<Object.${name} TAG2>\n`;
+                            const lines = tag2.split('\n');
+                            for (const line of lines) {
+                                if (line.trim()) output += `   ${line.trim()}\n`;
+                            }
+                            output += `</Object.${name} TAG2>\n\n`;
+                        }
+                        if (picture.trim()) {
+                            output += `<Object.${name} PICTURE>\n`;
+                            const lines = picture.split('\n');
+                            for (const line of lines) {
+                                if (line.trim()) output += `   ${line.trim()}\n`;
+                            }
+                            output += `</Object.${name} PICTURE>\n\n`;
+                        }
+                    }
+                    return output;
+                }
+            }
+
+            let clientFilesIndex = null;
+
+            async function readFilesFromDirectoryHandle(dirHandle, path = '') {
+                const files = [];
+                for await (const entry of dirHandle.values()) {
+                    if (entry.kind === 'file') {
+                        const file = await entry.getFile();
+                        const relativePath = path ? `${path}/${file.name}` : `${dirHandle.name}/${file.name}`;
+                        Object.defineProperty(file, 'webkitRelativePath', {
+                            value: relativePath,
+                            writable: false,
+                            configurable: true
+                        });
+                        files.push(file);
+                    } else if (entry.kind === 'directory') {
+                        const subFiles = await readFilesFromDirectoryHandle(entry, path ? `${path}/${entry.name}` : `${dirHandle.name}/${entry.name}`);
+                        files.push(...subFiles);
+                    }
+                }
+                return files;
+            }
+
+            function indexClientFiles(files) {
+                const outsideStob = { byPath: new Map(), byBase: new Map() };
+                const insideStob = { byPath: new Map(), byBase: new Map() };
+
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const rawRel = (file.webkitRelativePath || file.name).replace(/\\/g, '/');
+                    const segments = rawRel.split('/');
+                    const internalPath = segments.length > 1 ? segments.slice(1).join('/') : rawRel;
+                    const upperInternal = internalPath.toUpperCase();
+
+                    const isStob = upperInternal.startsWith('STOB/') || upperInternal === 'STOB';
+                    const cleanInternal = isStob ? internalPath.substring(5) : internalPath;
+                    const cleanUpper = cleanInternal.toUpperCase();
+
+                    const lastDot = cleanInternal.lastIndexOf('.');
+                    if (lastDot === -1) continue;
+
+                    const ext = cleanInternal.substring(lastDot + 1).toLowerCase();
+                    const basePath = cleanInternal.substring(0, lastDot);
+                    const upperBasePath = cleanUpper.substring(0, lastDot);
+
+                    const fileNameOnly = cleanInternal.split('/').pop();
+                    const baseNameOnly = fileNameOnly.substring(0, fileNameOnly.lastIndexOf('.')).toUpperCase();
+
+                    const targetIndex = isStob ? insideStob : outsideStob;
+
+                    if (!targetIndex.byPath.has(upperBasePath)) {
+                        targetIndex.byPath.set(upperBasePath, {
+                            basePath,
+                            displayPath: internalPath,
+                            isStob,
+                            primaryFile: null,
+                            binaryMemoFile: null,
+                            ext: ''
+                        });
+                    }
+                    const pathEntry = targetIndex.byPath.get(upperBasePath);
+                    if (ext === 'scx' || ext === 'frx' || ext === 'vcx' || ext === 'prg') {
+                        pathEntry.primaryFile = file;
+                        pathEntry.ext = ext;
+                        pathEntry.displayPath = internalPath;
+                    } else if (ext === 'sct' || ext === 'frt' || ext === 'vct') {
+                        pathEntry.binaryMemoFile = file;
+                    }
+
+                    if (!targetIndex.byBase.has(baseNameOnly)) {
+                        targetIndex.byBase.set(baseNameOnly, pathEntry);
+                    } else {
+                        const existing = targetIndex.byBase.get(baseNameOnly);
+                        if (!existing.primaryFile && pathEntry.primaryFile) {
+                            targetIndex.byBase.set(baseNameOnly, pathEntry);
+                        }
+                    }
+                }
+
+                return { outsideStob, insideStob };
+            }
+
+            function resolveClientFile(targetName, clientIndex) {
+                if (!clientIndex) return null;
+                let raw = (targetName || '').trim().replace(/\\/g, '/');
+                raw = raw.replace(/\[\[NOME_FORM\]\]/g, '').trim();
+                const cleanTarget = raw.replace(/\.(scx|sct|frx|frt|prg|vcx|vct|html|txt)$/i, '');
+                const upperTarget = cleanTarget.toUpperCase();
+
+                const parts = cleanTarget.split('/');
+                const baseName = parts[parts.length - 1].toUpperCase();
+
+                const { outsideStob, insideStob } = clientIndex;
+
+                // 1. Prioridade: busca primeiro fora da pasta STOB (raiz, OBJETOS, REPORTS, etc.)
+                if (outsideStob.byPath.has(upperTarget) && outsideStob.byPath.get(upperTarget).primaryFile) {
+                    return outsideStob.byPath.get(upperTarget);
+                }
+                if (outsideStob.byBase.has(baseName) && outsideStob.byBase.get(baseName).primaryFile) {
+                    return outsideStob.byBase.get(baseName);
+                }
+
+                // 2. Não encontrou, busca na pasta STOB e suas subpastas
+                if (insideStob.byPath.has(upperTarget) && insideStob.byPath.get(upperTarget).primaryFile) {
+                    return insideStob.byPath.get(upperTarget);
+                }
+                if (insideStob.byBase.has(baseName) && insideStob.byBase.get(baseName).primaryFile) {
+                    return insideStob.byBase.get(baseName);
+                }
+
+                return null;
+            }
+
+            async function parseResolvedClientFile(resolvedItem, parser) {
+                if (!resolvedItem || !resolvedItem.primaryFile) return '';
+                const ext = (resolvedItem.ext || '').toLowerCase();
+
+                if (ext === 'prg') {
+                    const buf = await resolvedItem.primaryFile.arrayBuffer();
+                    const dec = new TextDecoder('windows-1252');
+                    return parser.parsePrg(dec.decode(buf));
+                }
+
+                if ((ext === 'scx' || ext === 'frx' || ext === 'vcx') && resolvedItem.binaryMemoFile) {
+                    const pBuf = await resolvedItem.primaryFile.arrayBuffer();
+                    const mBuf = await resolvedItem.binaryMemoFile.arrayBuffer();
+                    return parser.parse(pBuf, mBuf);
+                }
+
+                const buf = await resolvedItem.primaryFile.arrayBuffer();
+                const dec = new TextDecoder('windows-1252');
+                return dec.decode(buf);
+            }
+
+            function parseTextIntoBlocks(text) {
+                const lines = text.split(/\r?\n/);
+                const blockMap = new Map();
+                let currentBlock = '_GLOBAL';
+                blockMap.set(currentBlock, []);
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    const openMatch = trimmed.match(/^<((?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+                    if (openMatch) {
+                        currentBlock = openMatch[1].toUpperCase();
+                        if (!blockMap.has(currentBlock)) {
+                            blockMap.set(currentBlock, []);
+                        }
+                        continue;
+                    }
+                    if (currentBlock !== '_GLOBAL' && (trimmed.toUpperCase().startsWith(`</${currentBlock}>`) || trimmed.match(/^<\/(?:(?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i))) {
+                        currentBlock = '_GLOBAL';
+                        continue;
+                    }
+                    if (blockMap.has(currentBlock)) {
+                        blockMap.get(currentBlock).push(line);
+                    }
+                }
+                return { blockMap, allLines: lines };
+            }
+
+            function normalizeCode(str) {
+                if (!str) return '';
+                return str
+                    .replace(/\u00A0/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                    .toLowerCase();
+            }
+
+            function lineMatches(normLine, normTarget) {
+                if (!normLine || !normTarget) return false;
+                return normLine === normTarget || normLine.includes(normTarget);
+            }
+
+            async function runClientValidation() {
+                if (!clientFilesIndex) return;
+
+                let formName = "[[NOME_FORM]]";
+                if (formName.includes('[[') || !formName.trim()) {
+                    const heading = document.querySelector('h1')?.textContent || '';
+                    const match = heading.match(/-\s*(.+)$/);
+                    formName = match ? match[1].trim() : '';
+                }
+
+                const resolved = resolveClientFile(formName, clientFilesIndex);
+
+                const clientPill = document.getElementById('client-file-status-pill');
+                const clientPathText = document.getElementById('client-file-path-text');
+                const clientValResults = document.getElementById('client-validation-results');
+                const clientValBadge = document.getElementById('client-val-badge');
+
+                if (!resolved) {
+                    clientPill.classList.remove('hidden');
+                    clientPathText.textContent = `Não encontrado no cliente: '${formName}' (nem fora nem dentro da STOB)`;
+                    clientPathText.className = 'font-bold text-red-600';
+                    clientValResults.classList.remove('hidden');
+                    clientValBadge.className = 'px-2.5 py-1 rounded-full font-bold text-xs bg-red-100 text-red-800 border border-red-300';
+                    clientValBadge.textContent = 'Arquivo Ausente no Cliente';
+
+                    tableRows.forEach(r => {
+                        delete r.dataset.validationStatus;
+                        r.classList.remove('val-applied', 'val-missing');
+                        const b = r.querySelector('.val-badge');
+                        if (b) b.remove();
+                    });
+                    applyFilters();
+                    return;
+                }
+
+                clientPill.classList.remove('hidden');
+                clientPathText.textContent = `${resolved.isStob ? 'STOB\\' : ''}${resolved.displayPath.replace(/\//g, '\\')}`;
+                clientPathText.className = 'font-bold text-blue-800';
+
+                const parser = new FoxProParser();
+                const clientText = await parseResolvedClientFile(resolved, parser);
+                const { blockMap, allLines } = parseTextIntoBlocks(clientText);
+
+                let appliedCount = 0;
+                let missingCount = 0;
+                let totalDiffRows = 0;
+
+                tableRows.forEach(row => {
+                    const diffType = row.dataset.diffType;
+                    const existingBadge = row.querySelector('.val-badge');
+                    if (existingBadge) existingBadge.remove();
+
+                    if (diffType === 'same' || !diffType) {
+                        delete row.dataset.validationStatus;
+                        row.classList.remove('val-applied', 'val-missing');
+                        return;
+                    }
+
+                    totalDiffRows++;
+
+                    const cells = Array.from(row.querySelectorAll('td')).filter(td => !td.classList.contains('line-number') && !td.classList.contains('AlignCenter'));
+                    const leftText = cells[0] ? cells[0].textContent.replace(/\u00A0/g, ' ').trim() : '';
+                    const rightText = cells[1] ? cells[1].textContent.replace(/\u00A0/g, ' ').trim() : '';
+
+                    let targetLine = '';
+                    let isDeleted = false;
+
+                    if (diffType === 'added' || diffType === 'modified') {
+                        targetLine = rightText;
+                    } else if (diffType === 'deleted') {
+                        targetLine = leftText;
+                        isDeleted = true;
+                    }
+
+                    const normTarget = normalizeCode(targetLine);
+                    const blockName = row.dataset.blockName ? row.dataset.blockName.toUpperCase() : '';
+                    const blockLines = blockName && blockMap.has(blockName) ? blockMap.get(blockName) : null;
+                    const blockExistsInClient = blockName ? blockMap.has(blockName) : false;
+
+                    const isOpeningTag = targetLine.match(/^<((?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+                    const isClosingTag = targetLine.match(/^<\/(?:(?:Object\.[^\s>]+\s+(?:Method\.[^\s>]+|Properties|EXPR|TAG2?|PICTURE))|(?:PRG[_\s]Method\s+[^\s>]+)|(?:PRG_TopLevel))>/i);
+
+                    let isApplied = false;
+
+                    if (isOpeningTag || isClosingTag) {
+                        // A tag de abertura/fechamento do bloco só é considerada aplicada se o objeto/método existir no cliente
+                        isApplied = isDeleted ? !blockExistsInClient : blockExistsInClient;
+                    } else if (!normTarget) {
+                        isApplied = true;
+                    } else {
+                        if (blockName && blockName !== '_GLOBAL' && blockName !== 'PRG_TOPLEVEL') {
+                            // Se a linha pertence a um OBJETO ou MÉTODO específico:
+                            // A validação DEVE ser feita EXCLUSIVAMENTE dentro desse objeto/método no cliente!
+                            // Nunca busca na tela inteira para evitar falso positivo em propriedades/métodos comuns (como AutoSize, Caption, etc.)
+                            if (blockLines && blockLines.length > 0) {
+                                const foundInBlock = blockLines.some(l => lineMatches(normalizeCode(l), normTarget));
+                                isApplied = isDeleted ? !foundInBlock : foundInBlock;
+                            } else {
+                                // O objeto/método não existe no cliente
+                                isApplied = isDeleted ? true : false;
+                            }
+                        } else {
+                            // Código global / PRG de nível superior / arquivo sem blocos de objetos:
+                            const targetLines = (blockMap.has('PRG_TOPLEVEL') ? blockMap.get('PRG_TOPLEVEL') : null) 
+                                             || (blockMap.has('_GLOBAL') ? blockMap.get('_GLOBAL') : null) 
+                                             || allLines;
+                            const found = targetLines.some(l => lineMatches(normalizeCode(l), normTarget));
+                            isApplied = isDeleted ? !found : found;
+                        }
+                    }
+
+                    row.dataset.validationStatus = isApplied ? 'applied' : 'missing';
+                    row.classList.toggle('val-applied', isApplied);
+                    row.classList.toggle('val-missing', !isApplied);
+
+                    const badge = document.createElement('span');
+                    badge.className = `val-badge ${isApplied ? 'val-badge-applied' : 'val-badge-missing'}`;
+                    badge.textContent = isApplied ? '✓ Aplicado' : '✗ Não Aplicado';
+                    badge.title = isApplied 
+                        ? `Alteração confirmada no fonte do cliente (${resolved.displayPath})` 
+                        : `Alteração NÃO encontrada no fonte do cliente (${resolved.displayPath})`;
+
+                    const lineNumTd = row.querySelector('.line-number');
+                    if (lineNumTd) {
+                        lineNumTd.appendChild(badge);
+                    }
+
+                    if (isApplied) appliedCount++;
+                    else missingCount++;
+                });
+
+                clientValResults.classList.remove('hidden');
+                if (totalDiffRows === 0) {
+                    clientValBadge.className = 'px-2.5 py-1 rounded-full font-bold text-xs bg-gray-100 text-gray-700 border border-gray-300';
+                    clientValBadge.textContent = 'Sem alterações a validar';
+                } else if (missingCount === 0) {
+                    clientValBadge.className = 'px-2.5 py-1 rounded-full font-bold text-xs bg-green-100 text-green-800 border border-green-300';
+                    clientValBadge.textContent = `✓ ${appliedCount}/${totalDiffRows} aplicadas (100%)`;
+                } else {
+                    clientValBadge.className = 'px-2.5 py-1 rounded-full font-bold text-xs bg-yellow-100 text-yellow-800 border border-yellow-300';
+                    clientValBadge.textContent = `⚠ ${appliedCount}/${totalDiffRows} aplicadas (${missingCount} pendente${missingCount > 1 ? 's' : ''})`;
+                }
+
+                applyFilters();
+            }
+
+            function clearClientValidation() {
+                clientFilesIndex = null;
+                document.getElementById('client-folder-btn-label').textContent = 'Selecionar Pasta do Cliente';
+                document.getElementById('client-file-status-pill').classList.add('hidden');
+                document.getElementById('client-validation-results').classList.add('hidden');
+                const chk = document.getElementById('show-only-unapplied');
+                if (chk) chk.checked = false;
+
+                tableRows.forEach(r => {
+                    delete r.dataset.validationStatus;
+                    r.classList.remove('val-applied', 'val-missing');
+                    const b = r.querySelector('.val-badge');
+                    if (b) b.remove();
+                });
+                applyFilters();
+            }
+
+            async function handleClientFolderSelected(files, folderName = '') {
+                if (!files || files.length === 0) return;
+                clientFilesIndex = indexClientFiles(files);
+                const labelEl = document.getElementById('client-folder-btn-label');
+                if (labelEl) {
+                    labelEl.textContent = folderName ? `📁 ${folderName}` : `📁 ${files.length} arquivos`;
+                }
+                await runClientValidation();
+            }
+
+            const clientDirLabel = document.getElementById('btn-select-client-dir');
+            if (clientDirLabel && 'showDirectoryPicker' in window) {
+                clientDirLabel.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    try {
+                        const handle = await window.showDirectoryPicker({ id: 'client_source_dir' });
+                        const files = await readFilesFromDirectoryHandle(handle);
+                        await handleClientFolderSelected(files, handle.name);
+                    } catch (err) {
+                        if (err.name !== 'AbortError') console.error(err);
+                    }
+                });
+            }
+
+            const clientFolderInput = document.getElementById('client-folder-input');
+            if (clientFolderInput) {
+                clientFolderInput.addEventListener('change', async (e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) {
+                        const rootName = files[0].webkitRelativePath ? files[0].webkitRelativePath.split('/')[0] : '';
+                        await handleClientFolderSelected(Array.from(files), rootName);
+                    }
+                });
+            }
+
+            const btnClearClientVal = document.getElementById('btn-clear-client-val');
+            if (btnClearClientVal) {
+                btnClearClientVal.addEventListener('click', clearClientValidation);
+            }
+
+            const showOnlyUnappliedChk = document.getElementById('show-only-unapplied');
+            if (showOnlyUnappliedChk) {
+                showOnlyUnappliedChk.addEventListener('change', applyFilters);
+            }
         });
     </script>
 
