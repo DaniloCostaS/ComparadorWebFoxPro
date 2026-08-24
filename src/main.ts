@@ -668,11 +668,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const crMatchExact = document.getElementById('cr-match-exact') as HTMLInputElement;
   const crMatchCase = document.getElementById('cr-match-case') as HTMLInputElement;
   const crMatchSameMethod = document.getElementById('cr-match-same-method') as HTMLInputElement;
+  const crMatchSameLine = document.getElementById('cr-match-same-line') as HTMLInputElement;
   const crIgnoreSpaces = document.getElementById('cr-ignore-spaces') as HTMLInputElement;
   const btnProcessCr = document.getElementById('btn-process-cr') as HTMLButtonElement;
   const crResultsContainer = document.getElementById('cr-results-container') as HTMLElement;
   const crResultsStats = document.getElementById('cr-results-stats') as HTMLElement;
   const crTreeView = document.getElementById('cr-tree-view') as HTMLElement;
+
+  if (crMatchSameLine && crMatchSameMethod) {
+      crMatchSameLine.addEventListener('change', () => {
+          if (crMatchSameLine.checked) {
+              crMatchSameMethod.checked = false;
+          }
+      });
+      crMatchSameMethod.addEventListener('change', () => {
+          if (crMatchSameMethod.checked) {
+              crMatchSameLine.checked = false;
+          }
+      });
+  }
 
   // Restaurar e persistir caminho raiz local (Padrão: C:\TestesVF)
   if (crRootPathInput) {
@@ -713,11 +727,11 @@ document.addEventListener('DOMContentLoaded', () => {
       crSearchTags.innerHTML = '';
       crSearchTermList.forEach((term, index) => {
           const tag = document.createElement('span');
-          tag.className = 'inline-flex items-center bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded';
+          tag.className = 'inline-flex items-center bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 text-xs font-medium px-2.5 py-0.5 rounded border border-blue-200 dark:border-blue-700/60';
           tag.textContent = term;
           
           const removeBtn = document.createElement('button');
-          removeBtn.className = 'ml-1 text-blue-600 hover:text-blue-900 focus:outline-none';
+          removeBtn.className = 'ml-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-100 focus:outline-none font-bold text-sm leading-none';
           removeBtn.innerHTML = '&times;';
           removeBtn.addEventListener('click', () => {
               crSearchTermList.splice(index, 1);
@@ -770,7 +784,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // crSearchTerm validation is no longer needed on input, we only validate the tags list.
 
   btnProcessCr.addEventListener('click', async () => {
-      if (!crFiles) return;
+      if (crSearchTerm.value.trim().length > 0) {
+          addCrTerm();
+      }
+      if (!crFiles || crSearchTermList.length === 0) return;
       
       btnProcessCr.disabled = true;
       const originalText = btnProcessCr.textContent;
@@ -778,7 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       crResultsContainer.classList.remove('hidden');
       crResultsStats.textContent = 'Lendo arquivos e buscando...';
-      crTreeView.innerHTML = '<div class="p-4 text-gray-500 text-center">Processando...</div>';
+      crTreeView.innerHTML = '<div class="p-4 text-gray-500 dark:text-slate-400 text-center">Processando...</div>';
 
       try {
           const results = await handleCodeReferencesSearch(
@@ -787,6 +804,7 @@ document.addEventListener('DOMContentLoaded', () => {
               crMatchExact.checked,
               crMatchCase.checked,
               crMatchSameMethod.checked,
+              crMatchSameLine ? crMatchSameLine.checked : false,
               crIgnoreSpaces ? crIgnoreSpaces.checked : false,
               (msg) => {
                   crResultsStats.textContent = msg;
@@ -799,7 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err: any) {
           console.error(err);
           crResultsStats.textContent = 'Erro ao pesquisar.';
-          crTreeView.innerHTML = `<div class="p-4 text-red-500 text-center">Erro: ${err.message || err}</div>`;
+          crTreeView.innerHTML = `<div class="p-4 text-red-500 dark:text-red-400 text-center">Erro: ${err.message || err}</div>`;
       } finally {
           btnProcessCr.textContent = originalText;
           validateCr();

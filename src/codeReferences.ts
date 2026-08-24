@@ -41,6 +41,7 @@ export async function handleCodeReferencesSearch(
     matchExact: boolean,
     matchCase: boolean,
     matchSameMethod: boolean,
+    matchSameLine: boolean,
     ignoreSpaces: boolean,
     onProgress: (msg: string) => void
 ): Promise<SearchResult[]> {
@@ -50,11 +51,19 @@ export async function handleCodeReferencesSearch(
     const terms = searchTerms.filter(t => t.trim().length > 0);
     if (terms.length === 0) return [];
 
-    const termMatchers = terms.map(term => ({
-        term,
-        regex: buildSearchRegex(term, matchExact, matchCase, ignoreSpaces),
-        termClean: matchCase ? term.replace(/\s+/g, '') : term.toLowerCase().replace(/\s+/g, '')
-    }));
+    const termMatchers = terms.map(term => {
+        const words = term.trim().split(/\s+/).filter(w => w.length > 0);
+        return {
+            term,
+            regex: buildSearchRegex(term, matchExact, matchCase, ignoreSpaces),
+            termClean: matchCase ? term.replace(/\s+/g, '') : term.toLowerCase().replace(/\s+/g, ''),
+            words: words.map(w => ({
+                word: w,
+                regex: buildSearchRegex(w, matchExact, matchCase, ignoreSpaces),
+                clean: matchCase ? w.replace(/\s+/g, '') : w.toLowerCase().replace(/\s+/g, '')
+            }))
+        };
+    });
 
     const fileGroups = new Map<string, { scx?: File, sct?: File, vcx?: File, vct?: File, frx?: File, frt?: File, prg?: File, folderPath: string }>();
 
@@ -151,36 +160,75 @@ export async function handleCodeReferencesSearch(
                 if (trimmed === '') continue;
 
                 let lineHasAnyTerm = false;
+                const lineFoundTerms = new Set<string>();
 
                 for (const matcher of termMatchers) {
-                    // Reinicia o índice de busca da regex global/case
-                    matcher.regex.lastIndex = 0;
-                    let termMatched = matcher.regex.test(line);
+                    let termMatched = false;
 
-                    if (!termMatched && ignoreSpaces && !matchExact) {
-                        const searchLineClean = matchCase ? line.replace(/\s+/g, '') : line.toLowerCase().replace(/\s+/g, '');
-                        if (searchLineClean.includes(matcher.termClean)) {
-                            termMatched = true;
+                    if (matchSameLine && matcher.words.length > 1) {
+                        // Se for busca na mesma linha e o termo tiver múltiplas palavras, todas as palavras do termo precisam estar nesta linha
+                        const allWordsMatched = matcher.words.every(w => {
+                            w.regex.lastIndex = 0;
+                            if (w.regex.test(line)) return true;
+                            if (ignoreSpaces && !matchExact) {
+                                const searchLineClean = matchCase ? line.replace(/\s+/g, '') : line.toLowerCase().replace(/\s+/g, '');
+                                if (searchLineClean.includes(w.clean)) return true;
+                            }
+                            return false;
+                        });
+                        termMatched = allWordsMatched;
+                    } else {
+                        matcher.regex.lastIndex = 0;
+                        termMatched = matcher.regex.test(line);
+
+                        if (!termMatched && ignoreSpaces && !matchExact) {
+                            const searchLineClean = matchCase ? line.replace(/\s+/g, '') : line.toLowerCase().replace(/\s+/g, '');
+                            if (searchLineClean.includes(matcher.termClean)) {
+                                termMatched = true;
+                            }
                         }
                     }
 
                     if (termMatched) {
                         lineHasAnyTerm = true;
+                        lineFoundTerms.add(matcher.term);
                         currentMethod.foundTerms.add(matcher.term);
                         fileFoundTerms.add(matcher.term);
                     }
                 }
 
-                if (lineHasAnyTerm) {
-                    currentMethod.lines.push({
-                        lineNumber: methodLineNum,
-                        code: line.trim()
-                    });
+                if (matchSameLine) {
+                    // Todas as palavras/termos precisam estar na MESMA LINHA
+                    if (lineFoundTerms.size === terms.length) {
+                        currentMethod.lines.push({
+                            lineNumber: methodLineNum,
+                            code: line.trim()
+                        });
+                    }
+                } else {
+                    if (lineHasAnyTerm) {
+                        currentMethod.lines.push({
+                            lineNumber: methodLineNum,
+                            code: line.trim()
+                        });
+                    }
                 }
             }
 
             // Post-process the file to see if it's a hit based on constraints
-            if (matchSameMethod) {
+            if (matchSameLine) {
+                // Na busca por mesma linha, todas as linhas registradas em currentMethod.lines já possuem todos os termos na mesma linha
+                for (const method of methodsInFile) {
+                    for (const matchLine of method.lines) {
+                        results.push({
+                            filePath,
+                            methodName: method.methodName,
+                            lineNumber: matchLine.lineNumber,
+                            code: matchLine.code
+                        });
+                    }
+                }
+            } else if (matchSameMethod) {
                 // Only methods that contain ALL terms are hits
                 for (const method of methodsInFile) {
                     if (method.foundTerms.size === terms.length) {
@@ -308,10 +356,10 @@ export function getFoxProCommand(fullPath: string, line?: number): string {
 
 function showCopyFeedback(btn: HTMLElement, originalText: string) {
     btn.textContent = '✓ Copiado!';
-    btn.classList.add('bg-green-100', 'text-green-800');
+    btn.classList.add('bg-green-100', 'dark:bg-green-900/60', 'text-green-800', 'dark:text-green-200', 'border-green-300', 'dark:border-green-700');
     setTimeout(() => {
         btn.textContent = originalText;
-        btn.classList.remove('bg-green-100', 'text-green-800');
+        btn.classList.remove('bg-green-100', 'dark:bg-green-900/60', 'text-green-800', 'dark:text-green-200', 'border-green-300', 'dark:border-green-700');
     }, 1500);
 }
 
@@ -319,7 +367,7 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
     container.innerHTML = '';
     
     if (results.length === 0) {
-        container.innerHTML = '<div class="p-4 text-gray-500 text-center">Nenhum resultado encontrado.</div>';
+        container.innerHTML = '<div class="p-4 text-gray-500 dark:text-slate-400 text-center">Nenhum resultado encontrado.</div>';
         return;
     }
 
@@ -339,25 +387,25 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
 
     // Render HTML
     const ul = document.createElement('ul');
-    ul.className = 'divide-y divide-gray-200';
+    ul.className = 'divide-y divide-gray-200 dark:divide-slate-800';
 
     for (const [filePath, methods] of Array.from(tree.entries()).sort()) {
         const fullPath = combinePaths(rootPath, filePath);
 
         const fileLi = document.createElement('li');
-        fileLi.className = 'bg-gray-50';
+        fileLi.className = 'bg-gray-50 dark:bg-slate-900/90';
 
         const fileHeader = document.createElement('div');
-        fileHeader.className = 'flex items-center justify-between px-4 py-2 hover:bg-gray-100 font-bold text-gray-700 select-none cursor-pointer';
+        fileHeader.className = 'flex items-center justify-between px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 font-bold text-gray-700 dark:text-slate-200 select-none cursor-pointer border-b border-gray-200 dark:border-slate-800';
         
         const fileHeaderLeft = document.createElement('div');
         fileHeaderLeft.className = 'flex items-center flex-1 overflow-hidden mr-2';
 
         const fileIcon = document.createElement('span');
-        fileIcon.innerHTML = `<svg class="w-4 h-4 mr-2 text-blue-600 transition-transform transform rotate-90 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`;
+        fileIcon.innerHTML = `<svg class="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400 transition-transform transform rotate-90 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`;
         
         const fileNameSpan = document.createElement('span');
-        fileNameSpan.className = 'truncate';
+        fileNameSpan.className = 'truncate text-gray-800 dark:text-slate-200 font-semibold';
         fileNameSpan.textContent = filePath;
         fileNameSpan.title = fullPath;
 
@@ -372,7 +420,7 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
         // Botão FoxPro
         const btnFox = document.createElement('button');
         btnFox.type = 'button';
-        btnFox.className = 'px-2 py-0.5 text-xs bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded font-semibold transition-colors flex items-center gap-1 cursor-pointer';
+        btnFox.className = 'px-2 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 rounded font-semibold transition-colors flex items-center gap-1 cursor-pointer';
         btnFox.title = `Abrir no Visual FoxPro: ${fullPath}`;
         btnFox.innerHTML = `🦊 FoxPro`;
         btnFox.addEventListener('click', () => openLocalFile(fullPath, 1, 'foxpro'));
@@ -380,7 +428,7 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
         // Botão VS Code
         const btnCode = document.createElement('button');
         btnCode.type = 'button';
-        btnCode.className = 'px-2 py-0.5 text-xs bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300 rounded font-semibold transition-colors flex items-center gap-1 cursor-pointer';
+        btnCode.className = 'px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800/60 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700/60 rounded font-semibold transition-colors flex items-center gap-1 cursor-pointer';
         btnCode.title = `Abrir no VS Code: ${fullPath}`;
         btnCode.innerHTML = `📝 VS Code`;
         btnCode.addEventListener('click', () => openLocalFile(fullPath, 1, 'vscode'));
@@ -388,7 +436,7 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
         // Copiar Comando VFP
         const btnCopyCmd = document.createElement('button');
         btnCopyCmd.type = 'button';
-        btnCopyCmd.className = 'px-2 py-0.5 text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 rounded font-semibold transition-colors cursor-pointer';
+        btnCopyCmd.className = 'px-2 py-0.5 text-xs bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 border border-gray-300 dark:border-slate-700 rounded font-semibold transition-colors cursor-pointer';
         btnCopyCmd.title = 'Copiar Comando FoxPro (MODIFY FORM/COMMAND)';
         btnCopyCmd.textContent = '💬 Cmd VFP';
         btnCopyCmd.addEventListener('click', () => {
@@ -400,7 +448,7 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
         // Copiar Caminho
         const btnCopyPath = document.createElement('button');
         btnCopyPath.type = 'button';
-        btnCopyPath.className = 'px-2 py-0.5 text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 rounded font-semibold transition-colors cursor-pointer';
+        btnCopyPath.className = 'px-2 py-0.5 text-xs bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 border border-gray-300 dark:border-slate-700 rounded font-semibold transition-colors cursor-pointer';
         btnCopyPath.title = 'Copiar Caminho Absoluto do Arquivo';
         btnCopyPath.textContent = '📋 Caminho';
         btnCopyPath.addEventListener('click', () => {
@@ -416,7 +464,7 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
         fileActions.appendChild(btnCopyPath);
 
         const methodsUl = document.createElement('ul');
-        methodsUl.className = 'pl-6 divide-y divide-gray-100';
+        methodsUl.className = 'pl-6 divide-y divide-gray-100 dark:divide-slate-800/80 bg-white dark:bg-slate-900';
 
         for (const [methodName, matches] of Array.from(methods.entries()).sort()) {
             fileTotalMatches += matches.length;
@@ -424,26 +472,26 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
             const methodLi = document.createElement('li');
             
             const methodHeader = document.createElement('div');
-            methodHeader.className = 'flex items-center px-4 py-2 cursor-pointer hover:bg-gray-100 font-semibold text-gray-600 select-none bg-white';
+            methodHeader.className = 'flex items-center px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-800/70 font-semibold text-gray-700 dark:text-slate-300 select-none bg-white dark:bg-slate-900';
             
             const methodIcon = document.createElement('span');
-            methodIcon.innerHTML = `<svg class="w-4 h-4 mr-2 text-purple-600 transition-transform transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`;
+            methodIcon.innerHTML = `<svg class="w-4 h-4 mr-2 text-purple-600 dark:text-purple-400 transition-transform transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`;
             
             methodHeader.appendChild(methodIcon);
             methodHeader.appendChild(document.createTextNode(`${methodName} (${matches.length})`));
             
             const matchesUl = document.createElement('ul');
-            matchesUl.className = 'pl-8 py-1 bg-white';
+            matchesUl.className = 'pl-8 py-1 bg-white dark:bg-slate-900';
             
             for (const match of matches) {
                 const matchLi = document.createElement('li');
-                matchLi.className = 'px-4 py-2 flex flex-col font-mono text-xs hover:bg-yellow-50 text-gray-600 border-l-2 border-transparent hover:border-yellow-400 group';
+                matchLi.className = 'px-4 py-2 flex flex-col font-mono text-xs hover:bg-yellow-50/60 dark:hover:bg-slate-800/80 text-gray-700 dark:text-slate-300 border-l-2 border-transparent hover:border-yellow-400 dark:hover:border-yellow-500 group transition-colors';
                 
                 const lineRow = document.createElement('div');
                 lineRow.className = 'flex items-center justify-between mb-1';
 
                 const lineInfo = document.createElement('span');
-                lineInfo.className = 'text-gray-400 text-[11px] font-bold';
+                lineInfo.className = 'text-gray-500 dark:text-slate-400 text-[11px] font-bold';
                 lineInfo.textContent = `Linha ${match.lineNumber}`;
 
                 // Action buttons inline for the line
@@ -452,7 +500,7 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
 
                 const btnLineFox = document.createElement('button');
                 btnLineFox.type = 'button';
-                btnLineFox.className = 'px-1.5 py-0.5 text-[10px] bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded font-semibold cursor-pointer';
+                btnLineFox.className = 'px-1.5 py-0.5 text-[10px] bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 rounded font-semibold cursor-pointer';
                 btnLineFox.title = `Abrir no FoxPro na Linha ${match.lineNumber}`;
                 btnLineFox.textContent = '🦊 FoxPro';
                 btnLineFox.addEventListener('click', (e) => {
@@ -462,7 +510,7 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
 
                 const btnLineCode = document.createElement('button');
                 btnLineCode.type = 'button';
-                btnLineCode.className = 'px-1.5 py-0.5 text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300 rounded font-semibold cursor-pointer';
+                btnLineCode.className = 'px-1.5 py-0.5 text-[10px] bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800/60 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700/60 rounded font-semibold cursor-pointer';
                 btnLineCode.title = `Abrir no VS Code na Linha ${match.lineNumber}`;
                 btnLineCode.textContent = '📝 VS Code';
                 btnLineCode.addEventListener('click', (e) => {
@@ -472,7 +520,7 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
 
                 const btnLineCmd = document.createElement('button');
                 btnLineCmd.type = 'button';
-                btnLineCmd.className = 'px-1.5 py-0.5 text-[10px] bg-gray-200 hover:bg-gray-300 text-gray-800 rounded font-semibold cursor-pointer';
+                btnLineCmd.className = 'px-1.5 py-0.5 text-[10px] bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 border border-gray-300 dark:border-slate-700 rounded font-semibold cursor-pointer';
                 btnLineCmd.title = 'Copiar Comando FoxPro da Linha';
                 btnLineCmd.textContent = '💬 Cmd VFP';
                 btnLineCmd.addEventListener('click', (e) => {
@@ -490,7 +538,7 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
                 lineRow.appendChild(lineActions);
 
                 const codeSpan = document.createElement('span');
-                codeSpan.className = 'whitespace-pre-wrap break-all bg-amber-50/50 p-1.5 rounded border border-amber-100 text-gray-800';
+                codeSpan.className = 'whitespace-pre-wrap break-all bg-amber-50/50 dark:bg-slate-800/90 p-1.5 rounded border border-amber-100 dark:border-slate-700 text-gray-800 dark:text-slate-200';
                 codeSpan.textContent = match.code;
                 
                 matchLi.appendChild(lineRow);
@@ -510,7 +558,7 @@ export function renderTreeResults(results: SearchResult[], container: HTMLElemen
         }
 
         const fileBadge = document.createElement('span');
-        fileBadge.className = 'ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded';
+        fileBadge.className = 'ml-2 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 text-xs font-medium px-2 py-0.5 rounded border border-blue-200 dark:border-blue-700/60';
         fileBadge.textContent = fileTotalMatches.toString();
 
         fileHeader.appendChild(fileHeaderLeft);
