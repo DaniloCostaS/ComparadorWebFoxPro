@@ -1200,28 +1200,70 @@
                 if (!clientIndex) return null;
                 let raw = (targetName || '').trim().replace(/\\/g, '/');
                 raw = raw.replace(/\[\[NOME_FORM\]\]/g, '').trim();
-                const cleanTarget = raw.replace(/\.(scx|sct|frx|frt|prg|vcx|vct|html|txt)$/i, '');
-                const upperTarget = cleanTarget.toUpperCase();
+                if (!raw) return null;
 
+                // Remove extensões conhecidas (.prg, .scx, .frx, .vcx, etc.)
+                let cleanTarget = raw.replace(/\.(scx|sct|frx|frt|prg|vcx|vct|html|txt)$/i, '');
+                
+                // Se começar com STOB/, remove o prefixo STOB/ para resolução
+                if (cleanTarget.toUpperCase().startsWith('STOB/')) {
+                    cleanTarget = cleanTarget.substring(5);
+                }
+
+                const upperTarget = cleanTarget.toUpperCase();
                 const parts = cleanTarget.split('/');
                 const baseName = parts[parts.length - 1].toUpperCase();
 
+                // Candidatos para nome base (ex: IE_VERIF)
+                const candidateBases = new Set();
+                candidateBases.add(baseName);
+
+                // Se o nome contiver ou começar com prefixos conhecidos (OBJETOS, REPORTS, FORMS, PRG, STOB)
+                // mesmo sem barra (ex: OBJETOSIE_VERIF por causa de escape de string no JavaScript)
+                const folderPrefixes = ['OBJETOS', 'REPORTS', 'FORMS', 'PRG', 'STOB'];
+                for (const p of folderPrefixes) {
+                    if (baseName.startsWith(p) && baseName.length > p.length) {
+                        const stripped = baseName.substring(p.length).replace(/^[/_\\]+/, '');
+                        if (stripped) candidateBases.add(stripped);
+                    }
+                }
+
+                // Candidatos para caminhos relativos (ex: OBJETOS/IE_VERIF, PRG/IE_VERIF, IE_VERIF)
+                const candidatePaths = new Set();
+                candidatePaths.add(upperTarget);
+                for (const b of candidateBases) {
+                    if (!b) continue;
+                    candidatePaths.add(b);
+                    candidatePaths.add(`OBJETOS/${b}`);
+                    candidatePaths.add(`REPORTS/${b}`);
+                    candidatePaths.add(`FORMS/${b}`);
+                    candidatePaths.add(`PRG/${b}`);
+                }
+
                 const { outsideStob, insideStob } = clientIndex;
 
-                // 1. Prioridade: busca primeiro fora da pasta STOB (raiz, OBJETOS, REPORTS, etc.)
-                if (outsideStob.byPath.has(upperTarget) && outsideStob.byPath.get(upperTarget).primaryFile) {
-                    return outsideStob.byPath.get(upperTarget);
+                // 1. Prioridade: busca primeiro fora da pasta STOB (raiz, OBJETOS, REPORTS, PRG, etc.)
+                for (const cPath of candidatePaths) {
+                    if (outsideStob.byPath.has(cPath) && outsideStob.byPath.get(cPath).primaryFile) {
+                        return outsideStob.byPath.get(cPath);
+                    }
                 }
-                if (outsideStob.byBase.has(baseName) && outsideStob.byBase.get(baseName).primaryFile) {
-                    return outsideStob.byBase.get(baseName);
+                for (const b of candidateBases) {
+                    if (b && outsideStob.byBase.has(b) && outsideStob.byBase.get(b).primaryFile) {
+                        return outsideStob.byBase.get(b);
+                    }
                 }
 
-                // 2. Não encontrou, busca na pasta STOB e suas subpastas
-                if (insideStob.byPath.has(upperTarget) && insideStob.byPath.get(upperTarget).primaryFile) {
-                    return insideStob.byPath.get(upperTarget);
+                // 2. Não encontrou fora, busca dentro da pasta STOB
+                for (const cPath of candidatePaths) {
+                    if (insideStob.byPath.has(cPath) && insideStob.byPath.get(cPath).primaryFile) {
+                        return insideStob.byPath.get(cPath);
+                    }
                 }
-                if (insideStob.byBase.has(baseName) && insideStob.byBase.get(baseName).primaryFile) {
-                    return insideStob.byBase.get(baseName);
+                for (const b of candidateBases) {
+                    if (b && insideStob.byBase.has(b) && insideStob.byBase.get(b).primaryFile) {
+                        return insideStob.byBase.get(b);
+                    }
                 }
 
                 return null;
@@ -1287,6 +1329,18 @@
             function lineMatches(normLine, normTarget) {
                 if (!normLine || !normTarget) return false;
                 return normLine === normTarget || normLine.includes(normTarget);
+            }
+
+            function formatClientDisplayPath(resolved) {
+                if (!resolved) return '';
+                let p = (resolved.displayPath || '').replace(/\//g, '\\');
+                if (resolved.isStob && !p.toUpperCase().startsWith('STOB\\') && p.toUpperCase() !== 'STOB') {
+                    p = 'STOB\\' + p;
+                }
+                while (p.toUpperCase().startsWith('STOB\\STOB\\')) {
+                    p = p.substring(5);
+                }
+                return p;
             }
 
             async function runBatchClientValidation() {
@@ -1391,7 +1445,7 @@
 
                     item.clientValidation = {
                         isFound: true,
-                        path: `${resolved.isStob ? 'STOB\\' : ''}${resolved.displayPath.replace(/\//g, '\\')}`,
+                        path: formatClientDisplayPath(resolved),
                         applied,
                         missing,
                         total
@@ -1444,9 +1498,10 @@
                     return;
                 }
 
+                const formattedDisplayPath = formatClientDisplayPath(resolved);
                 if (activeBar) activeBar.classList.remove('hidden');
                 if (pathText) {
-                    pathText.textContent = `${resolved.isStob ? 'STOB\\' : ''}${resolved.displayPath.replace(/\//g, '\\')}`;
+                    pathText.textContent = formattedDisplayPath;
                     pathText.className = 'font-bold text-blue-800';
                 }
 
@@ -1524,8 +1579,8 @@
                     badge.className = `val-badge ${isApplied ? 'val-badge-applied' : 'val-badge-missing'}`;
                     badge.textContent = isApplied ? '✓ Aplicado' : '✗ Não Aplicado';
                     badge.title = isApplied 
-                        ? `Alteração confirmada no fonte do cliente (${resolved.displayPath})` 
-                        : `Alteração NÃO encontrada no fonte do cliente (${resolved.displayPath})`;
+                        ? `Alteração confirmada no fonte do cliente (${formattedDisplayPath})` 
+                        : `Alteração NÃO encontrada no fonte do cliente (${formattedDisplayPath})`;
 
                     const lineNumTd = row.querySelector('.line-number');
                     if (lineNumTd) {
