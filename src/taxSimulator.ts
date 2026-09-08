@@ -148,6 +148,12 @@ export class TaxSimulator {
     btnCloseSearchProd?.addEventListener('click', () => this.closeProductSearchModal());
 
     // Input de busca de produtos no modal
+    // Limpa quaisquer avisos residuais de validação em tela
+    const infoProdInit = document.getElementById('sim-prod-info');
+    if (infoProdInit) infoProdInit.textContent = '';
+    const infoCliInit = document.getElementById('sim-cli-info');
+    if (infoCliInit) infoCliInit.textContent = '';
+
     const inputSearchProd = document.getElementById('search-prod-input') as HTMLInputElement;
     let searchDebounce: any = null;
     inputSearchProd?.addEventListener('input', () => {
@@ -157,16 +163,7 @@ export class TaxSimulator {
       }, 300);
     });
 
-    // Validação ao digitar código do produto no formulário
-    const inputProd = document.getElementById('sim-item-prod') as HTMLInputElement;
-    inputProd?.addEventListener('blur', () => {
-      this.validateAndPreviewProduct(inputProd.value.trim());
-    });
-    inputProd?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        this.validateAndPreviewProduct(inputProd.value.trim());
-      }
-    });
+    // Validação antecipada de produto removida (valida apenas ao Simular)
 
     // Botão abrir modal de busca de clientes no banco
     const btnSearchCli = document.getElementById('btn-search-cli');
@@ -186,16 +183,7 @@ export class TaxSimulator {
       }, 300);
     });
 
-    // Validação ao digitar código do cliente no formulário
-    const inputCli = document.getElementById('sim-cab-cliente') as HTMLInputElement;
-    inputCli?.addEventListener('blur', () => {
-      this.validateAndPreviewClient(inputCli.value.trim());
-    });
-    inputCli?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        this.validateAndPreviewClient(inputCli.value.trim());
-      }
-    });
+    // Validação antecipada de cliente removida (valida apenas ao Simular)
 
     // Filtros de impostos na pirâmide
     const filterButtons = document.querySelectorAll('.tax-filter-btn');
@@ -435,47 +423,9 @@ export class TaxSimulator {
     this.closeProductSearchModal();
   }
 
-  public async validateAndPreviewProduct(code: string) {
+  public async validateAndPreviewProduct(_code?: string) {
     const infoEl = document.getElementById('sim-prod-info');
-    if (!infoEl || !code) {
-      if (infoEl) infoEl.textContent = '';
-      return;
-    }
-
-    if (!this.isConnected) {
-      infoEl.textContent = 'Modo Offline (Simulação)';
-      infoEl.className = 'text-xs font-semibold text-amber-600 dark:text-amber-400';
-      return;
-    }
-
-    infoEl.textContent = 'Verificando no banco...';
-    infoEl.className = 'text-xs text-gray-400';
-
-    try {
-      const res = await fetch('/api/sql/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          config: this.sqlConfig,
-          entity: 'produto',
-          term: code
-        })
-      });
-
-      const data = await res.json();
-      if (data.success && data.rows && data.rows.length > 0) {
-        const exact = data.rows.find((r: any) => String(r.PK_ID).trim().toLowerCase() === code.trim().toLowerCase());
-        if (exact) {
-          infoEl.textContent = `✅ ${exact.DS_PRODUTO || exact.DS_NOME || 'Encontrado'}`;
-          infoEl.className = 'text-xs font-semibold text-emerald-600 dark:text-emerald-400 truncate max-w-[300px]';
-          return;
-        }
-      }
-      infoEl.textContent = '❌ Produto não cadastrado no banco';
-      infoEl.className = 'text-xs font-semibold text-red-500 dark:text-red-400 truncate max-w-[300px]';
-    } catch {
-      infoEl.textContent = '';
-    }
+    if (infoEl) infoEl.textContent = '';
   }
 
   private openClientSearchModal() {
@@ -595,51 +545,9 @@ export class TaxSimulator {
     this.closeClientSearchModal();
   }
 
-  public async validateAndPreviewClient(code: string) {
+  public async validateAndPreviewClient(_code?: string) {
     const infoEl = document.getElementById('sim-cli-info');
-    if (!infoEl || !code) {
-      if (infoEl) infoEl.textContent = '';
-      return;
-    }
-
-    if (!this.isConnected) {
-      infoEl.textContent = 'Modo Offline (Simulação)';
-      infoEl.className = 'text-xs font-semibold text-amber-600 dark:text-amber-400';
-      return;
-    }
-
-    infoEl.textContent = 'Verificando cliente no banco...';
-    infoEl.className = 'text-xs text-gray-400';
-
-    try {
-      const res = await fetch('/api/sql/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          config: this.sqlConfig,
-          entity: 'cliente',
-          term: code
-        })
-      });
-
-      const data = await res.json();
-      if (data.success && data.rows && data.rows.length > 0) {
-        const exact = data.rows.find((r: any) => String(r.PK_ID).trim() === code.trim());
-        if (exact) {
-          infoEl.textContent = `✅ ${exact.DS_NOME || 'Encontrado'} (${exact.DS_UF || ''})`;
-          infoEl.className = 'text-xs font-semibold text-emerald-600 dark:text-emerald-400 truncate max-w-[280px]';
-          if (exact.DS_UF) {
-            const ufInput = document.getElementById('sim-cab-uf') as HTMLInputElement;
-            if (ufInput) ufInput.value = exact.DS_UF.toUpperCase();
-          }
-          return;
-        }
-      }
-      infoEl.textContent = '❌ Cliente não cadastrado no banco';
-      infoEl.className = 'text-xs font-semibold text-red-500 dark:text-red-400 truncate max-w-[280px]';
-    } catch {
-      infoEl.textContent = '';
-    }
+    if (infoEl) infoEl.textContent = '';
   }
 
   private getInputs(): { item: ItemFiscalInput; cabecalho: CabecalhoFiscalInput } {
@@ -738,7 +646,7 @@ export class TaxSimulator {
             diagnosticsInfo = ` | Produto: [${d.productId}] ${d.productName ? `${d.productName}` : 'Localizado'} | CFOP: ${item.fkCfop} | Empresa: ${cabecalho.fkEmpresa} | UF: ${cabecalho.dsUf}`;
           }
         } else {
-          alert(`❌ Não foi possível realizar o cálculo no SQL Server:\n\n${data.error || 'Erro ao consultar os dados tributários do banco de dados.'}`);
+          this.showModalAlert('Não foi possível realizar o cálculo no SQL Server', data.error || 'Erro ao consultar os dados tributários do banco de dados.', 'error');
           return;
         }
       } else {
@@ -775,7 +683,7 @@ export class TaxSimulator {
       this.renderResults();
     } catch (err: any) {
       console.error('Erro na simulação:', err);
-      alert(`Erro durante a simulação tributária:\n${err.message}`);
+      this.showModalAlert('Erro na Simulação', `Ocorreu um erro durante o cálculo tributário:\n\n${err.message}`, 'error');
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -938,7 +846,7 @@ export class TaxSimulator {
 
   private exportSimulation() {
     if (!this.lastResult) {
-      alert('Execute uma simulação antes de exportar!');
+      this.showModalAlert('Aviso', 'Execute uma simulação antes de exportar os dados!', 'warning');
       return;
     }
 
@@ -954,5 +862,69 @@ export class TaxSimulator {
   private setText(id: string, text: string) {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
+  }
+
+  /**
+   * Exibe um modal moderno e elegante de aviso/erro no padrão escuro da aplicação
+   */
+  private showModalAlert(title: string, message: string, type: 'error' | 'warning' | 'info' = 'error') {
+    let modal = document.getElementById('custom-tax-alert-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'custom-tax-alert-modal';
+      document.body.appendChild(modal);
+    }
+
+    modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150';
+
+    const iconSvg = type === 'error'
+      ? `<div class="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-500 shrink-0">
+           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+           </svg>
+         </div>`
+      : `<div class="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0">
+           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+           </svg>
+         </div>`;
+
+    modal.innerHTML = `
+      <div class="bg-slate-900 text-slate-100 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-150" onclick="event.stopPropagation()">
+        <div class="p-6">
+          <div class="flex items-start gap-4">
+            ${iconSvg}
+            <div class="flex-1 min-w-0 pt-0.5">
+              <h3 class="text-base font-bold text-white tracking-tight">${title}</h3>
+              <p class="text-xs text-slate-300 mt-2.5 whitespace-pre-line leading-relaxed">${message}</p>
+            </div>
+          </div>
+        </div>
+        <div class="px-6 py-3.5 bg-slate-950/60 border-t border-slate-800/80 flex justify-end">
+          <button id="btn-custom-alert-ok" type="button" class="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 active:scale-95 rounded-xl shadow-md transition-all cursor-pointer">
+            Entendido
+          </button>
+        </div>
+      </div>
+    `;
+
+    const closeModal = () => {
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      document.removeEventListener('keydown', onKeyDown);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        closeModal();
+      }
+    };
+
+    modal.onclick = closeModal;
+    const btnOk = modal.querySelector('#btn-custom-alert-ok');
+    btnOk?.addEventListener('click', closeModal);
+    document.addEventListener('keydown', onKeyDown);
   }
 }

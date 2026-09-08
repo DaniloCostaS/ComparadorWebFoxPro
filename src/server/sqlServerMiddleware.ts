@@ -133,10 +133,18 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
       let query = '';
       if (entity === 'produto') {
         query = `
-          SELECT TOP 25 PK_ID, DS_PRODUTO, DS_NOME, FK_CLAFIS, COALESCE(NR_SITTRIB, '') AS CD_SITTRIBUTARIA
-          FROM TB_PRODUTOS
-          WHERE PK_ID LIKE '%${term}%' OR DS_PRODUTO LIKE '%${term}%' OR DS_NOME LIKE '%${term}%'
-          ORDER BY CASE WHEN PK_ID = '${term}' OR CAST(PK_ID AS VARCHAR) = '${term}' THEN 0 ELSE 1 END, PK_ID
+          BEGIN TRY
+            SELECT TOP 25 PK_ID, DS_PRODUTO, DS_NOME, FK_CLAFIS, COALESCE(NR_SITTRIB, '') AS CD_SITTRIBUTARIA
+            FROM TB_PRODUTOS
+            WHERE PK_ID LIKE '%${term}%' OR DS_PRODUTO LIKE '%${term}%' OR DS_NOME LIKE '%${term}%'
+            ORDER BY CASE WHEN PK_ID = '${term}' OR CAST(PK_ID AS VARCHAR) = '${term}' THEN 0 ELSE 1 END, PK_ID
+          END TRY
+          BEGIN CATCH
+            SELECT TOP 25 *
+            FROM TB_PRODUTOS
+            WHERE PK_ID LIKE '%${term}%' OR CAST(PK_ID AS VARCHAR) LIKE '%${term}%'
+            ORDER BY CASE WHEN PK_ID = '${term}' OR CAST(PK_ID AS VARCHAR) = '${term}' THEN 0 ELSE 1 END, PK_ID
+          END CATCH
         `;
       } else if (entity === 'cfop') {
         query = `
