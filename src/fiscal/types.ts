@@ -215,6 +215,10 @@ export interface SimulationPayload {
     tmpSitTribIpi?: any[];
     tmpSitTribPis?: any[];
     tmpSitTribCofins?: any[];
+    // Exceções de PIS/COFINS são cursores próprios no NFE_CALCULARITEM.PRG.
+    // Não usar a exceção de ICMS como aproximação para esses impostos.
+    tmpCalCfExPis?: any[];
+    tmpCalCfExCofins?: any[];
     tsParametros?: Record<string, any>;
   };
 }

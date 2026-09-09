@@ -4,7 +4,6 @@
  */
 
 import { TaxEngine } from './fiscal/taxEngine';
-import { SqlDataLoader } from './fiscal/sqlDataLoader';
 import type {
   SqlServerConfig,
   ItemFiscalInput,
@@ -380,14 +379,14 @@ export class TaxSimulator {
 
       resultsContainer.innerHTML = data.rows.map((p: any) => `
         <div class="p-2.5 rounded-lg hover:bg-blue-50 dark:hover:bg-slate-800/80 cursor-pointer flex items-center justify-between transition-colors border border-transparent hover:border-blue-200 dark:hover:border-slate-700 search-prod-row"
-             data-prod-id="${p.PK_ID}" data-prod-desc="${p.DS_PRODUTO || p.DS_NOME || ''}">
+             data-prod-id="${p.PK_ID}" data-prod-desc="${p.DS_MODELO || p.DS_PRODUTO || p.DS_NOME || ''}">
           <div class="min-w-0 pr-3">
             <div class="flex items-center gap-2">
               <span class="font-mono font-bold text-xs text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40 px-1.5 py-0.5 rounded shrink-0">${p.PK_ID}</span>
-              <span class="text-xs font-bold text-gray-900 dark:text-white truncate">${p.DS_PRODUTO || p.DS_NOME || '(Sem descrição)'}</span>
+              <span class="text-xs font-bold text-gray-900 dark:text-white truncate">${p.DS_MODELO || p.DS_PRODUTO || p.DS_NOME || '(Sem descrição)'}</span>
             </div>
             <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-              NCM: <strong class="font-mono text-gray-700 dark:text-gray-300">${p.FK_CLAFIS || 'N/A'}</strong> | CST ICMS: <strong class="font-mono text-gray-700 dark:text-gray-300">${p.CD_SITTRIBUTARIA || '00'}</strong>
+              NCM: <strong class="font-mono text-gray-700 dark:text-gray-300">${p.FK_CLAFIS || 'N/A'}</strong> | CST ICMS: <strong class="font-mono text-gray-700 dark:text-gray-300">${p.CD_SITTRIBUTARIA || p.NR_SITTRIB || 'não informado'}</strong>
             </div>
           </div>
           <button type="button" class="text-xs font-bold px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white shadow-xs shrink-0 cursor-pointer">
@@ -497,11 +496,11 @@ export class TaxSimulator {
 
       resultsContainer.innerHTML = data.rows.map((c: any) => `
         <div class="p-2.5 rounded-lg hover:bg-blue-50 dark:hover:bg-slate-800/80 cursor-pointer flex items-center justify-between transition-colors border border-transparent hover:border-blue-200 dark:hover:border-slate-700 search-cli-row"
-             data-cli-id="${c.PK_ID}" data-cli-nome="${c.DS_NOME || ''}" data-cli-uf="${c.DS_UF || ''}">
+             data-cli-id="${c.PK_ID}" data-cli-nome="${c.DS_FANTASIA || c.DS_RAZAO || c.DS_NOME || ''}" data-cli-uf="${c.DS_UF || ''}">
           <div class="min-w-0 pr-3">
             <div class="flex items-center gap-2">
               <span class="font-mono font-bold text-xs text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40 px-1.5 py-0.5 rounded shrink-0">ID: ${c.PK_ID}</span>
-              <span class="text-xs font-bold text-gray-900 dark:text-white truncate">${c.DS_NOME || '(Sem nome)'}</span>
+              <span class="text-xs font-bold text-gray-900 dark:text-white truncate">${c.DS_FANTASIA || c.DS_RAZAO || c.DS_NOME || '(Sem nome)'}</span>
             </div>
             <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
               UF: <strong class="font-mono text-gray-700 dark:text-gray-300">${c.DS_UF || 'N/A'}</strong> | Contribuinte: <strong class="font-mono text-gray-700 dark:text-gray-300">${c.TG_CONTRIBUINTEICMS === 1 ? 'Sim' : 'Não'}</strong> | Tipo: <strong class="font-mono text-gray-700 dark:text-gray-300">${c.TG_PESSOA === 'J' ? 'PJ' : 'PF'}</strong>
@@ -551,41 +550,70 @@ export class TaxSimulator {
   }
 
   private getInputs(): { item: ItemFiscalInput; cabecalho: CabecalhoFiscalInput } {
-    const fkProduto = (document.getElementById('sim-item-prod') as HTMLInputElement)?.value.trim() || '001';
-    const fkCfop = parseInt((document.getElementById('sim-item-cfop') as HTMLInputElement)?.value || '5102', 10);
-    const qtMovimento = parseFloat((document.getElementById('sim-item-qtd') as HTMLInputElement)?.value || '1');
-    const vlUnitario = parseFloat((document.getElementById('sim-item-unit') as HTMLInputElement)?.value || '100');
-    const vlTotal = parseFloat((document.getElementById('sim-item-total') as HTMLInputElement)?.value || '100');
+    const read = (id: string, label: string): string => {
+      const element = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
+      const value = element?.value.trim() ?? '';
+      if (!value) throw new Error(`Informe ${label}. O simulador não substitui este campo por um valor padrão.`);
+      return value;
+    };
+    const numeric = (id: string, label: string, integer = false): number => {
+      const value = Number(read(id, label));
+      if (!Number.isFinite(value) || (integer && !Number.isInteger(value))) {
+        throw new Error(`${label} deve ser ${integer ? 'um número inteiro' : 'numérico'}.`);
+      }
+      return value;
+    };
+    const optionalAmount = (id: string, label: string): number => {
+      const element = document.getElementById(id) as HTMLInputElement | null;
+      const raw = element?.value.trim() ?? '';
+      if (!raw) return 0;
+      const value = Number(raw);
+      if (!Number.isFinite(value)) throw new Error(`${label} deve ser numérico.`);
+      return value;
+    };
 
-    const vlFrete = parseFloat((document.getElementById('sim-item-frete') as HTMLInputElement)?.value || '0');
-    const vlSeguro = parseFloat((document.getElementById('sim-item-seguro') as HTMLInputElement)?.value || '0');
-    const vlDespesas = parseFloat((document.getElementById('sim-item-despesas') as HTMLInputElement)?.value || '0');
-    const vlDesconto = parseFloat((document.getElementById('sim-item-desconto') as HTMLInputElement)?.value || '0');
+    const fkProduto = read('sim-item-prod', 'o código do produto');
+    const fkCfop = numeric('sim-item-cfop', 'o CFOP', true);
+    const qtMovimento = numeric('sim-item-qtd', 'a quantidade');
+    const vlUnitario = numeric('sim-item-unit', 'o valor unitário');
+    const totalRaw = (document.getElementById('sim-item-total') as HTMLInputElement | null)?.value.trim() ?? '';
+    const vlTotal = totalRaw ? Number(totalRaw) : undefined;
+    if (vlTotal !== undefined && !Number.isFinite(vlTotal)) throw new Error('O valor total deve ser numérico.');
 
-    const tipo = ((document.getElementById('sim-cab-tipo') as HTMLSelectElement)?.value || 'S') as 'S' | 'E';
-    const fkEmpresa = (document.getElementById('sim-cab-empresa') as HTMLInputElement)?.value.trim() || '01';
-    const fkCadunico = parseInt((document.getElementById('sim-cab-cliente') as HTMLInputElement)?.value || '1001', 10);
-    const dsUf = (document.getElementById('sim-cab-uf') as HTMLInputElement)?.value.trim().toUpperCase() || 'SP';
-    const tgRegime = parseInt((document.getElementById('sim-cab-regime') as HTMLSelectElement)?.value || '1', 10);
+    const vlFrete = optionalAmount('sim-item-frete', 'o frete');
+    const vlSeguro = optionalAmount('sim-item-seguro', 'o seguro');
+    const vlDespesas = optionalAmount('sim-item-despesas', 'as outras despesas');
+    const vlDesconto = optionalAmount('sim-item-desconto', 'o desconto');
+
+    const tipo = read('sim-cab-tipo', 'o tipo de movimento').toUpperCase() as 'S' | 'E';
+    if (tipo !== 'S' && tipo !== 'E') throw new Error('O tipo de movimento deve ser S ou E.');
+    const fkEmpresa = read('sim-cab-empresa', 'a empresa emitente');
+    const fkCadunico = numeric('sim-cab-cliente', 'o cliente/destinatário', true);
+    const dsUf = read('sim-cab-uf', 'a UF de destino/origem').toUpperCase();
+    if (!/^[A-Z]{2}$/.test(dsUf)) throw new Error('A UF deve conter duas letras, como SP ou MG.');
+    const tgRegime = numeric('sim-cab-regime', 'o regime emitente', true);
+    const dtEmissao = (document.getElementById('sim-cab-emissao') as HTMLInputElement | null)?.value.trim() ?? '';
+    if (dtEmissao && !/^\d{4}-\d{2}-\d{2}$/.test(dtEmissao)) throw new Error('A data de emissão deve estar no formato AAAA-MM-DD.');
 
     return {
       item: {
         fkProduto,
         fkCfop,
-        qtMovimento: isNaN(qtMovimento) ? 1 : qtMovimento,
-        vlUnitario: isNaN(vlUnitario) ? 0 : vlUnitario,
-        vlTotal: isNaN(vlTotal) ? undefined : vlTotal,
-        vlFrete: isNaN(vlFrete) ? 0 : vlFrete,
-        vlSeguro: isNaN(vlSeguro) ? 0 : vlSeguro,
-        vlDespesas: isNaN(vlDespesas) ? 0 : vlDespesas,
-        vlDesconto: isNaN(vlDesconto) ? 0 : vlDesconto
+        qtMovimento,
+        vlUnitario,
+        vlTotal,
+        vlFrete,
+        vlSeguro,
+        vlDespesas,
+        vlDesconto
       },
       cabecalho: {
         tipo,
         fkEmpresa,
-        fkCadunico: isNaN(fkCadunico) ? 1001 : fkCadunico,
+        fkCadunico,
         dsUf,
-        tgRegime
+        tgRegime,
+        ...(dtEmissao ? { dtEmissao } : {})
       }
     };
   }
@@ -616,6 +644,11 @@ export class TaxSimulator {
       }
 
       if (this.isConnected && this.sqlConfig.server && this.sqlConfig.database) {
+        const destMerRaw = (document.getElementById('sim-item-destmer') as HTMLSelectElement | null)?.value.trim() ?? '';
+        const destMer = Number(destMerRaw);
+        if (!Number.isInteger(destMer)) {
+          throw new Error('Informe o destino da mercadoria. O simulador não usa destino padrão.');
+        }
         // Busca os dados reais via endpoint Node /api/sql/load-simulation-data
         const resp = await fetch('/api/sql/load-simulation-data', {
           method: 'POST',
@@ -628,7 +661,9 @@ export class TaxSimulator {
               empresa: cabecalho.fkEmpresa,
               cliente: cabecalho.fkCadunico,
               uf: cabecalho.dsUf,
-              destMer: parseInt((document.getElementById('sim-item-destmer') as HTMLSelectElement)?.value || '1', 10)
+              tipo: cabecalho.tipo,
+              destMer,
+              dtEmissao: cabecalho.dtEmissao
             }
           })
         });
@@ -650,8 +685,12 @@ export class TaxSimulator {
           return;
         }
       } else {
-        // Modo offline / demonstração
-        payload = SqlDataLoader.getMockSimulationPayload(item, cabecalho);
+        this.showModalAlert(
+          'Conexão SQL Server necessária',
+          'O modo offline usava CSTs e alíquotas de exemplo. Como este simulador precisa reproduzir o NFE_CALCULARITEM.PRG, conecte à mesma base usada pelo ERP para executar o cálculo.',
+          'error'
+        );
+        return;
       }
 
       // Atualiza o banner de origem dos dados
@@ -700,7 +739,7 @@ export class TaxSimulator {
     this.setText('res-total-produtos', `R$ ${res.vlPretot.toFixed(2)}`);
     this.setText('res-total-nota', `R$ ${(res.vlPretot + res.vlIcmSt + res.vlIpi).toFixed(2)}`);
 
-    this.setText('res-cst-icms', res.nrSittribIcms || '-');
+    this.setText('res-cst-icms', res.nrSittribIcms || '');
     this.setText('res-base-icms', `R$ ${res.vlIcmbc.toFixed(2)}`);
     this.setText('res-aliq-icms', `${res.vlPorIcm}%`);
     this.setText('res-val-icms', `R$ ${res.vlIcm.toFixed(2)}`);
@@ -710,17 +749,17 @@ export class TaxSimulator {
     this.setText('res-mva-st', `${res.vlPorIcmVaBcSt}%`);
     this.setText('res-val-st', `R$ ${res.vlIcmSt.toFixed(2)}`);
 
-    this.setText('res-cst-ipi', res.nrSittribIpi || '-');
+    this.setText('res-cst-ipi', res.nrSittribIpi || '');
     this.setText('res-base-ipi', `R$ ${res.vlIpiBc.toFixed(2)}`);
     this.setText('res-aliq-ipi', `${res.vlPorIpi}%`);
     this.setText('res-val-ipi', `R$ ${res.vlIpi.toFixed(2)}`);
 
-    this.setText('res-cst-pis', res.nrSittribPis || '-');
+    this.setText('res-cst-pis', res.nrSittribPis || '');
     this.setText('res-base-pis', `R$ ${res.vlPisBc.toFixed(2)}`);
     this.setText('res-aliq-pis', `${res.vlPorPis}%`);
     this.setText('res-val-pis', `R$ ${res.vlPis.toFixed(2)}`);
 
-    this.setText('res-cst-cofins', res.nrSittribCofins || '-');
+    this.setText('res-cst-cofins', res.nrSittribCofins || '');
     this.setText('res-base-cofins', `R$ ${res.vlCofinsBc.toFixed(2)}`);
     this.setText('res-aliq-cofins', `${res.vlPorCofins}%`);
     this.setText('res-val-cofins', `R$ ${res.vlCofins.toFixed(2)}`);

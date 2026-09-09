@@ -91,10 +91,19 @@ function sendJson(res: ServerResponse, statusCode: number, data: any) {
   res.end(JSON.stringify(data));
 }
 
-async function safeQuery(pool: sql.ConnectionPool, queryText: string): Promise<sql.IRecordSet<any> | null> {
+async function safeQuery(pool: sql.ConnectionPool, queryStr: string): Promise<any[] | null> {
   try {
-    const result = await pool.request().query(queryText);
-    return result.recordset;
+    const result = await pool.request().query(queryStr);
+    const rows = result.recordset || [];
+    // Normaliza todas as colunas para UPPERCASE para evitar problemas de case-sensitivity (ex: Vl_porpis vs VL_PORPIS)
+    // Isso é essencial porque o FoxPro é case-insensitive, mas o JavaScript não.
+    return rows.map(row => {
+      const upperRow: any = {};
+      for (const key in row) {
+        upperRow[key.toUpperCase()] = row[key];
+      }
+      return upperRow;
+    });
   } catch (err: any) {
     console.warn('[SQL SafeQuery Notice]:', err?.message || err);
     return null;
@@ -133,18 +142,19 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
       let query = '';
       if (entity === 'produto') {
         query = `
-          BEGIN TRY
-            SELECT TOP 25 PK_ID, DS_PRODUTO, DS_NOME, FK_CLAFIS, COALESCE(NR_SITTRIB, '') AS CD_SITTRIBUTARIA
-            FROM TB_PRODUTOS
-            WHERE PK_ID LIKE '%${term}%' OR DS_PRODUTO LIKE '%${term}%' OR DS_NOME LIKE '%${term}%'
-            ORDER BY CASE WHEN PK_ID = '${term}' OR CAST(PK_ID AS VARCHAR) = '${term}' THEN 0 ELSE 1 END, PK_ID
-          END TRY
-          BEGIN CATCH
-            SELECT TOP 25 *
-            FROM TB_PRODUTOS
-            WHERE PK_ID LIKE '%${term}%' OR CAST(PK_ID AS VARCHAR) LIKE '%${term}%'
-            ORDER BY CASE WHEN PK_ID = '${term}' OR CAST(PK_ID AS VARCHAR) = '${term}' THEN 0 ELSE 1 END, PK_ID
-          END CATCH
+          DECLARE @colModelo INT = (SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('TB_PRODUTOS') AND name = 'DS_MODELO');
+          DECLARE @colNome INT = (SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('TB_PRODUTOS') AND name = 'DS_NOME');
+          DECLARE @colProduto INT = (SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('TB_PRODUTOS') AND name = 'DS_PRODUTO');
+
+          DECLARE @sql NVARCHAR(MAX) = 'SELECT TOP 25 * FROM TB_PRODUTOS WHERE CAST(PK_ID AS VARCHAR) LIKE ''%${term}%'' ';
+          
+          IF @colModelo > 0 SET @sql = @sql + ' OR DS_MODELO LIKE ''%${term}%'' ';
+          IF @colNome > 0 SET @sql = @sql + ' OR DS_NOME LIKE ''%${term}%'' ';
+          IF @colProduto > 0 SET @sql = @sql + ' OR DS_PRODUTO LIKE ''%${term}%'' ';
+          
+          SET @sql = @sql + ' ORDER BY CASE WHEN CAST(PK_ID AS VARCHAR) = ''${term}'' THEN 0 ELSE 1 END, PK_ID';
+          
+          EXEC sp_executesql @sql;
         `;
       } else if (entity === 'cfop') {
         query = `
@@ -155,10 +165,19 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
         `;
       } else if (entity === 'cliente') {
         query = `
-          SELECT TOP 25 PK_ID, DS_NOME, DS_UF, TG_CONTRIBUINTEICMS, TG_PESSOA
-          FROM TB_CADUNICO
-          WHERE CAST(PK_ID AS VARCHAR) LIKE '%${term}%' OR DS_NOME LIKE '%${term}%'
-          ORDER BY CASE WHEN CAST(PK_ID AS VARCHAR) = '${term}' THEN 0 ELSE 1 END, PK_ID
+          DECLARE @colNome INT = (SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('TB_CADUNICO') AND name = 'DS_NOME');
+          DECLARE @colRazao INT = (SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('TB_CADUNICO') AND name = 'DS_RAZAO');
+          DECLARE @colFantasia INT = (SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('TB_CADUNICO') AND name = 'DS_FANTASIA');
+
+          DECLARE @sql NVARCHAR(MAX) = 'SELECT TOP 25 * FROM TB_CADUNICO WHERE CAST(PK_ID AS VARCHAR) LIKE ''%${term}%'' ';
+          
+          IF @colNome > 0 SET @sql = @sql + ' OR DS_NOME LIKE ''%${term}%'' ';
+          IF @colRazao > 0 SET @sql = @sql + ' OR DS_RAZAO LIKE ''%${term}%'' ';
+          IF @colFantasia > 0 SET @sql = @sql + ' OR DS_FANTASIA LIKE ''%${term}%'' ';
+          
+          SET @sql = @sql + ' ORDER BY CASE WHEN CAST(PK_ID AS VARCHAR) = ''${term}'' THEN 0 ELSE 1 END, PK_ID';
+          
+          EXEC sp_executesql @sql;
         `;
       } else if (entity === 'empresa') {
         query = `
@@ -171,18 +190,51 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
       }
 
       const result = await safeQuery(pool, query);
-      return sendJson(res, 200, { success: true, rows: result || [] });
+
+      if (result) {
+        result.forEach(r => {
+          const keys = Object.keys(r);
+          keys.forEach(k => {
+            const upperKey = k.toUpperCase();
+            if (upperKey !== k) {
+              r[upperKey] = r[k];
+            }
+          });
+          if (entity === 'produto') {
+            r.CD_SITTRIBUTARIA = r.CD_SITTRIBUTARIA || r.NR_SITTRIB || '';
+          }
+        });
+        return sendJson(res, 200, { success: true, rows: result });
+      } else {
+        return sendJson(res, 500, { success: false, error: 'Database query failed' });
+      }
     }
 
     if (subPath === '/load-simulation-data') {
       const pool = await getPool(config);
-      const { cfop, produto, empresa, cliente, uf } = body.params || {};
+      const { cfop, produto, empresa, cliente, uf, tipo, destMer, dtEmissao } = body.params || {};
+      const rawCfop = String(cfop ?? '').trim();
+      const safeProd = String(produto ?? '').replace(/'/g, '').trim();
+      const safeEmp = String(empresa ?? '').replace(/'/g, '').trim();
+      const rawCliente = String(cliente ?? '').trim();
+      const safeUf = String(uf ?? '').replace(/'/g, '').toUpperCase().trim();
+      const safeTipo = String(tipo ?? '').trim().toUpperCase();
+      const safeDestMer = Number(String(destMer ?? '').trim());
+      const safeDtEmissao = String(dtEmissao ?? '').trim();
+      const sqlDataEmissao = safeDtEmissao ? `CAST('${safeDtEmissao}' AS DATE)` : 'CAST(GETDATE() AS DATE)';
 
-      const safeCfop = Number(cfop || 5102);
-      const safeProd = String(produto || '').replace(/'/g, '').trim();
-      const safeEmp = String(empresa || '').replace(/'/g, '').trim();
-      const safeCli = Number(cliente || 0);
-      const safeUf = String(uf || 'SP').replace(/'/g, '').toUpperCase().trim();
+      // O ERP recebe esses identificadores já preenchidos no cabeçalho/item.
+      // Não substituir ausência por CFOP 5102, UF SP ou cliente 0: isso faria
+      // a simulação parecer um cálculo do NFE_CALCULARITEM quando não é.
+      if (!/^\d+$/.test(rawCfop) || !safeProd || !safeEmp || !/^\d+$/.test(rawCliente) || !/^[A-Z]{2}$/.test(safeUf) || !['S', 'E'].includes(safeTipo) || !Number.isInteger(safeDestMer) || (safeDtEmissao && !/^\d{4}-\d{2}-\d{2}$/.test(safeDtEmissao))) {
+        return sendJson(res, 400, {
+          success: false,
+          error: 'Informe CFOP, produto, empresa, cliente, UF, tipo (S/E), destino da mercadoria e, se preenchida, data de emissão válida. A data vazia usa DATASERVER() como no PRG.'
+        });
+      }
+
+      const safeCfop = Number(rawCfop);
+      const safeCli = Number(rawCliente);
 
       // 1. CFOP (Busca estrita)
       let qCfo = await safeQuery(pool, `
@@ -210,36 +262,78 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
       `);
 
       if (!qCfo || qCfo.length === 0) {
-        qCfo = await safeQuery(pool, `SELECT TOP 1 * FROM TB_CFOP WHERE PK_ID = ${safeCfop}`);
-      }
-
-      if (!qCfo || qCfo.length === 0) {
         return sendJson(res, 404, {
           success: false,
           error: `O CFOP "${safeCfop}" NÃO foi encontrado na tabela TB_CFOP do banco [${config.database}]. Por favor, verifique o CFOP informado.`
         });
       }
 
+      // 1.5. Exceções por UF de CFOP (FT_INFCOMPLCFOP)
+      let qCfoEx = await safeQuery(pool, `
+        SELECT TOP 1
+          COALESCE(INF.FK_INFCOMPL,0) AS FK_INFCOMPL,
+          COALESCE(INF.NR_SITTRIBICMS,'') AS NR_SITTRIBICMS,
+          COALESCE(INF.NR_SITTRIBICMSSN,'') AS NR_SITTRIBICMSSN,
+          COALESCE(INF.NR_SITTRIBPIS,'') AS NR_SITTRIBPIS,
+          COALESCE(INF.NR_SITTRIBCOFINS,'') AS NR_SITTRIBCOFINS,
+          COALESCE(INF.NR_SITTRIBIPI,'') AS NR_SITTRIBIPI,
+          COALESCE(INF.FK_ENQUADRAMENTOIPI,'') AS FK_ENQUADRAMENTOIPI,
+          COALESCE(INF.FK_MOTIVODESONICMS,0) AS FK_MOTIVODESONICMS,
+          COALESCE(INF.CD_BENEFIS, '') AS CD_BENEFIS,
+          COALESCE(IPI.TG_IPI,0) AS TG_IPI,
+          COALESCE(PIS.TG_PIS,0) AS TG_PIS,
+          COALESCE(COFINS.TG_COFINS,0) AS TG_COFINS
+        FROM FT_INFCOMPLCFOP AS INF
+        LEFT JOIN TB_SITTRIBIPI AS IPI ON IPI.PK_ID = INF.NR_SITTRIBIPI
+        LEFT JOIN TB_SITTRIBPIS AS PIS ON PIS.PK_ID = INF.NR_SITTRIBPIS
+        LEFT JOIN TB_SITTRIBCOFINS AS COFINS ON COFINS.PK_ID = INF.NR_SITTRIBCOFINS
+        WHERE INF.FK_CFOP = ${safeCfop}
+          AND INF.FK_UFORIGEM = '${safeUf}'
+          AND INF.TG_INATIVO = 0
+      `);
+
+      if (qCfoEx && qCfoEx.length > 0) {
+        const ex = qCfoEx[0];
+        if (ex.NR_SITTRIBICMS && ex.NR_SITTRIBICMS.trim() !== '') qCfo[0].NR_SITTRIBICMS = ex.NR_SITTRIBICMS;
+        if (ex.NR_SITTRIBICMSSN && ex.NR_SITTRIBICMSSN.trim() !== '') qCfo[0].NR_SITTRIBICMSSN = ex.NR_SITTRIBICMSSN;
+        if (ex.CD_BENEFIS && ex.CD_BENEFIS.trim() !== '') qCfo[0].CD_BENEFIS = ex.CD_BENEFIS;
+        if (ex.NR_SITTRIBPIS && ex.NR_SITTRIBPIS.trim() !== '') {
+          qCfo[0].NR_SITTRIBPIS = ex.NR_SITTRIBPIS;
+          qCfo[0].TG_PIS = ex.TG_PIS;
+        }
+        if (ex.NR_SITTRIBCOFINS && ex.NR_SITTRIBCOFINS.trim() !== '') {
+          qCfo[0].NR_SITTRIBCOFINS = ex.NR_SITTRIBCOFINS;
+          qCfo[0].TG_COFINS = ex.TG_COFINS;
+        }
+        if (ex.NR_SITTRIBIPI && ex.NR_SITTRIBIPI.trim() !== '') {
+          qCfo[0].NR_SITTRIBIPI = ex.NR_SITTRIBIPI;
+          qCfo[0].TG_IPI = ex.TG_IPI;
+        }
+        if (ex.FK_ENQUADRAMENTOIPI && ex.FK_ENQUADRAMENTOIPI.trim() !== '') {
+          qCfo[0].FK_ENQUADRAMENTOIPI = ex.FK_ENQUADRAMENTOIPI;
+        }
+      }
+
       // 2. PRODUTO (Busca ESTRITA pelo PK_ID exato digitado pelo usuário)
       let qProd = await safeQuery(pool, `
         SELECT TOP 1
           PRO.PK_ID, PRO.DS_PRODUTO, PRO.DS_NOME, PRO.FK_CLAFIS,
-          COALESCE(PRO.NR_SITTRIB, '') AS NR_SITTRIB,
-          COALESCE(PRO.TG_ORIGEMICMS, 0) AS TG_ORIGEMICMS,
-          PRO.NR_SITTRIBIPI, PRO.VL_PORIPI, PRO.NR_SITTRIBPIS, PRO.VL_PORPIS,
-          PRO.NR_SITTRIBCOFINS, PRO.VL_PORCOFINS, PRO.TG_ISENTOICMS,
-          PRO.VL_PRETAB1, PRO.VL_PRETAB2
+          PRO.VL_IPIPORQTD, PRO.NR_SITTRIB, PRO.TG_ORIGEMICMS,
+          PRO.NR_SITTRIBIPI, PRO.FK_ENQUADRAMENTOIPI,
+          PRO.NR_SITTRIBPIS, PRO.NR_SITTRIBCOFINS,
+          PRO.VL_PRETAB1, PRO.VL_PRETAB2, PRO.VL_PRETAB3, PRO.VL_PRETAB4, PRO.VL_PRETAB5, PRO.VL_PRETAB6,
+          COALESCE(ORI.TG_ORIGEM, 0) AS TG_ORIGEM,
+          COALESCE(PRO.FK_MOTIVODESONICMS, 0) AS FK_MOTIVODESONICMS,
+          COALESCE(IPI.TG_IPI, 0) AS TG_IPI,
+          COALESCE(PIS.TG_PIS, 0) AS TG_PIS,
+          COALESCE(COFINS.TG_COFINS, 0) AS TG_COFINS
         FROM TB_PRODUTOS PRO
+        LEFT JOIN TB_ICMSORIGEM ORI ON ORI.PK_ID = PRO.TG_ORIGEMICMS
+        LEFT JOIN TB_SITTRIBIPI IPI ON IPI.PK_ID = PRO.NR_SITTRIBIPI
+        LEFT JOIN TB_SITTRIBPIS PIS ON PIS.PK_ID = PRO.NR_SITTRIBPIS
+        LEFT JOIN TB_SITTRIBCOFINS COFINS ON COFINS.PK_ID = PRO.NR_SITTRIBCOFINS
         WHERE PRO.PK_ID = '${safeProd}' OR CAST(PRO.PK_ID AS VARCHAR) = '${safeProd}'
       `);
-
-      if (qProd === null) {
-        qProd = await safeQuery(pool, `
-          SELECT TOP 1 *
-          FROM TB_PRODUTOS
-          WHERE PK_ID = '${safeProd}' OR CAST(PK_ID AS VARCHAR) = '${safeProd}'
-        `);
-      }
 
       if (!qProd || qProd.length === 0) {
         return sendJson(res, 404, {
@@ -249,7 +343,6 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
       }
 
       const prodRecord: Record<string, any> = { ...qProd[0] };
-      prodRecord.CD_SITTRIBUTARIA = prodRecord.CD_SITTRIBUTARIA || prodRecord.NR_SITTRIB || prodRecord.CD_SITTRIBUTARIASN || '00';
       const prodPk = String(prodRecord.PK_ID).replace(/'/g, '');
       const fkClafis = prodRecord.FK_CLAFIS ? String(prodRecord.FK_CLAFIS).replace(/'/g, '').trim() : '';
 
@@ -257,16 +350,21 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
       let qEmp = await safeQuery(pool, `
         SELECT TOP 1
           EMP.PK_ID, EMP.DS_FANTASIA, EMP.DS_EMPRESA, EMP.DS_UF,
-          COALESCE(EMP.TG_REGIMETRIBUTARIO, 1) AS TG_REGIMETRIBUTARIO,
-          EMP.TG_CONTRIBUINTEICMS, EMP.TG_ISENTOICMS, EMP.TG_ISENTOIPI, EMP.TG_ISENTOPIS, EMP.TG_ISENTOCOFINS,
-          EMP.NR_SITTRIBICMS, EMP.VL_ALIQSSICMS
+          EMP.TG_ISENTOIPI, EMP.FK_INFCOMPLIPI, EMP.NR_SITTRIBIPI, EMP.FK_ENQUADRAMENTOIPI,
+          EMP.TG_ISENTOICMS, EMP.FK_INFCOMPLICMS, EMP.NR_SITTRIBICMS,
+          EMP.TG_ISENTOCOFINS, EMP.NR_SITTRIBCOFINS, EMP.FK_INFCOMPLCOFINS,
+          EMP.TG_ISENTOPIS, EMP.NR_SITTRIBPIS, EMP.FK_INFCOMPLPIS,
+          EMP.VL_ALIQSSICMS, EMP.TG_REGIMETRIBUTARIO, EMP.TG_CONTRIBUINTEICMS,
+          COALESCE(EMP.FK_MOTIVODESONICMS, 0) AS FK_MOTIVODESONICMS,
+          COALESCE(IPI.TG_IPI, 0) AS TG_IPI,
+          COALESCE(PIS.TG_PIS, 0) AS TG_PIS,
+          COALESCE(COFINS.TG_COFINS, 0) AS TG_COFINS
         FROM TB_EMPRESAS EMP
+        LEFT JOIN TB_SITTRIBIPI IPI ON IPI.PK_ID = EMP.NR_SITTRIBIPI
+        LEFT JOIN TB_SITTRIBPIS PIS ON PIS.PK_ID = EMP.NR_SITTRIBPIS
+        LEFT JOIN TB_SITTRIBCOFINS COFINS ON COFINS.PK_ID = EMP.NR_SITTRIBCOFINS
         WHERE EMP.PK_ID = '${safeEmp}' OR CAST(EMP.PK_ID AS VARCHAR) = '${safeEmp}'
       `);
-
-      if (!qEmp || qEmp.length === 0) {
-        qEmp = await safeQuery(pool, `SELECT TOP 1 * FROM TB_EMPRESAS WHERE PK_ID = '${safeEmp}' OR CAST(PK_ID AS VARCHAR) = '${safeEmp}'`);
-      }
 
       if (!qEmp || qEmp.length === 0) {
         return sendJson(res, 404, {
@@ -276,22 +374,36 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
       }
 
       const empRecord: Record<string, any> = qEmp?.[0] ? { ...qEmp[0] } : {};
-      empRecord.TG_REGIME = empRecord.TG_REGIME || (empRecord.TG_REGIMETRIBUTARIO === 1 || empRecord.TG_REGIMETRIBUTARIO === 2 ? 2 : 1);
-      empRecord.TG_CRT = empRecord.TG_REGIMETRIBUTARIO || 1;
-      const empUf = String(empRecord.DS_UF || 'SP').replace(/'/g, '').trim().toUpperCase();
+      const empUf = String(empRecord.DS_UF ?? '').replace(/'/g, '').trim().toUpperCase();
+      if (!/^[A-Z]{2}$/.test(empUf)) {
+        return sendJson(res, 422, { success: false, error: `A empresa "${safeEmp}" não possui DS_UF válida. A simulação não inferiu uma UF.` });
+      }
 
       // 4. CLIENTE (Validação estrita pelo ID digitado)
       let qCad = await safeQuery(pool, `
         SELECT TOP 1
-          CAD.PK_ID, CAD.DS_NOME, CAD.TG_PESSOA, CAD.TG_CONTRIBUINTEICMS, CAD.DS_UF,
-          CAD.FK_REGIMETRIBUTARIO, CAD.TG_ISENTOIPI, CAD.TG_ISENTOPIS, CAD.TG_ISENTOCOFINS
+          CAD.PK_ID, CAD.FK_INFCOMPLIPIINCT, CAD.TG_IPI, CAD.FK_INFCOMPLIPI,
+          COALESCE(CAD.NR_SITTRIBIPI, ' ') AS NR_SITTRIBIPI,
+          COALESCE(CAD.FK_ENQUADRAMENTOIPI, ' ') AS FK_ENQUADRAMENTOIPI,
+          CAD.FK_INFCOMPLICMSINCT, CAD.TG_ICMS, CAD.FK_INFCOMPLICMS,
+          COALESCE(CAD.NR_SITTRIBICMS, ' ') AS NR_SITTRIBICMS,
+          CAD.FK_INFCOMPLPISINCT, CAD.TG_PIS, CAD.FK_INFCOMPLPIS,
+          COALESCE(CAD.NR_SITTRIBPIS, ' ') AS NR_SITTRIBPIS,
+          CAD.FK_INFCOMPLCOFINSINCT, CAD.TG_COFINS, CAD.FK_INFCOMPLCOFINS,
+          COALESCE(CAD.NR_SITTRIBCOFINS, ' ') AS NR_SITTRIBCOFINS,
+          CAD.TG_PESSOA, CAD.FK_REGIMETRIBUTARIO, CAD.TG_CONTRIBUINTEICMS,
+          COALESCE(CAD.FK_MOTIVODESONICMS, 0) AS FK_MOTIVODESONICMS,
+          COALESCE(IPI.TG_IPI, 0) AS TG_IPITRIB,
+          COALESCE(PIS.TG_PIS, 0) AS TG_PISTRIB,
+          COALESCE(COFINS.TG_COFINS, 0) AS TG_COFINSTRIB,
+          PLUS.CD_BENEFIS, CAD.DS_NOME, CAD.DS_UF
         FROM TB_CADUNICO CAD
+        LEFT JOIN TB_SITTRIBIPI IPI ON IPI.PK_ID = CAD.NR_SITTRIBIPI
+        LEFT JOIN TB_SITTRIBPIS PIS ON PIS.PK_ID = CAD.NR_SITTRIBPIS
+        LEFT JOIN TB_SITTRIBCOFINS COFINS ON COFINS.PK_ID = CAD.NR_SITTRIBCOFINS
+        LEFT JOIN TB_CADUNICOPLUS PLUS ON PLUS.PK_ID = CAD.PK_ID
         WHERE CAD.PK_ID = ${safeCli}
       `);
-
-      if (!qCad || qCad.length === 0) {
-        qCad = await safeQuery(pool, `SELECT TOP 1 * FROM TB_CADUNICO WHERE PK_ID = ${safeCli}`);
-      }
 
       if (!qCad || qCad.length === 0) {
         return sendJson(res, 404, {
@@ -301,88 +413,260 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
       }
 
       const cadRecord: Record<string, any> = qCad?.[0] ? { ...qCad[0] } : {};
-      const destUf = String(cadRecord.DS_UF || safeUf).replace(/'/g, '').trim().toUpperCase();
+      const destUf = safeTipo === 'E' || Number(qCfo[0].TG_IMPORTACAO ?? 0) === 1 ? empUf : safeUf;
+      const origemUf = safeTipo === 'E' || Number(qCfo[0].TG_IMPORTACAO ?? 0) === 1 ? safeUf : empUf;
+      const sqlText = (value: any) => String(value ?? '').replace(/'/g, '').trim();
+      const origemIcmsProduto = sqlText(prodRecord.TG_ORIGEMICMS);
+      const regimeTributario = safeTipo === 'E'
+        ? sqlText(empRecord.TG_REGIMETRIBUTARIO)
+        : sqlText(cadRecord.FK_REGIMETRIBUTARIO);
+      const regimeTributarioEmitente = safeTipo === 'E'
+        ? sqlText(cadRecord.FK_REGIMETRIBUTARIO)
+        : sqlText(empRecord.TG_REGIMETRIBUTARIO);
+      const perfilIcms = Number(cadRecord.TG_CONTRIBUINTEICMS);
+      const grupoCfop = Number(qCfo[0].FK_GRUPO);
+      if (!Number.isInteger(perfilIcms)) {
+        return sendJson(res, 422, { success: false, error: `O cliente "${safeCli}" não possui TG_CONTRIBUINTEICMS numérico. A simulação não inferiu o perfil fiscal.` });
+      }
+      if (!Number.isInteger(grupoCfop)) {
+        return sendJson(res, 422, { success: false, error: `O CFOP "${safeCfop}" não possui FK_GRUPO numérico. A simulação não inferiu o grupo de CFOP.` });
+      }
 
       // 5. ALÍQUOTA ESTADO (TB_ICMS: FK_UFORIGEM e FK_UFDESTINO conforme NFE_CALCULARITEM.PRG)
       let qIcm = await safeQuery(pool, `
         SELECT TOP 1 ICM.VL_PORICMCONS, ICM.VL_PORICM
         FROM TB_ICMS ICM
-        WHERE ICM.FK_UFORIGEM = '${empUf}' AND ICM.FK_UFDESTINO = '${destUf}'
+        WHERE ICM.FK_UFORIGEM = '${origemUf}' AND ICM.FK_UFDESTINO = '${destUf}'
       `);
-
       if (!qIcm || qIcm.length === 0) {
-        qIcm = await safeQuery(pool, `
-          SELECT TOP 1 ICM.VL_PORICMCONS, ICM.VL_PORICM
-          FROM TB_ICMS ICM
-          WHERE ICM.FK_UFDESTINO = '${destUf}' OR ICM.FK_UFORIGEM = '${empUf}'
-        `);
+        return sendJson(res, 422, { success: false, error: `Não existe TB_ICMS para a rota ${origemUf} → ${destUf}. Nenhuma alíquota alternativa foi usada.` });
       }
 
       // 6. CLASSIFICAÇÃO FISCAL NCM (TB_CLAFIS)
-      let qCf = fkClafis ? await safeQuery(pool, `
+      if (!fkClafis) {
+        return sendJson(res, 422, { success: false, error: `O produto "${prodPk}" não possui FK_CLAFIS. O PRG depende dessa classificação e a simulação não aplicou NCM padrão.` });
+      }
+      const qCf = await safeQuery(pool, `
         SELECT TOP 1
           CLA.PK_ID, CLA.CD_CLAFIS, CLA.NR_SITTRIBIPISAI, CLA.NR_SITTRIBIPIENT, CLA.VL_PORIPI,
-          CLA.NR_SITTRIBPIS, CLA.VL_PORPIS, CLA.NR_SITTRIBCOFINS, CLA.VL_PORCOFINS, CLA.NR_CEST
+          CLA.FK_ENQUADRAMENTOIPI, CLA.FK_ENQUADRAMENTOIPIENT,
+          CLA.VL_PORPIS, CLA.VL_PORPISIMP, CLA.VL_PORCOFINS, CLA.VL_PORCOFINSIMP,
+          COALESCE(IPI.TG_IPI, 0) AS TG_IPI,
+          COALESCE(IPIENT.TG_IPI, 0) AS TG_IPIENT
         FROM TB_CLAFIS CLA
+        LEFT JOIN TB_SITTRIBIPI IPI ON IPI.PK_ID = CLA.NR_SITTRIBIPISAI
+        LEFT JOIN TB_SITTRIBIPI IPIENT ON IPIENT.PK_ID = CLA.NR_SITTRIBIPIENT
         WHERE CLA.PK_ID = '${fkClafis}'
-      `) : null;
-
+      `);
       if (!qCf || qCf.length === 0) {
-        qCf = await safeQuery(pool, `
-          SELECT TOP 1
-            CLA.PK_ID, CLA.CD_CLAFIS, CLA.NR_SITTRIBIPISAI, CLA.NR_SITTRIBIPIENT, CLA.VL_PORIPI,
-            CLA.NR_SITTRIBPIS, CLA.VL_PORPIS, CLA.NR_SITTRIBCOFINS, CLA.VL_PORCOFINS, CLA.NR_CEST
-          FROM TB_CLAFIS CLA
-          INNER JOIN TB_PRODUTOS PRO ON PRO.FK_CLAFIS = CLA.PK_ID
-          WHERE PRO.PK_ID = '${prodPk}'
-        `);
+        return sendJson(res, 422, { success: false, error: `A classificação fiscal "${fkClafis}" do produto "${prodPk}" não foi localizada em TB_CLAFIS. Nenhuma alíquota foi inferida.` });
       }
 
       // 7. EXCEÇÃO NCM/UF (TB_CLAFISEXC: FK_ORIGEM = FK_CLAFIS)
       let qCfEx = fkClafis ? await safeQuery(pool, `
         SELECT TOP 1
-          CLE.CD_SITTRIBUTARIA, CLE.VL_PORREDUICMS, CLE.VL_PORICMS, CLE.FK_INFCOMPL,
-          CLE.TG_CONTRIBUINTE, CLE.CD_BENEFIS, CLE.NR_CEST
+          CLE.PK_ID, CLE.CD_SITTRIBUTARIA, CLE.VL_PORREDUICMS, CLE.VL_PORICMS, CLE.FK_INFCOMPL,
+          CLE.TG_CONTRIBUINTE, COALESCE(CLE.CD_BENEFIS, '') AS CD_BENEFIS,
+          COALESCE(CLE.FK_MOTIVODESONICMS, 0) AS FK_MOTIVODESONICMS,
+          COALESCE(CLE.NR_CEST, '') AS NR_CEST
         FROM TB_CLAFISEXC CLE
         WHERE CLE.FK_ORIGEM = '${fkClafis}'
-          AND (CLE.FK_UFDESTINO = '${destUf}' OR CLE.FK_UFDESTINO = '' OR CLE.FK_UFDESTINO IS NULL)
-          AND (CLE.FK_UFORIGEM = '${empUf}' OR CLE.FK_UFORIGEM = '' OR CLE.FK_UFORIGEM IS NULL)
-        ORDER BY CLE.FK_UFDESTINO DESC, CLE.FK_UFORIGEM DESC
+          AND CLE.FK_UFORIGEM = '${origemUf}'
+          AND CLE.FK_UFDESTINO = '${destUf}'
+          AND CLE.TG_ORIGEMICMS IN ('', '${origemIcmsProduto}')
+          AND CLE.FK_REGIMETRIBUTARIO IN ('', '${regimeTributario}')
+          AND CLE.FK_REGIMETRIBUTARIOEMITENTE IN ('', '${regimeTributarioEmitente}')
+          AND CLE.TG_CONTRIBUINTE IN (4, ${perfilIcms})
+          AND CLE.TG_INATIVO = 0
+          AND CLE.DS_ORIGEM = 'ICMS'
+          AND ((CLE.DT_VIGENCIAINICIAL IS NOT NULL AND ${sqlDataEmissao} BETWEEN CLE.DT_VIGENCIAINICIAL AND CLE.DT_VIGENCIAFINAL) OR CLE.DT_VIGENCIAINICIAL IS NULL)
+        ORDER BY CLE.TG_ORIGEMICMS DESC, CLE.FK_REGIMETRIBUTARIO DESC, CLE.FK_REGIMETRIBUTARIOEMITENTE DESC
       `) : null;
+
+      // O PRG abre cursores independentes para PIS e COFINS. A condição e a
+      // ordem importam: uma exceção de ICMS não pode ser reutilizada aqui.
+      const qCfExPis = await safeQuery(pool, `
+        SELECT
+          CLE.PK_ID, CLE.CD_SITTRIBUTARIA, CLE.VL_PORICMS, CLE.FK_INFCOMPL,
+          CLE.TG_CONTRIBUINTE, COALESCE(PIS.TG_PIS, 0) AS TG_PIS
+        FROM TB_CLAFISEXC CLE
+        LEFT JOIN TB_SITTRIBPIS PIS ON PIS.PK_ID = CLE.CD_SITTRIBUTARIA
+        WHERE CLE.FK_ORIGEM = '${fkClafis}'
+          AND CLE.FK_UFORIGEM = '${empUf}'
+          AND CLE.FK_UFDESTINO = '${safeUf}'
+          AND CLE.TG_ORIGEMICMS IN ('', '${origemIcmsProduto}')
+          AND CLE.FK_REGIMETRIBUTARIO IN ('', '${sqlText(cadRecord.FK_REGIMETRIBUTARIO)}')
+          AND CLE.FK_REGIMETRIBUTARIOEMITENTE IN ('', '${sqlText(empRecord.TG_REGIMETRIBUTARIO)}')
+          AND CLE.FK_CADUNICO IN (0, ${safeCli})
+          AND CLE.TG_CONTRIBUINTE IN (4, ${perfilIcms})
+          AND CLE.TG_INATIVO = 0
+          AND CLE.DS_ORIGEM = 'PIS'
+          AND ((CLE.DT_VIGENCIAINICIAL IS NOT NULL AND ${sqlDataEmissao} BETWEEN CLE.DT_VIGENCIAINICIAL AND CLE.DT_VIGENCIAFINAL) OR CLE.DT_VIGENCIAINICIAL IS NULL)
+        ORDER BY CLE.TG_ORIGEMICMS DESC, CLE.FK_REGIMETRIBUTARIO DESC, CLE.FK_REGIMETRIBUTARIOEMITENTE DESC, CLE.FK_CADUNICO DESC
+      `);
+      const qCfExCofins = await safeQuery(pool, `
+        SELECT
+          CLE.PK_ID, CLE.CD_SITTRIBUTARIA, CLE.VL_PORICMS, CLE.FK_INFCOMPL,
+          CLE.TG_CONTRIBUINTE, COALESCE(COFINS.TG_COFINS, 0) AS TG_COFINS
+        FROM TB_CLAFISEXC CLE
+        LEFT JOIN TB_SITTRIBCOFINS COFINS ON COFINS.PK_ID = CLE.CD_SITTRIBUTARIA
+        WHERE CLE.FK_ORIGEM = '${fkClafis}'
+          AND CLE.FK_UFORIGEM = '${empUf}'
+          AND CLE.FK_UFDESTINO = '${safeUf}'
+          AND CLE.TG_ORIGEMICMS IN ('', '${origemIcmsProduto}')
+          AND CLE.FK_REGIMETRIBUTARIO IN ('', '${sqlText(cadRecord.FK_REGIMETRIBUTARIO)}')
+          AND CLE.FK_REGIMETRIBUTARIOEMITENTE IN ('', '${sqlText(empRecord.TG_REGIMETRIBUTARIO)}')
+          AND CLE.FK_CADUNICO IN (0, ${safeCli})
+          AND CLE.TG_CONTRIBUINTE IN (4, ${perfilIcms})
+          AND CLE.TG_INATIVO = 0
+          AND CLE.DS_ORIGEM = 'COFINS'
+          AND ((CLE.DT_VIGENCIAINICIAL IS NOT NULL AND ${sqlDataEmissao} BETWEEN CLE.DT_VIGENCIAINICIAL AND CLE.DT_VIGENCIAFINAL) OR CLE.DT_VIGENCIAINICIAL IS NULL)
+        ORDER BY CLE.TG_ORIGEMICMS DESC, CLE.FK_REGIMETRIBUTARIO DESC, CLE.FK_REGIMETRIBUTARIOEMITENTE DESC, CLE.FK_CADUNICO DESC
+      `);
+
+      if (qCfEx === null || qCfExPis === null || qCfExCofins === null) {
+        return sendJson(res, 422, { success: false, error: 'Falha ao abrir uma consulta de exceção TB_CLAFISEXC. O simulador não tratou a falha como ausência de regra.' });
+      }
+
+      const qFcpIcms = await safeQuery(pool, `
+        SELECT TOP 1 FCP.VL_PORICMFCPUFDEST
+        FROM TB_CLAFISFCP FCP
+        WHERE FCP.FK_CLAFIS = '${fkClafis}'
+          AND FCP.FK_UF = '${destUf}'
+          AND FCP.TG_DESTINOFCP IN (3, 2)
+          AND FCP.TG_INATIVO = 0
+        ORDER BY FCP.TG_DESTINOFCP
+      `);
+      const qDifIcms = await safeQuery(pool, `
+        SELECT TOP 1
+          DIF.PK_ID, DIF.FK_UFORIGEM, DIF.FK_UFDESTINO, DIF.FK_INFCOMPL,
+          DIF.CD_SITTRIBUTARIA, DIF.VL_PORDIFERIMENTOICMS,
+          COALESCE(DIF.CD_BENEFIS, '') AS CD_BENEFIS
+        FROM TB_CLAFISDIFERIMENTOICMS DIF
+        WHERE DIF.FK_CLAFIS = '${fkClafis}'
+          AND DIF.FK_UFORIGEM = '${origemUf}'
+          AND DIF.FK_UFDESTINO = '${destUf}'
+          AND DIF.FK_CADUNICO IN (0, ${safeCli})
+          AND COALESCE(DIF.TG_INATIVO, 0) = 0
+        ORDER BY DIF.FK_CADUNICO DESC
+      `);
 
       // 8. EXCEÇÃO CLIENTE (TB_EXCECAOICMS)
       let qCfExCad = await safeQuery(pool, `
         SELECT TOP 1
-          CADEXC.CD_SITTRIBUTARIA, CADEXC.VL_PORREDUICMS, CADEXC.VL_PORICMS,
+          CADEXC.PK_ID, CADEXC.CD_SITTRIBUTARIA, CADEXC.VL_PORREDUICMS, CADEXC.VL_PORICMS,
           CADEXC.FK_MOTIVODESONICMS, CADEXC.CD_BENEFIS, CADEXC.FK_INFCOMPL, CADEXC.NR_CEST
         FROM TB_EXCECAOICMS CADEXC
         WHERE CADEXC.FK_CADUNICO = ${safeCli}
-          AND (CADEXC.FK_CLAFIS = '${fkClafis}' OR CADEXC.FK_CLAFIS = '' OR CADEXC.FK_CLAFIS IS NULL)
-        ORDER BY CADEXC.FK_CLAFIS DESC
+          AND CADEXC.TG_INATIVO = 0
+          AND CADEXC.FK_CLAFIS IN ('', '${fkClafis}')
+          AND CADEXC.TG_ICMSIPI IN (0, ${safeDestMer})
+          AND CADEXC.TG_ORIGEMICMS IN ('', '${origemIcmsProduto}')
+          AND ((CADEXC.DT_VIGENCIAINICIAL IS NOT NULL AND ${sqlDataEmissao} BETWEEN CADEXC.DT_VIGENCIAINICIAL AND CADEXC.DT_VIGENCIAFINAL) OR CADEXC.DT_VIGENCIAINICIAL IS NULL)
+        ORDER BY CADEXC.FK_CLAFIS DESC, CADEXC.TG_ORIGEMICMS DESC, CADEXC.TG_ICMSIPI DESC
       `);
 
-      // 9. REGRAS GERAIS DE IMPOSTO (TB_REGRAIMPOSTO)
-      const qRegras = await safeQuery(pool, `
-        SELECT
-          REG.PK_ID, REG.TG_IMPOSTO, REG.CD_SITRIBUTARIA, REG.VL_PORIMPOSTO, REG.VL_PORREDUCAO,
-          REG.VL_ALIQBASE, REG.TG_DEDUZIR, REG.NR_CEST, REG.CD_BENEFIS, REG.FK_INFCOMPL,
-          REG.VL_PORICMFCP, REG.FK_MOTIVODESONICMS, REG.FK_CALCDIFAL
-        FROM TB_REGRAIMPOSTO REG
-        WHERE REG.TG_INATIVO = 0
-          AND (REG.FK_CFOP = ${safeCfop} OR REG.FK_CFOP = 0 OR REG.FK_CFOP IS NULL)
-          AND (REG.FK_ESTADO = '${destUf}' OR REG.FK_ESTADO = '' OR REG.FK_ESTADO IS NULL)
+      // 9. REGRAS GERAIS DE IMPOSTO. Cada cursor tem filtros e ordenação próprios
+      // no PRG; uma consulta genérica muda a regra vencedora da pirâmide.
+      const filtrosRegraFederal = `
+          AND REGRA.FK_REGIMETRIBUTARIO IN ('', '${regimeTributario}')
+          AND REGRA.FK_REGIMETRIBUTARIOEMITENTE IN ('', '${regimeTributarioEmitente}')
+          AND REGRA.FK_PRODUTO IN ('', '${prodPk}')
+          AND REGRA.FK_CADUNICO IN (0, ${safeCli})
+          AND REGRA.FK_EMPRESA IN ('', '${safeEmp}')
+          AND REGRA.FK_CLAFIS IN ('', '${fkClafis}')
+          AND REGRA.TG_ICMSIPI IN (0, ${safeDestMer})
+          AND REGRA.FK_GRUPOCFOP IN (0, ${grupoCfop})
+          AND REGRA.TG_INATIVO = 0
+          AND REGRA.TG_ORIGEM IN ('', 'V')
+          AND REGRA.TG_CONTRIBUINTE IN (4, ${perfilIcms})`;
+      const ordemRegraFederal = `
+          ORDER BY REGRA.FK_REGIMETRIBUTARIO DESC, REGRA.FK_REGIMETRIBUTARIOEMITENTE DESC,
+            REGRA.FK_PRODUTO DESC, REGRA.FK_CADUNICO DESC, REGRA.FK_EMPRESA DESC,
+            REGRA.FK_CLAFIS DESC, REGRA.TG_ICMSIPI DESC, REGRA.FK_GRUPOCFOP DESC,
+            REGRA.TG_CONTRIBUINTE`;
+
+      const qRegrasIcm = await safeQuery(pool, `
+        SELECT REGRA.TG_IMPOSTO, REGRA.CD_SITRIBUTARIA, REGRA.VL_PORIMPOSTO,
+          REGRA.VL_PORREDUCAO, REGRA.VL_ALIQBASE, REGRA.VL_PORCSUBS,
+          REGRA.FK_INFCOMPL, REGRA.TG_DEDUZIR, REGRA.TG_ICMSIPI,
+          REGRA.TG_CONTRIBUINTE, REGRA.FK_MOTIVODESONICMS, REGRA.CD_BENEFIS,
+          REGRA.VL_PORICMFCP, REGRA.FK_CALCDIFAL, COALESCE(REGRA.NR_CEST, '') AS NR_CEST
+        FROM TB_REGRAIMPOSTO REGRA
+        WHERE REGRA.TG_IMPOSTO IN ('ICMS', 'ICMSST')
+          AND REGRA.FK_UFORIGEM = '${origemUf}'
+          AND REGRA.FK_UFDESTINO = '${destUf}'
+          AND REGRA.FK_REGIMETRIBUTARIO IN ('', '${regimeTributario}')
+          AND REGRA.FK_REGIMETRIBUTARIOEMITENTE IN ('', '${regimeTributarioEmitente}')
+          AND REGRA.FK_PRODUTO IN ('', '${prodPk}')
+          AND REGRA.FK_CADUNICO IN (0, ${safeCli})
+          AND REGRA.FK_EMPRESA IN ('', '${safeEmp}')
+          AND REGRA.FK_CLAFIS IN ('', '${fkClafis}')
+          AND REGRA.TG_ORIGEMICMS IN ('', '${origemIcmsProduto}')
+          AND REGRA.TG_ICMSIPI IN (0, ${safeDestMer})
+          AND REGRA.FK_GRUPOCFOP IN (0, ${grupoCfop})
+          AND REGRA.TG_INATIVO = 0
+          AND REGRA.TG_ORIGEM IN ('', 'V')
+          AND REGRA.TG_CONTRIBUINTE IN (4, ${perfilIcms})
+          AND ((REGRA.DT_VIGENCIAINICIAL IS NOT NULL AND ${sqlDataEmissao} BETWEEN REGRA.DT_VIGENCIAINICIAL AND REGRA.DT_VIGENCIAFINAL) OR REGRA.DT_VIGENCIAINICIAL IS NULL)
+        ORDER BY REGRA.TG_IMPOSTO, REGRA.FK_REGIMETRIBUTARIO DESC,
+          REGRA.FK_REGIMETRIBUTARIOEMITENTE DESC, REGRA.FK_PRODUTO DESC,
+          REGRA.FK_CADUNICO DESC, REGRA.FK_EMPRESA DESC, REGRA.FK_CLAFIS DESC,
+          REGRA.TG_ORIGEMICMS DESC, REGRA.TG_ICMSIPI DESC, REGRA.FK_GRUPOCFOP DESC,
+          REGRA.TG_CONTRIBUINTE
       `);
+      const qRegrasCofins = await safeQuery(pool, `
+        SELECT REGRA.TG_IMPOSTO, REGRA.CD_SITRIBUTARIA, REGRA.VL_PORIMPOSTO,
+          REGRA.VL_ALIQBASE, REGRA.FK_INFCOMPL
+        FROM TB_REGRAIMPOSTO REGRA
+        WHERE REGRA.TG_IMPOSTO = 'COFINS'
+          ${filtrosRegraFederal}
+          AND ((REGRA.DT_VIGENCIAINICIAL IS NOT NULL AND ${sqlDataEmissao} BETWEEN REGRA.DT_VIGENCIAINICIAL AND REGRA.DT_VIGENCIAFINAL) OR REGRA.DT_VIGENCIAINICIAL IS NULL)
+          ${ordemRegraFederal}
+      `);
+      const qRegrasPis = await safeQuery(pool, `
+        SELECT REGRA.TG_IMPOSTO, REGRA.CD_SITRIBUTARIA, REGRA.VL_PORIMPOSTO,
+          REGRA.VL_ALIQBASE, REGRA.FK_INFCOMPL
+        FROM TB_REGRAIMPOSTO REGRA
+        WHERE REGRA.TG_IMPOSTO = 'PIS'
+          ${filtrosRegraFederal}
+          AND ((REGRA.DT_VIGENCIAINICIAL IS NOT NULL AND ${sqlDataEmissao} BETWEEN REGRA.DT_VIGENCIAINICIAL AND REGRA.DT_VIGENCIAFINAL) OR REGRA.DT_VIGENCIAINICIAL IS NULL)
+          ${ordemRegraFederal}
+      `);
+      const qRegrasIpi = await safeQuery(pool, `
+        SELECT REGRA.TG_IMPOSTO, REGRA.CD_SITRIBUTARIA, REGRA.VL_PORIMPOSTO,
+          REGRA.VL_ALIQBASE, REGRA.FK_INFCOMPL, REGRA.FK_ENQUADRAMENTOIPI
+        FROM TB_REGRAIMPOSTO REGRA
+        WHERE REGRA.TG_IMPOSTO = 'IPI'
+          ${filtrosRegraFederal}
+          ${ordemRegraFederal}
+      `);
+
+      if (qRegrasIcm === null || qRegrasIpi === null || qRegrasPis === null || qRegrasCofins === null) {
+        return sendJson(res, 422, { success: false, error: 'Falha ao abrir uma das consultas TB_REGRAIMPOSTO do NFE_CALCULARITEM.PRG. Nenhuma regra genérica foi usada.' });
+      }
 
       // 10. SUBSTITUIÇÃO TRIBUTÁRIA (TB_SUBSTRIBUTARIA)
       let qSt = fkClafis ? await safeQuery(pool, `
         SELECT TOP 1
-          ST.CD_SITTRIBUTARIA, ST.FK_INFCOMPL, ST.VL_BASEARBITRADA, ST.VL_ALIQBASE, ST.VL_PORCSUBS,
-          ST.TG_CALCSUBSEMICM, ST.TG_DEDUZIR, ST.VL_PORREDUICMS, ST.VL_PORICMFCP, ST.NR_CEST
+          ST.PK_ID, ST.CD_SITTRIBUTARIA, ST.FK_INFCOMPL, ST.VL_BASEARBITRADA, ST.VL_ALIQBASE, ST.VL_PORCSUBS,
+          ST.TG_CALCSUBSEMICM, ST.TG_DEDUZIR, ST.VL_PORREDUICMS, ST.TG_NAOUTILIZARPAUTA,
+          COALESCE(ST.VL_PORICMFCP, 0) AS VL_PORICMFCP, COALESCE(ST.FK_MODBCIND, '') AS FK_MODBCIND,
+          COALESCE(ST.TG_SEMICMSOPERACAO, 0) AS TG_SEMICMSOPERACAO,
+          COALESCE(ST.FK_CALCDIFAL, 0) AS FK_CALCDIFAL,
+          COALESCE(ST.TG_SUBTRAIRFCPICMS, 0) AS TG_SUBTRAIRFCPICMS,
+          COALESCE(ST.NR_CEST, '') AS NR_CEST
         FROM TB_SUBSTRIBUTARIA ST
         WHERE ST.FK_CLAFIS = '${fkClafis}'
-          AND (ST.FK_ESTADO = '${destUf}' OR ST.FK_ESTADO = '' OR ST.FK_ESTADO IS NULL)
-          AND (ST.FK_UFORIGEM = '${empUf}' OR ST.FK_UFORIGEM = '' OR ST.FK_UFORIGEM IS NULL)
-        ORDER BY ST.FK_ESTADO DESC, ST.FK_UFORIGEM DESC
+          AND ST.TG_ICMSIPI = ${safeDestMer}
+          AND ST.FK_UFORIGEM = '${origemUf}'
+          AND ST.FK_ESTADO = '${destUf}'
+          AND ST.TG_CLIENTE IN (4, ${perfilIcms})
+          AND ST.FK_REGIMETRIBUTARIO IN ('', '${regimeTributario}')
+          AND ST.FK_REGIMETRIBUTARIOEMITENTE IN ('', '${regimeTributarioEmitente}')
+          AND ST.TG_INATIVO <> 1
+          AND ((ST.DT_VIGENCIAINICIAL IS NOT NULL AND ${sqlDataEmissao} BETWEEN ST.DT_VIGENCIAINICIAL AND ST.DT_VIGENCIAFINAL) OR ST.DT_VIGENCIAINICIAL IS NULL)
+        ORDER BY ST.FK_REGIMETRIBUTARIO DESC, ST.FK_REGIMETRIBUTARIOEMITENTE DESC, ST.TG_CLIENTE
       `) : null;
 
       // 11. PARÂMETROS DO SISTEMA (TS_PARAMETROS)
@@ -401,9 +685,15 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
         SELECT PK_ID, TG_ICMS, COALESCE(FK_INFCOMPLICMS, 0) AS FK_INFCOMPLICMS
         FROM TB_SITTRIBUTARIA
       `);
+      const qSitTribIpi = await safeQuery(pool, `SELECT PK_ID, TG_IPI FROM TB_SITTRIBIPI`);
+      const qSitTribPis = await safeQuery(pool, `SELECT PK_ID, TG_PIS FROM TB_SITTRIBPIS`);
+      const qSitTribCofins = await safeQuery(pool, `SELECT PK_ID, TG_COFINS FROM TB_SITTRIBCOFINS`);
+
+      if (!qSitTrib?.length || !qSitTribIpi?.length || !qSitTribPis?.length || !qSitTribCofins?.length) {
+        return sendJson(res, 422, { success: false, error: 'Uma tabela de situação tributária necessária está vazia ou indisponível. A simulação não usou listas fixas de CST.' });
+      }
 
       // 13. DESTINO DA MERCADORIA (TB_DESTINOMERCADORIA - L2070 do NFE_CALCULARITEM.PRG)
-      const safeDestMer = Number(body.params?.destMer || 1);
       const qDest = await safeQuery(pool, `
         SELECT TOP 1
           COALESCE(DEST.TG_CALCICMSST, 0) AS TG_CALCICMSST,
@@ -411,8 +701,9 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
         FROM TB_DESTINOMERCADORIA AS DEST
         WHERE DEST.PK_ID = ${safeDestMer}
       `);
-
-      const allRegras = qRegras || [];
+      if (!qDest || qDest.length === 0) {
+        return sendJson(res, 422, { success: false, error: `O destino da mercadoria "${safeDestMer}" não foi localizado em TB_DESTINOMERCADORIA.` });
+      }
 
       return sendJson(res, 200, {
         success: true,
@@ -428,24 +719,28 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
           ncmExceptionFound: !!(qCfEx && qCfEx.length > 0)
         },
         cursors: {
-          tmpCalCfo: qCfo?.[0] || {},
+          tmpCalCfo: qCfo[0],
           tmpCalPro: prodRecord,
           tmpCalEmp: empRecord,
           tmpCalCad: cadRecord,
-          tmpCalIcm: qIcm?.[0] || {},
-          tmpCalCf: qCf?.[0] || {},
+          tmpCalIcm: qIcm[0],
+          tmpCalCf: qCf[0],
           tmpCalCfEx: qCfEx?.[0] || {},
           tmpCalCfExCad: qCfExCad?.[0] || {},
+          tmpCalCfExPis: qCfExPis,
+          tmpCalCfExCofins: qCfExCofins,
+          tmpCalCfFcpIcms: qFcpIcms?.[0] || {},
+          tmpCalCfDiferimentoIcms: qDifIcms?.[0] || {},
           tmpCalIcmSt: qSt?.[0] || {},
-          tmpRegraImpIcm: allRegras.filter(r => String(r.TG_IMPOSTO).trim().toUpperCase() === 'ICMS' || String(r.TG_IMPOSTO).trim().toUpperCase() === 'ICMSST'),
-          tmpRegraImpIpi: allRegras.filter(r => String(r.TG_IMPOSTO).trim().toUpperCase() === 'IPI'),
-          tmpRegraImpPis: allRegras.filter(r => String(r.TG_IMPOSTO).trim().toUpperCase() === 'PIS'),
-          tmpRegraImpCofins: allRegras.filter(r => String(r.TG_IMPOSTO).trim().toUpperCase() === 'COFINS'),
-          tmpSitTributariaIcms: qSitTrib || [],
-          tmpDest: qDest?.[0] || {
-            TG_CALCICMSST: 1,
-            TG_IPISOMABCICMS: safeDestMer === 2 ? 1 : 0
-          },
+          tmpRegraImpIcm: qRegrasIcm,
+          tmpRegraImpIpi: qRegrasIpi,
+          tmpRegraImpPis: qRegrasPis,
+          tmpRegraImpCofins: qRegrasCofins,
+          tmpSitTributariaIcms: qSitTrib,
+          tmpSitTribIpi: qSitTribIpi,
+          tmpSitTribPis: qSitTribPis,
+          tmpSitTribCofins: qSitTribCofins,
+          tmpDest: qDest[0],
           tsParametros: parametrosObj
         }
       });
