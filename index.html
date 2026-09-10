@@ -107,6 +107,11 @@
           <svg class="w-5 h-5 flex-shrink-0 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
           <span class="truncate font-semibold text-blue-300">Validador de XML</span>
         </button>
+
+        <button id="tab-tax-simulator" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
+          <svg class="w-5 h-5 flex-shrink-0 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+          <span class="truncate font-semibold text-emerald-300">Simulador Tributário</span>
+        </button>
       </nav>
 
       <!-- Rodapé do Menu Lateral com Alternador Dark Mode -->
@@ -889,6 +894,524 @@
               <button type="button" id="btn-close-xml-modal-footer" class="bg-gray-700 hover:bg-gray-800 text-white font-bold text-xs py-2 px-5 rounded-lg shadow transition-colors">
                 Fechar
               </button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- ABA 9: SIMULADOR TRIBUTÁRIO NF-e (NFE_CALCULARITEM)                       -->
+      <!-- ========================================================================= -->
+      <section id="section-tax-simulator" class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors space-y-6">
+        
+        <!-- Header da Seção -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between pb-5 border-b border-gray-200 dark:border-slate-800 gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="p-2 bg-emerald-600 rounded-lg text-white shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+              </span>
+              <div>
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Simulador Tributário NF-e</h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Core de cálculo do <code class="font-mono text-emerald-600 dark:text-emerald-400">NFE_CALCULARITEM.PRG</code> com Memória de Cálculo e Auditoria da Pirâmide Fiscal</p>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <div id="sql-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+              <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+              <span id="sql-status-label">SQL Server: Desconectado (Modo Simulação)</span>
+            </div>
+            <button id="btn-sql-config" type="button" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 shadow-sm transition-all cursor-pointer">
+              <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              Configurar Banco SQL
+            </button>
+            <button id="btn-export-simulation" type="button" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              Exportar JSON
+            </button>
+          </div>
+        </div>
+
+        <!-- Painel de Formulário de Entrada -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- Card 1: Dados do Produto e Valores -->
+          <div class="p-5 rounded-xl border border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/50 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-sm text-gray-800 dark:text-slate-200 uppercase flex items-center gap-2">
+                <span>📦</span> Produto e Valores do Item
+              </h3>
+              <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">Inputs Principais</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="sm:col-span-3">
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">Código do Produto (TB_PRODUTOS)</label>
+                  <span id="sim-prod-info" class="text-xs font-semibold truncate max-w-[300px]"></span>
+                </div>
+                <div class="flex gap-2">
+                  <input id="sim-item-prod" type="text" value="001" placeholder="Ex: 001 ou código do produto" class="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                  <button id="btn-search-prod" type="button" title="Consultar produtos no banco SQL" class="px-3.5 py-2 text-xs font-bold rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    Buscar no Banco
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Quantidade</label>
+                <input id="sim-item-qtd" type="number" step="0.01" value="1" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Valor Unitário (R$)</label>
+                <input id="sim-item-unit" type="number" step="0.01" value="100.00" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Valor Total (R$)</label>
+                <input id="sim-item-total" type="number" step="0.01" value="100.00" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono font-bold text-blue-600 dark:text-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+            </div>
+
+            <!-- Acréscimos e Descontos Opcionais -->
+            <details class="pt-2 border-t border-gray-200 dark:border-slate-800 text-xs text-gray-600 dark:text-gray-400">
+              <summary class="cursor-pointer font-bold hover:text-blue-500 select-none pb-2">➕ Frete, Seguro, Despesas e Desconto (Opcional)</summary>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                <div>
+                  <label class="block text-[11px] font-medium mb-1">Frete (R$)</label>
+                  <input id="sim-item-frete" type="number" step="0.01" value="0.00" class="w-full px-2.5 py-1.5 text-xs rounded border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono">
+                </div>
+                <div>
+                  <label class="block text-[11px] font-medium mb-1">Seguro (R$)</label>
+                  <input id="sim-item-seguro" type="number" step="0.01" value="0.00" class="w-full px-2.5 py-1.5 text-xs rounded border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono">
+                </div>
+                <div>
+                  <label class="block text-[11px] font-medium mb-1">Outras Desp. (R$)</label>
+                  <input id="sim-item-despesas" type="number" step="0.01" value="0.00" class="w-full px-2.5 py-1.5 text-xs rounded border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono">
+                </div>
+                <div>
+                  <label class="block text-[11px] font-medium mb-1">Desconto (R$)</label>
+                  <input id="sim-item-desconto" type="number" step="0.01" value="0.00" class="w-full px-2.5 py-1.5 text-xs rounded border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono">
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <!-- Card 2: Contexto da Operação Fiscal -->
+          <div class="p-5 rounded-xl border border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/50 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-sm text-gray-800 dark:text-slate-200 uppercase flex items-center gap-2">
+                <span>📋</span> Parâmetros da Operação Fiscal
+              </h3>
+              <span class="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">Regras & Destino</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">CFOP da Operação</label>
+                <input id="sim-item-cfop" type="number" value="5102" placeholder="Ex: 5102, 5405" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Tipo de Movimento</label>
+                <select id="sim-cab-tipo" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                  <option value="S" selected>Saída (S)</option>
+                  <option value="E">Entrada (E)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Data de Emissão</label>
+                <input id="sim-cab-emissao" type="date" title="Se vazia, usa a data do servidor (DATASERVER), como NFE_CALCULARITEM.PRG" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Regime Emitente (CRT)</label>
+                <select id="sim-cab-regime" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                  <option value="1" selected>1 - Normal (CRT 3)</option>
+                  <option value="2">2 - Simples Nacional (CRT 1/2)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Empresa Emitente</label>
+                <input id="sim-cab-empresa" type="text" value="01" placeholder="Código Empresa" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Dest. Mercadoria (TB_DESTINOMERCADORIA)</label>
+                <select id="sim-item-destmer" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                  <option value="1" selected>1 - Comercialização / Revenda</option>
+                  <option value="2">2 - Uso e Consumo</option>
+                  <option value="3">3 - Ativo Imobilizado</option>
+                  <option value="7">7 - Industrialização</option>
+                  <option value="8">8 - Matéria-Prima</option>
+                </select>
+              </div>
+
+              <div class="sm:col-span-2">
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">Cliente / Destinatário (TB_CADUNICO)</label>
+                  <span id="sim-cli-info" class="text-xs font-semibold truncate max-w-[280px]"></span>
+                </div>
+                <div class="flex gap-2">
+                  <input id="sim-cab-cliente" type="number" value="1001" placeholder="Código CadUnico" class="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                  <button id="btn-search-cli" type="button" title="Consultar clientes no banco SQL" class="px-3.5 py-2 text-xs font-bold rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    Buscar no Banco
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">UF Destino / Origem</label>
+                <input id="sim-cab-uf" type="text" maxlength="2" value="SP" placeholder="SP, MG, RJ..." class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono uppercase font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+            </div>
+
+            <div class="pt-2 text-[11px] text-gray-500 flex items-center justify-between">
+              <span>* Se conectado ao SQL Server, as consultas carregam NCM, exceções e alíquotas reais automaticamente.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botão Executar Simulação -->
+        <div class="flex justify-center pt-2">
+          <button id="btn-run-simulation" type="button" class="w-full sm:w-auto px-8 py-3.5 rounded-xl text-base font-bold bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 cursor-pointer">
+            <span>🚀</span> Simular Cálculo com Memória
+          </button>
+        </div>
+
+        <!-- Painel de Resultados (Renderizado após simulação) -->
+        <div id="sim-results-container" class="space-y-6 pt-4 border-t border-gray-200 dark:border-slate-800">
+          
+          <!-- Banner Diagnóstico de Origem dos Dados (SQL Server Real vs Offline Mock) -->
+          <div id="sim-datasource-banner" class="hidden p-3.5 rounded-xl border text-xs font-semibold mb-4"></div>
+
+          <!-- Cards de Métricas e Resumo -->
+          <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
+            
+            <!-- Total Produtos -->
+            <div class="p-3.5 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+              <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Total Produtos</span>
+              <span id="res-total-produtos" class="text-base font-extrabold text-gray-900 dark:text-white font-mono block mt-1">R$ 0,00</span>
+              <span class="text-[10px] text-gray-400">Total Nota: <strong id="res-total-nota" class="text-gray-600 dark:text-gray-300">R$ 0,00</strong></span>
+            </div>
+
+            <!-- ICMS Próprio -->
+            <div class="p-3.5 rounded-xl border border-blue-200 dark:border-blue-900/40 bg-blue-50/40 dark:bg-blue-950/20 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">ICMS</span>
+                <span id="res-cst-icms" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-200 dark:bg-blue-900 text-blue-800 dark:text-blue-200 font-mono">CST -</span>
+              </div>
+              <span id="res-val-icms" class="text-base font-extrabold text-blue-700 dark:text-blue-400 font-mono block mt-1">R$ 0,00</span>
+              <span class="text-[10px] text-gray-500">Base: <span id="res-base-icms">R$ 0,00</span> (<span id="res-aliq-icms">0%</span>)</span>
+            </div>
+
+            <!-- ICMS ST -->
+            <div class="p-3.5 rounded-xl border border-purple-200 dark:border-purple-900/40 bg-purple-50/40 dark:bg-purple-950/20 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">ICMS-ST</span>
+                <span id="res-cst-st" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200 font-mono">-</span>
+              </div>
+              <span id="res-val-st" class="text-base font-extrabold text-purple-700 dark:text-purple-400 font-mono block mt-1">R$ 0,00</span>
+              <span class="text-[10px] text-gray-500">MVA: <span id="res-mva-st">0%</span> | Base: <span id="res-base-st">R$ 0,00</span></span>
+            </div>
+
+            <!-- IPI -->
+            <div class="p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">IPI</span>
+                <span id="res-cst-ipi" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 font-mono">CST -</span>
+              </div>
+              <span id="res-val-ipi" class="text-base font-extrabold text-amber-700 dark:text-amber-400 font-mono block mt-1">R$ 0,00</span>
+              <span class="text-[10px] text-gray-500">Base: <span id="res-base-ipi">R$ 0,00</span> (<span id="res-aliq-ipi">0%</span>)</span>
+            </div>
+
+            <!-- PIS -->
+            <div class="p-3.5 rounded-xl border border-teal-200 dark:border-teal-900/40 bg-teal-50/40 dark:bg-teal-950/20 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">PIS</span>
+                <span id="res-cst-pis" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-200 dark:bg-teal-900 text-teal-800 dark:text-teal-200 font-mono">CST -</span>
+              </div>
+              <span id="res-val-pis" class="text-base font-extrabold text-teal-700 dark:text-teal-400 font-mono block mt-1">R$ 0,00</span>
+              <span class="text-[10px] text-gray-500">Base: <span id="res-base-pis">R$ 0,00</span> (<span id="res-aliq-pis">0%</span>)</span>
+            </div>
+
+            <!-- COFINS -->
+            <div class="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/40 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">COFINS</span>
+                <span id="res-cst-cofins" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-200 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 font-mono">CST -</span>
+              </div>
+              <span id="res-val-cofins" class="text-base font-extrabold text-indigo-700 dark:text-indigo-400 font-mono block mt-1">R$ 0,00</span>
+              <span class="text-[10px] text-gray-500">Base: <span id="res-base-cofins">R$ 0,00</span> (<span id="res-aliq-cofins">0%</span>)</span>
+            </div>
+          </div>
+
+          <!-- Resumo de Quem Venceu a Pirâmide Fiscal -->
+          <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 space-y-2">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-2">
+              <span>🏛️</span> Rastreabilidade da Pirâmide Fiscal: Origem da Regra Vencedora
+            </h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
+              <div class="p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span class="text-[10px] text-gray-400 block font-semibold uppercase">Vencedor ICMS:</span>
+                <strong id="summary-icms-winner" class="text-blue-600 dark:text-blue-400 font-mono">-</strong>
+              </div>
+              <div class="p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span class="text-[10px] text-gray-400 block font-semibold uppercase">Vencedor IPI:</span>
+                <strong id="summary-ipi-winner" class="text-amber-600 dark:text-amber-400 font-mono">-</strong>
+              </div>
+              <div class="p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span class="text-[10px] text-gray-400 block font-semibold uppercase">Vencedor PIS:</span>
+                <strong id="summary-pis-winner" class="text-teal-600 dark:text-teal-400 font-mono">-</strong>
+              </div>
+              <div class="p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span class="text-[10px] text-gray-400 block font-semibold uppercase">Vencedor COFINS:</span>
+                <strong id="summary-cofins-winner" class="text-indigo-600 dark:text-indigo-400 font-mono">-</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pirâmide Visual de Decisão Tributária por Imposto -->
+          <div class="space-y-4 pt-2">
+            
+            <!-- Cabeçalho e Seletor de Impostos -->
+            <div class="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-900 dark:via-slate-900/90 dark:to-blue-950/20 shadow-sm space-y-4">
+              <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="p-2 rounded-xl bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold text-lg">🔺</span>
+                    <div>
+                      <h3 class="font-extrabold text-base text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+                        Pirâmide de Decisão Fiscal
+                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">Interativa</span>
+                      </h3>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        Ordem de precedência de regras fiscais e destaque do degrau exato onde a informação foi encontrada.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Legenda Rápida de Cores -->
+                <div class="flex flex-wrap items-center gap-2 text-[11px] font-medium shrink-0">
+                  <div class="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <strong>Regra Vencedora (Aplicada)</strong>
+                  </div>
+                  <div class="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <span>Encontrada / Superada</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-200 dark:bg-slate-800 text-gray-600 dark:text-gray-400">
+                    <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+                    <span>Sem Registro</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Abas dos Impostos -->
+              <div class="flex items-center gap-2 overflow-x-auto pb-1 border-b border-gray-200 dark:border-slate-800" id="tax-pyramid-tabs">
+                <!-- Injetado dinamicamente via JS com botões para ICMS, ICMS-ST, IPI, PIS, COFINS e Visão Geral -->
+              </div>
+
+              <!-- Container da Pirâmide de Fato (Renderizado Dinamicamente) -->
+              <div id="tax-pyramid-container" class="py-3">
+                <!-- Degraus em pirâmide renderizados pelo taxSimulator.ts -->
+              </div>
+
+              <!-- Painel de Inspeção do Degrau Clicado -->
+              <div id="pyramid-detail-inspector" class="hidden p-4 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 shadow-sm transition-all duration-200">
+                <!-- Detalhes do degrau selecionado na pirâmide -->
+              </div>
+            </div>
+
+            <!-- Seção Opcional: Linha do Tempo Sequencial (Expansível) -->
+            <div class="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+              <button id="btn-toggle-linear-steps" type="button" class="w-full p-3.5 flex items-center justify-between text-left text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer">
+                <span class="flex items-center gap-2">
+                  <span>📜</span> Ver Log Sequencial de Eventos (Linha do Tempo Completa)
+                </span>
+                <span id="linear-steps-toggle-icon" class="text-xs text-gray-400">▼ Expandir</span>
+              </button>
+              <div id="linear-steps-wrapper" class="hidden p-4 border-t border-gray-200 dark:border-slate-800 space-y-2">
+                <div id="hierarchy-steps-list" class="space-y-2.5">
+                  <!-- Log textual tradicional mantido -->
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Memória de Fórmulas Matemáticas Abertas -->
+          <div class="space-y-3 pt-4 border-t border-gray-200 dark:border-slate-800">
+            <h3 class="font-bold text-sm text-gray-800 dark:text-slate-200 uppercase flex items-center gap-2">
+              <span>📐</span> Memória de Cálculo Passo a Passo (Fórmulas Abertas)
+            </h3>
+            <div id="formulas-trace-list" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <!-- Renderizado dinamicamente -->
+            </div>
+          </div>
+
+          <!-- Informações Complementares -->
+          <div class="p-4 rounded-xl border border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/50 space-y-2">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-2">
+              <span>📝</span> Informações Complementares da NF-e Geradas Automaticamente (DO ADICIONARINFCOMPL)
+            </h4>
+            <ul id="complementary-info-list" class="space-y-1.5 pl-2">
+              <!-- Renderizado dinamicamente -->
+            </ul>
+          </div>
+
+        </div>
+
+        <!-- MODAL DE CONFIGURAÇÃO DO SQL SERVER -->
+        <div id="sql-config-modal" class="fixed inset-0 bg-slate-900/70 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
+          <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div class="p-5 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <span class="p-2 bg-blue-600 rounded-lg text-white">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                </span>
+                <div>
+                  <h3 class="font-bold text-base text-gray-900 dark:text-white">Conexão Microsoft SQL Server</h3>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Dados do servidor para carregar cadastros e regras do cliente</p>
+                </div>
+              </div>
+              <button id="btn-close-sql-modal" type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+
+            <div class="p-5 space-y-4 text-xs">
+              <div class="grid grid-cols-3 gap-3">
+                <div class="col-span-2">
+                  <label class="block font-bold text-gray-700 dark:text-gray-300 mb-1">Servidor / Host (IP ou Nome)</label>
+                  <input id="sql-input-server" type="text" placeholder="Ex: localhost ou 192.168.0.10" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono">
+                </div>
+                <div>
+                  <label class="block font-bold text-gray-700 dark:text-gray-300 mb-1">Porta</label>
+                  <input id="sql-input-port" type="number" value="1433" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-bold text-gray-700 dark:text-gray-300 mb-1">Banco de Dados</label>
+                  <input id="sql-input-database" type="text" placeholder="Ex: ERP_BASE" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono">
+                </div>
+                <div>
+                  <label class="block font-bold text-gray-700 dark:text-gray-300 mb-1">Instância (Opcional)</label>
+                  <input id="sql-input-instance" type="text" placeholder="Ex: SQLEXPRESS" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-bold text-gray-700 dark:text-gray-300 mb-1">Usuário SQL</label>
+                  <input id="sql-input-user" type="text" placeholder="sa" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono">
+                </div>
+                <div>
+                  <label class="block font-bold text-gray-700 dark:text-gray-300 mb-1">Senha</label>
+                  <input id="sql-input-password" type="password" placeholder="••••••••" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono">
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 pt-1">
+                <input id="sql-input-trust" type="checkbox" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <label for="sql-input-trust" class="text-gray-600 dark:text-gray-400">Confiar no certificado do servidor (TrustServerCertificate)</label>
+              </div>
+
+              <div id="sql-test-status" class="min-h-[1.5rem] font-semibold text-xs"></div>
+            </div>
+
+            <div class="p-4 bg-gray-50 dark:bg-slate-800/60 border-t border-gray-200 dark:border-slate-800 flex items-center justify-between">
+              <button id="btn-sql-test" type="button" class="px-4 py-2 rounded-lg text-xs font-bold bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-gray-800 dark:text-slate-200 transition-colors cursor-pointer">
+                🔍 Testar Conexão
+              </button>
+              <div class="flex items-center gap-2">
+                <button id="btn-sql-save" type="button" class="px-5 py-2 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors cursor-pointer">
+                  Salvar e Conectar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal de Busca de Produtos (SQL Server) -->
+        <div id="product-search-modal" class="fixed inset-0 bg-slate-900/70 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
+          <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in duration-150">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+              <div class="flex items-center gap-2.5">
+                <span class="text-xl">📦</span>
+                <div>
+                  <h3 class="font-bold text-base text-gray-900 dark:text-white">Buscar Produto no SQL Server</h3>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Consulta direta na tabela <code class="font-mono text-blue-600 dark:text-blue-400">TB_PRODUTOS</code></p>
+                </div>
+              </div>
+              <button id="btn-close-search-prod-modal" type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-all cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+
+            <!-- Input de busca -->
+            <div class="p-4 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
+              <div class="relative">
+                <input id="search-prod-input" type="text" placeholder="Digite código ou descrição do produto..." class="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <svg class="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </div>
+              <div id="search-prod-status" class="text-xs text-gray-500 flex items-center justify-between">
+                <span>Clique em um produto da lista para selecioná-lo.</span>
+                <span id="search-prod-count" class="font-mono font-bold"></span>
+              </div>
+            </div>
+
+            <!-- Lista de resultados -->
+            <div id="search-prod-results" class="flex-1 overflow-y-auto p-4 space-y-1.5 divide-y divide-gray-100 dark:divide-slate-800/60 max-h-[50vh]">
+              <div class="text-center py-8 text-sm text-gray-400">Carregando produtos...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal de Busca de Clientes (SQL Server) -->
+        <div id="client-search-modal" class="fixed inset-0 bg-slate-900/70 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
+          <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in duration-150">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+              <div class="flex items-center gap-2.5">
+                <span class="text-xl">👥</span>
+                <div>
+                  <h3 class="font-bold text-base text-gray-900 dark:text-white">Buscar Cliente no SQL Server</h3>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Consulta direta na tabela <code class="font-mono text-blue-600 dark:text-blue-400">TB_CADUNICO</code></p>
+                </div>
+              </div>
+              <button id="btn-close-search-cli-modal" type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-all cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+
+            <!-- Input de busca -->
+            <div class="p-4 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
+              <div class="relative">
+                <input id="search-cli-input" type="text" placeholder="Digite código (ID) ou razão social / nome..." class="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <svg class="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </div>
+              <div id="search-cli-status" class="text-xs text-gray-500 flex items-center justify-between">
+                <span>Clique em um cliente da lista para selecioná-lo. A UF será preenchida automaticamente.</span>
+                <span id="search-cli-count" class="font-mono font-bold"></span>
+              </div>
+            </div>
+
+            <!-- Lista de resultados -->
+            <div id="search-cli-results" class="flex-1 overflow-y-auto p-4 space-y-1.5 divide-y divide-gray-100 dark:divide-slate-800/60 max-h-[50vh]">
+              <div class="text-center py-8 text-sm text-gray-400">Carregando clientes...</div>
             </div>
           </div>
         </div>
