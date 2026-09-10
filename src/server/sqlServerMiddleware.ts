@@ -91,8 +91,11 @@ function sendJson(res: ServerResponse, statusCode: number, data: any) {
   res.end(JSON.stringify(data));
 }
 
+let lastSqlError: string | null = null;
+
 async function safeQuery(pool: sql.ConnectionPool, queryStr: string): Promise<any[] | null> {
   try {
+    lastSqlError = null;
     const result = await pool.request().query(queryStr);
     const rows = result.recordset || [];
     // Normaliza todas as colunas para UPPERCASE para evitar problemas de case-sensitivity (ex: Vl_porpis vs VL_PORPIS)
@@ -105,7 +108,8 @@ async function safeQuery(pool: sql.ConnectionPool, queryStr: string): Promise<an
       return upperRow;
     });
   } catch (err: any) {
-    console.warn('[SQL SafeQuery Notice]:', err?.message || err);
+    lastSqlError = err?.message || String(err);
+    console.warn('[SQL SafeQuery Notice]:', lastSqlError);
     return null;
   }
 }
@@ -181,7 +185,7 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
         `;
       } else if (entity === 'empresa') {
         query = `
-          SELECT PK_ID, DS_EMPRESA, DS_FANTASIA, DS_UF, TG_REGIMETRIBUTARIO AS TG_REGIME
+          SELECT PK_ID, COALESCE(DS_NOME, '') AS DS_EMPRESA, COALESCE(DS_NOME, '') AS DS_NOME, DS_FANTASIA, DS_UF, TG_REGIMETRIBUTARIO AS TG_REGIME
           FROM TB_EMPRESAS
           ORDER BY PK_ID
         `;
@@ -201,7 +205,15 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
             }
           });
           if (entity === 'produto') {
+            r.PK_ID = String(r.PK_ID || '').trim();
+            r.DS_MODELO = String(r.DS_MODELO || '').trim();
+            r.DS_PRODUTO = String(r.DS_PRODUTO || r.DS_MODELO || '').trim();
+            r.DS_NOME = String(r.DS_NOME || r.DS_MODELO || '').trim();
             r.CD_SITTRIBUTARIA = r.CD_SITTRIBUTARIA || r.NR_SITTRIB || '';
+          }
+          if (entity === 'empresa') {
+            r.PK_ID = String(r.PK_ID || '').trim();
+            r.DS_EMPRESA = String(r.DS_EMPRESA || r.DS_NOME || r.DS_FANTASIA || '').trim();
           }
         });
         return sendJson(res, 200, { success: true, rows: result });
@@ -314,13 +326,22 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
         }
       }
 
-      // 2. PRODUTO (Busca ESTRITA pelo PK_ID exato digitado pelo usuário)
+      // 2. PRODUTO (Busca por PK_ID exato ou DS_MODELO)
       let qProd = await safeQuery(pool, `
         SELECT TOP 1
-          PRO.PK_ID, PRO.DS_PRODUTO, PRO.DS_NOME, PRO.FK_CLAFIS,
-          PRO.VL_IPIPORQTD, PRO.NR_SITTRIB, PRO.TG_ORIGEMICMS,
-          PRO.NR_SITTRIBIPI, PRO.FK_ENQUADRAMENTOIPI,
-          PRO.NR_SITTRIBPIS, PRO.NR_SITTRIBCOFINS,
+          PRO.PK_ID,
+          PRO.DS_MODELO,
+          PRO.DS_MODELO AS DS_PRODUTO,
+          PRO.DS_MODELO AS DS_NOME,
+          PRO.FK_CLAFIS,
+          PRO.VL_IPIPORQTD,
+          PRO.NR_SITTRIB,
+          PRO.NR_SITTRIB AS CD_SITTRIBUTARIA,
+          PRO.TG_ORIGEMICMS,
+          PRO.NR_SITTRIBIPI,
+          PRO.FK_ENQUADRAMENTOIPI,
+          PRO.NR_SITTRIBPIS,
+          PRO.NR_SITTRIBCOFINS,
           PRO.VL_PRETAB1, PRO.VL_PRETAB2, PRO.VL_PRETAB3, PRO.VL_PRETAB4, PRO.VL_PRETAB5, PRO.VL_PRETAB6,
           COALESCE(ORI.TG_ORIGEM, 0) AS TG_ORIGEM,
           COALESCE(PRO.FK_MOTIVODESONICMS, 0) AS FK_MOTIVODESONICMS,
@@ -332,8 +353,23 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
         LEFT JOIN TB_SITTRIBIPI IPI ON IPI.PK_ID = PRO.NR_SITTRIBIPI
         LEFT JOIN TB_SITTRIBPIS PIS ON PIS.PK_ID = PRO.NR_SITTRIBPIS
         LEFT JOIN TB_SITTRIBCOFINS COFINS ON COFINS.PK_ID = PRO.NR_SITTRIBCOFINS
-        WHERE PRO.PK_ID = '${safeProd}' OR CAST(PRO.PK_ID AS VARCHAR) = '${safeProd}'
+        WHERE RTRIM(LTRIM(CAST(PRO.PK_ID AS VARCHAR(100)))) = '${safeProd}'
+           OR RTRIM(LTRIM(CAST(PRO.DS_MODELO AS VARCHAR(100)))) = '${safeProd}'
+        ORDER BY CASE WHEN RTRIM(LTRIM(CAST(PRO.PK_ID AS VARCHAR(100)))) = '${safeProd}' THEN 0 ELSE 1 END
       `);
+
+      if (qProd === null) {
+        qProd = await safeQuery(pool, `
+          SELECT TOP 1 *,
+            PRO.DS_MODELO AS DS_PRODUTO,
+            PRO.DS_MODELO AS DS_NOME,
+            PRO.NR_SITTRIB AS CD_SITTRIBUTARIA
+          FROM TB_PRODUTOS PRO
+          WHERE RTRIM(LTRIM(CAST(PRO.PK_ID AS VARCHAR(100)))) = '${safeProd}'
+             OR RTRIM(LTRIM(CAST(PRO.DS_MODELO AS VARCHAR(100)))) = '${safeProd}'
+          ORDER BY CASE WHEN RTRIM(LTRIM(CAST(PRO.PK_ID AS VARCHAR(100)))) = '${safeProd}' THEN 0 ELSE 1 END
+        `);
+      }
 
       if (!qProd || qProd.length === 0) {
         return sendJson(res, 404, {
@@ -343,13 +379,22 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
       }
 
       const prodRecord: Record<string, any> = { ...qProd[0] };
-      const prodPk = String(prodRecord.PK_ID).replace(/'/g, '');
+      prodRecord.PK_ID = String(prodRecord.PK_ID || '').trim();
+      prodRecord.DS_MODELO = String(prodRecord.DS_MODELO || '').trim();
+      prodRecord.DS_PRODUTO = String(prodRecord.DS_PRODUTO || prodRecord.DS_MODELO || '').trim();
+      prodRecord.DS_NOME = String(prodRecord.DS_NOME || prodRecord.DS_MODELO || '').trim();
+      prodRecord.CD_SITTRIBUTARIA = String(prodRecord.CD_SITTRIBUTARIA || prodRecord.NR_SITTRIB || '').trim();
+      prodRecord.NR_SITTRIB = prodRecord.CD_SITTRIBUTARIA;
+      const prodPk = prodRecord.PK_ID;
       const fkClafis = prodRecord.FK_CLAFIS ? String(prodRecord.FK_CLAFIS).replace(/'/g, '').trim() : '';
 
       // 3. EMPRESA (Busca estrita)
       let qEmp = await safeQuery(pool, `
         SELECT TOP 1
-          EMP.PK_ID, EMP.DS_FANTASIA, EMP.DS_EMPRESA, EMP.DS_UF,
+          EMP.PK_ID, EMP.DS_FANTASIA,
+          COALESCE(EMP.DS_NOME, '') AS DS_EMPRESA,
+          COALESCE(EMP.DS_NOME, '') AS DS_NOME,
+          EMP.DS_UF,
           EMP.TG_ISENTOIPI, EMP.FK_INFCOMPLIPI, EMP.NR_SITTRIBIPI, EMP.FK_ENQUADRAMENTOIPI,
           EMP.TG_ISENTOICMS, EMP.FK_INFCOMPLICMS, EMP.NR_SITTRIBICMS,
           EMP.TG_ISENTOCOFINS, EMP.NR_SITTRIBCOFINS, EMP.FK_INFCOMPLCOFINS,
@@ -363,8 +408,19 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
         LEFT JOIN TB_SITTRIBIPI IPI ON IPI.PK_ID = EMP.NR_SITTRIBIPI
         LEFT JOIN TB_SITTRIBPIS PIS ON PIS.PK_ID = EMP.NR_SITTRIBPIS
         LEFT JOIN TB_SITTRIBCOFINS COFINS ON COFINS.PK_ID = EMP.NR_SITTRIBCOFINS
-        WHERE EMP.PK_ID = '${safeEmp}' OR CAST(EMP.PK_ID AS VARCHAR) = '${safeEmp}'
+        WHERE RTRIM(LTRIM(CAST(EMP.PK_ID AS VARCHAR(50)))) = '${safeEmp}'
+           OR (ISNUMERIC(EMP.PK_ID) = 1 AND CAST(EMP.PK_ID AS INT) = ${Number(safeEmp) || -999999})
       `);
+
+      if (qEmp === null) {
+        qEmp = await safeQuery(pool, `
+          SELECT TOP 1 *,
+            COALESCE(DS_NOME, '') AS DS_EMPRESA
+          FROM TB_EMPRESAS EMP
+          WHERE RTRIM(LTRIM(CAST(EMP.PK_ID AS VARCHAR(50)))) = '${safeEmp}'
+             OR (ISNUMERIC(EMP.PK_ID) = 1 AND CAST(EMP.PK_ID AS INT) = ${Number(safeEmp) || -999999})
+        `);
+      }
 
       if (!qEmp || qEmp.length === 0) {
         return sendJson(res, 404, {
@@ -396,7 +452,10 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
           COALESCE(IPI.TG_IPI, 0) AS TG_IPITRIB,
           COALESCE(PIS.TG_PIS, 0) AS TG_PISTRIB,
           COALESCE(COFINS.TG_COFINS, 0) AS TG_COFINSTRIB,
-          PLUS.CD_BENEFIS, CAD.DS_NOME, CAD.DS_UF
+          PLUS.CD_BENEFIS,
+          COALESCE(CAD.DS_RAZAO, CAD.DS_FANTASIA, '') AS DS_NOME,
+          COALESCE(CAD.DS_RAZAO, CAD.DS_FANTASIA, '') AS DS_RAZAO,
+          CAD.DS_FANTASIA, CAD.DS_UF
         FROM TB_CADUNICO CAD
         LEFT JOIN TB_SITTRIBIPI IPI ON IPI.PK_ID = CAD.NR_SITTRIBIPI
         LEFT JOIN TB_SITTRIBPIS PIS ON PIS.PK_ID = CAD.NR_SITTRIBPIS
@@ -404,6 +463,15 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
         LEFT JOIN TB_CADUNICOPLUS PLUS ON PLUS.PK_ID = CAD.PK_ID
         WHERE CAD.PK_ID = ${safeCli}
       `);
+
+      if (qCad === null) {
+        qCad = await safeQuery(pool, `
+          SELECT TOP 1 *,
+            COALESCE(DS_RAZAO, DS_FANTASIA, '') AS DS_NOME
+          FROM TB_CADUNICO CAD
+          WHERE CAD.PK_ID = ${safeCli}
+        `);
+      }
 
       if (!qCad || qCad.length === 0) {
         return sendJson(res, 404, {
@@ -446,9 +514,12 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
       if (!fkClafis) {
         return sendJson(res, 422, { success: false, error: `O produto "${prodPk}" não possui FK_CLAFIS. O PRG depende dessa classificação e a simulação não aplicou NCM padrão.` });
       }
-      const qCf = await safeQuery(pool, `
+      let qCf = await safeQuery(pool, `
         SELECT TOP 1
-          CLA.PK_ID, CLA.CD_CLAFIS, CLA.NR_SITTRIBIPISAI, CLA.NR_SITTRIBIPIENT, CLA.VL_PORIPI,
+          CLA.PK_ID,
+          COALESCE(CLA.NR_CLAFIS, CLA.DS_CLAFIS, '') AS CD_CLAFIS,
+          COALESCE(CLA.NR_CLAFIS, CLA.DS_CLAFIS, '') AS NR_CLAFIS,
+          CLA.NR_SITTRIBIPISAI, CLA.NR_SITTRIBIPIENT, CLA.VL_PORIPI,
           CLA.FK_ENQUADRAMENTOIPI, CLA.FK_ENQUADRAMENTOIPIENT,
           CLA.VL_PORPIS, CLA.VL_PORPISIMP, CLA.VL_PORCOFINS, CLA.VL_PORCOFINSIMP,
           COALESCE(IPI.TG_IPI, 0) AS TG_IPI,
@@ -456,8 +527,19 @@ export async function handleSqlApi(req: IncomingMessage, res: ServerResponse, su
         FROM TB_CLAFIS CLA
         LEFT JOIN TB_SITTRIBIPI IPI ON IPI.PK_ID = CLA.NR_SITTRIBIPISAI
         LEFT JOIN TB_SITTRIBIPI IPIENT ON IPIENT.PK_ID = CLA.NR_SITTRIBIPIENT
-        WHERE CLA.PK_ID = '${fkClafis}'
+        WHERE RTRIM(LTRIM(CAST(CLA.PK_ID AS VARCHAR(50)))) = '${fkClafis}'
       `);
+
+      if (qCf === null) {
+        qCf = await safeQuery(pool, `
+          SELECT TOP 1 *,
+            COALESCE(NR_CLAFIS, DS_CLAFIS, '') AS CD_CLAFIS,
+            COALESCE(NR_CLAFIS, DS_CLAFIS, '') AS NR_CLAFIS
+          FROM TB_CLAFIS CLA
+          WHERE RTRIM(LTRIM(CAST(CLA.PK_ID AS VARCHAR(50)))) = '${fkClafis}'
+        `);
+      }
+
       if (!qCf || qCf.length === 0) {
         return sendJson(res, 422, { success: false, error: `A classificação fiscal "${fkClafis}" do produto "${prodPk}" não foi localizada em TB_CLAFIS. Nenhuma alíquota foi inferida.` });
       }

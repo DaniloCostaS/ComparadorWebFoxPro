@@ -139,8 +139,11 @@ export class TaxEngine {
       vlPretot
     );
 
+    const notEmpty = (val: any): boolean => val !== null && val !== undefined && String(val).trim() !== '';
+    const cleanStr = (val: any): string => String(val ?? '').trim();
+
     // Origem do produto (0=Nacional, 1=Estrangeira Direta, 2=Estrangeira Adq. Mercado Interno, etc.)
-    const tgOrigemIcms = String(pro.TG_ORIGEMICMS ?? '').trim();
+    const tgOrigemIcms = cleanStr(pro.TG_ORIGEMICMS);
 
     const findTaxSituation = (records: any[] | undefined, code: string, table: string, field: string): any => {
       const normalizedCode = String(code ?? '').trim();
@@ -157,11 +160,13 @@ export class TaxEngine {
     // =========================================================================
     // --- 2. CÁLCULO DO IPI (L3368-L3490 e L230-L340) ---
     // =========================================================================
-    let nrSittribIpi = String(cfo.NR_SITTRIBIPI || '').trim();
-    let fkEnquadramentoIpi = String(cfo.FK_ENQUADRAMENTOIPI || '').trim();
+    let nrSittribIpi = cleanStr(cfo.NR_SITTRIBIPI);
+    let fkEnquadramentoIpi = cleanStr(cfo.FK_ENQUADRAMENTOIPI);
     let vlPorIpi = Number(cf.VL_PORIPI || 0); // Padrão do FoxPro é usar TMPCALCF.VL_PORIPI
     let vlIpiPorUnidade = 0;
+    let tgCalcIpiQtd = 0;
     let ipiTributando = Number(cfo.TG_IPI ?? 0) === 1;
+    let fkIpiInfCompl = 0;
     let ipiWinner = 'CFOP Padrão';
 
     logHierarchy({
@@ -178,28 +183,42 @@ export class TaxEngine {
 
     if (ipiTributando) {
       // Exceção NCM (TB_CLAFIS)
-      if (cf.PK_ID) {
-        const cstNcmIpi = tipo === 'S' ? String(cf.NR_SITTRIBIPISAI || '').trim() : String(cf.NR_SITTRIBIPIENT || '').trim();
-        if (cstNcmIpi) {
-          nrSittribIpi = cstNcmIpi;
-          ipiTributando = Number(tipo === 'S' ? cf.TG_IPI : cf.TG_IPIENT) === 1;
-          ipiWinner = 'NCM (TB_CLAFIS)';
-          logHierarchy({
-            tax: 'IPI',
-            levelName: '2. NCM / Classificação Fiscal',
-            tableSource: 'TB_CLAFIS',
-            recordFound: true,
-            applied: true,
-            cstAfter: nrSittribIpi,
-            rate: vlPorIpi,
-            reason: `NCM configurou CST ${nrSittribIpi}`
-          });
-        }
+      if (tipo === 'S' && notEmpty(cf.NR_SITTRIBIPISAI)) {
+        nrSittribIpi = cleanStr(cf.NR_SITTRIBIPISAI);
+        fkEnquadramentoIpi = cleanStr(cf.FK_ENQUADRAMENTOIPI);
+        ipiTributando = Number(cf.TG_IPI ?? 0) === 1;
+        ipiWinner = 'NCM (TB_CLAFIS)';
+        logHierarchy({
+          tax: 'IPI',
+          levelName: '2. NCM / Classificação Fiscal',
+          tableSource: 'TB_CLAFIS',
+          recordFound: true,
+          applied: true,
+          cstAfter: nrSittribIpi,
+          rate: vlPorIpi,
+          reason: `NCM configurou CST ${nrSittribIpi}`
+        });
+      } else if (tipo === 'E' && notEmpty(cf.NR_SITTRIBIPIENT)) {
+        nrSittribIpi = cleanStr(cf.NR_SITTRIBIPIENT);
+        fkEnquadramentoIpi = cleanStr(cf.FK_ENQUADRAMENTOIPIENT);
+        ipiTributando = Number(cf.TG_IPIENT ?? 0) === 1;
+        ipiWinner = 'NCM (TB_CLAFIS)';
+        logHierarchy({
+          tax: 'IPI',
+          levelName: '2. NCM / Classificação Fiscal',
+          tableSource: 'TB_CLAFIS',
+          recordFound: true,
+          applied: true,
+          cstAfter: nrSittribIpi,
+          rate: vlPorIpi,
+          reason: `NCM configurou CST ${nrSittribIpi}`
+        });
       }
 
       // Exceção Produto (TB_PRODUTOS)
-      if (ipiTributando && pro.NR_SITTRIBIPI) {
-        nrSittribIpi = String(pro.NR_SITTRIBIPI).trim();
+      if (ipiTributando && notEmpty(pro.NR_SITTRIBIPI)) {
+        nrSittribIpi = cleanStr(pro.NR_SITTRIBIPI);
+        fkEnquadramentoIpi = cleanStr(pro.FK_ENQUADRAMENTOIPI);
         ipiTributando = Number(pro.TG_IPI ?? 0) === 1;
         ipiWinner = 'Cadastro do Produto (TB_PRODUTOS)';
         logHierarchy({
@@ -215,9 +234,11 @@ export class TaxEngine {
       }
 
       // Isenção Cliente (TB_CADUNICO)
-      if (ipiTributando && cad.TG_IPI === 1) {
-        nrSittribIpi = String(cad.NR_SITTRIBIPI || '').trim();
+      if (ipiTributando && Number(cad.TG_IPI ?? 0) === 1) {
+        nrSittribIpi = cleanStr(cad.NR_SITTRIBIPI);
+        fkEnquadramentoIpi = cleanStr(cad.FK_ENQUADRAMENTOIPI);
         ipiTributando = Number(cad.TG_IPITRIB ?? 0) === 1;
+        fkIpiInfCompl = Number(cad.FK_INFCOMPLIPI ?? 0);
         ipiWinner = 'Isenção Cliente (TB_CADUNICO)';
         logHierarchy({
           tax: 'IPI',
@@ -232,9 +253,11 @@ export class TaxEngine {
       }
 
       // Isenção Empresa (TB_EMPRESAS)
-      if (ipiTributando && emp.TG_ISENTOIPI === 1) {
-        nrSittribIpi = String(emp.NR_SITTRIBIPI || '').trim();
+      if (ipiTributando && Number(emp.TG_ISENTOIPI ?? 0) === 1) {
+        nrSittribIpi = cleanStr(emp.NR_SITTRIBIPI);
+        fkEnquadramentoIpi = cleanStr(emp.FK_ENQUADRAMENTOIPI);
         ipiTributando = Number(emp.TG_IPI ?? 0) === 1;
+        fkIpiInfCompl = Number(emp.FK_INFCOMPLIPI ?? 0);
         ipiWinner = 'Isenção Empresa Emitente (TB_EMPRESAS)';
         logHierarchy({
           tax: 'IPI',
@@ -249,11 +272,53 @@ export class TaxEngine {
       }
     }
 
+    if (fkIpiInfCompl > 0) {
+      addInfCompl(fkIpiInfCompl, 'Informação Complementar IPI', 'Exceção IPI');
+    }
+
+    // Consulta TB_SITTRIBIPI (TMPCALSTIPI)
+    const sitIpi = findTaxSituation(cursors.tmpSitTribIpi, nrSittribIpi, 'TB_SITTRIBIPI', 'TG_IPI');
+    if (Number(sitIpi.FK_INFCOMPLIPI ?? 0) > 0) {
+      addInfCompl(sitIpi.FK_INFCOMPLIPI, 'Informação Complementar CST IPI', 'TB_SITTRIBIPI');
+    }
+
+    // Alíquota de IPI da classificação fiscal (TMPCALCF.VL_PORIPI)
+    vlPorIpi = Number(cf.VL_PORIPI || 0);
+
+    // IPI por quantidade
+    if (Number(pro.VL_IPIPORQTD ?? 0) > 0) {
+      vlIpiPorUnidade = Number(pro.VL_IPIPORQTD);
+      tgCalcIpiQtd = 1;
+      vlPorIpi = 0;
+    }
+
+    // Incentivo fiscal de IPI
+    if (Number(cabecalho.tgIncentivoIpi ?? 0) === 1 && Number(cad.FK_INFCOMPLIPIINCT ?? 0) > 0) {
+      addInfCompl(cad.FK_INFCOMPLIPIINCT, 'Incentivo Fiscal IPI', 'TB_CADUNICO');
+    }
+
+    // Isenção de IPI - CST não tributa (TG_IPI = 0)
+    if (Number(sitIpi.TG_IPI ?? 0) === 0) {
+      vlPorIpi = 0;
+      tgCalcIpiQtd = 0;
+      vlIpiPorUnidade = 0;
+    }
+
     // Regra de Imposto de IPI (TB_REGRAIMPOSTO)
-    const regraIpi = regrasIpi.find(r => String(r.TG_IMPOSTO).trim().toUpperCase() === 'IPI');
-    if (regraIpi && regraIpi.CD_SITRIBUTARIA) {
-      nrSittribIpi = String(regraIpi.CD_SITRIBUTARIA).trim();
-      if (regraIpi.VL_PORIMPOSTO !== undefined) vlPorIpi = Number(regraIpi.VL_PORIMPOSTO);
+    const regraIpi = regrasIpi.find(r => cleanStr(r.TG_IMPOSTO).toUpperCase() === 'IPI');
+    if (regraIpi) {
+      if (regraIpi.VL_PORIMPOSTO !== undefined && regraIpi.VL_PORIMPOSTO !== null) {
+        vlPorIpi = Number(regraIpi.VL_PORIMPOSTO);
+      }
+      if (notEmpty(regraIpi.CD_SITRIBUTARIA)) {
+        nrSittribIpi = cleanStr(regraIpi.CD_SITRIBUTARIA);
+      }
+      if (notEmpty(regraIpi.FK_ENQUADRAMENTOIPI)) {
+        fkEnquadramentoIpi = cleanStr(regraIpi.FK_ENQUADRAMENTOIPI);
+      }
+      if (Number(regraIpi.FK_INFCOMPL ?? 0) > 0) {
+        addInfCompl(regraIpi.FK_INFCOMPL, 'Regra Imposto IPI', 'TB_REGRAIMPOSTO');
+      }
       ipiWinner = 'Regra de Imposto (TB_REGRAIMPOSTO)';
       logHierarchy({
         tax: 'IPI',
@@ -267,12 +332,13 @@ export class TaxEngine {
       });
     }
 
-    // Cálculo numérico do IPI
+    // Cálculo numérico do IPI (L280-L335 do NFE_CALCULARITEM.PRG)
     let vlIpiBc = vlPretot;
     let vlIpi = 0;
 
     if (tgTransferencia === 1) {
-      const lnTransferenciaIpi = retornaSet('FATURAMENTO.TRANSFMARGEMIPI', 'N', 0);
+      let lnTransferenciaIpi = retornaSet('FATURAMENTO.TRANSFMARGEMIPI', 'N', 100);
+      if (lnTransferenciaIpi <= 0) lnTransferenciaIpi = 100;
       const ipiRetirado = tiraIpi(vlPretot, vlPorIpi);
       vlIpiBc = round((vlPretot - ipiRetirado) * (lnTransferenciaIpi / 100), 2);
       logFormula(
@@ -283,25 +349,30 @@ export class TaxEngine {
         vlIpiBc
       );
     } else {
-      if (retornaSet('VENDAS.IPICOMFRETE', 'N', 0) === 1) {
+      vlIpiBc = round(vlPretot, 2);
+      if (retornaSet('VENDAS.IPICOMFRETE', 'N', 1) === 1) {
         vlIpiBc += vlFreteUni;
       }
-      if (retornaSet('FATURAMENTO.IPICOMSEGDESPESA', 'N', 0) === 1) {
+      if (retornaSet('FATURAMENTO.IPICOMSEGDESPESA', 'N', 1) === 1) {
         vlIpiBc += vlDespesasUni + vlSeguroUni;
       }
-      if (retornaSet('FATURAMENTO.IPICOMDESCONTOINCO', 'N', 0) === 1) {
+      if (retornaSet('FATURAMENTO.IPICOMDESCONTOINCO', 'N', 1) === 1) {
         vlIpiBc -= vlDesconto;
       }
       vlIpiBc = round(Math.max(0, vlIpiBc), 2);
     }
 
-    // O PRG consulta TB_SITTRIBIPI (TMPCALSTIPI.TG_IPI); não há lista fixa de CST.
-    const sitIpi = findTaxSituation(cursors.tmpSitTribIpi, nrSittribIpi, 'TB_SITTRIBIPI', 'TG_IPI');
-    if (Number(sitIpi.TG_IPI) !== 1) vlPorIpi = 0;
-    if (vlPorIpi > 0) {
-      vlIpi = round((vlIpiBc * vlPorIpi) / 100, 2);
-      logFormula('IPI', 'Valor do IPI', 'Base IPI × (Alíquota / 100)', `${vlIpiBc} × (${vlPorIpi} / 100)`, vlIpi);
+    if (tgCalcIpiQtd === 1) {
+      vlPorIpi = 0;
+      vlIpi = round(qtMovimento * vlIpiPorUnidade, 2);
+      logFormula('IPI', 'Valor do IPI por Quantidade', 'Quantidade × Valor por Quantidade', `${qtMovimento} × ${vlIpiPorUnidade}`, vlIpi);
     } else {
+      vlIpi = round((vlIpiBc * vlPorIpi) / 100, 2);
+      if (vlPorIpi > 0) {
+        logFormula('IPI', 'Valor do IPI', 'Base IPI × (Alíquota / 100)', `${vlIpiBc} × (${vlPorIpi} / 100)`, vlIpi);
+      }
+    }
+    if (vlPorIpi === 0 && tgCalcIpiQtd === 0) {
       vlIpiBc = 0;
       vlIpi = 0;
     }
@@ -310,6 +381,7 @@ export class TaxEngine {
     // --- 3. CÁLCULO DO ICMS (L2910-L3367 e L399-L736) ---
     // =========================================================================
     let nrSittribIcms = '';
+    let vlPorIcm = 0;
     let vlPorIcmRbbc = 0;
     let vlPorIcmDeson = 0;
     let vlIcmDeson = 0;
@@ -416,10 +488,8 @@ export class TaxEngine {
 
     // 3.4 Nível 4: Produto (TB_PRODUTOS)
     if (tributaIcms(nrSittribIcms)) {
-      if (pro.NR_SITTRIB) {
-        // O PRG sempre usa PRO.NR_SITTRIB; não cria CST 40/102 e não
-        // preserva uma exceção anterior que ainda seja tributada.
-        const cstProd = String(pro.NR_SITTRIB).trim();
+      if (notEmpty(pro.NR_SITTRIB)) {
+        const cstProd = cleanStr(pro.NR_SITTRIB);
         nrSittribIcms = tgOrigemIcms + cstProd;
         icmsWinner = 'Cadastro do Produto (TB_PRODUTOS)';
         logHierarchy({
@@ -447,34 +517,41 @@ export class TaxEngine {
 
     // 3.5 Nível 5: Cliente e Empresa Emitente (TB_CADUNICO / TB_EMPRESAS)
     if (tributaIcms(nrSittribIcms) && Number(cad.TG_ICMS ?? 0) === 1) {
-      nrSittribIcms = tgOrigemIcms + String(cad.NR_SITTRIBICMS ?? '').trim();
-      fkMotivoDesonIcms = Number(cad.FK_MOTIVODESONICMS ?? 0);
-      if (cad.CD_BENEFIS) cdBenefis = String(cad.CD_BENEFIS).trim();
-      addInfCompl(cad.FK_INFCOMPLICMS, 'Isenção ICMS do Cliente', 'TB_CADUNICO');
-      icmsWinner = 'Isenção Cliente (TB_CADUNICO)';
-      logHierarchy({
-        tax: 'ICMS',
-        levelName: '5. Cliente',
-        tableSource: 'TB_CADUNICO',
-        recordFound: true,
-        applied: true,
-        cstAfter: nrSittribIcms,
-        reason: 'Cliente substituiu a CST conforme TG_ICMS / NR_SITTRIBICMS.'
-      });
+      if (notEmpty(cad.NR_SITTRIBICMS)) {
+        nrSittribIcms = tgOrigemIcms + cleanStr(cad.NR_SITTRIBICMS);
+        fkMotivoDesonIcms = Number(cad.FK_MOTIVODESONICMS ?? 0);
+        vlPorIcm = 0;
+        if (cad.CD_BENEFIS) cdBenefis = cleanStr(cad.CD_BENEFIS);
+        if (Number(cad.FK_INFCOMPLICMS ?? 0) > 0) addInfCompl(cad.FK_INFCOMPLICMS, 'Isenção ICMS do Cliente', 'TB_CADUNICO');
+        icmsWinner = 'Isenção Cliente (TB_CADUNICO)';
+        logHierarchy({
+          tax: 'ICMS',
+          levelName: '5. Cliente',
+          tableSource: 'TB_CADUNICO',
+          recordFound: true,
+          applied: true,
+          cstAfter: nrSittribIcms,
+          reason: 'Cliente substituiu a CST conforme TG_ICMS / NR_SITTRIBICMS.'
+        });
+      }
     }
 
-    if (tributaIcms(nrSittribIcms) && emp.TG_ISENTOICMS === 1) {
-      nrSittribIcms = tgOrigemIcms + String(emp.NR_SITTRIBICMS || '').trim();
-      icmsWinner = 'Empresa Emitente Isenta (TB_EMPRESAS)';
-      logHierarchy({
-        tax: 'ICMS',
-        levelName: '6. Empresa Emitente',
-        tableSource: 'TB_EMPRESAS',
-        recordFound: true,
-        applied: true,
-        cstAfter: nrSittribIcms,
-        reason: 'Empresa emitente cadastrada com isenção de ICMS'
-      });
+    if (tributaIcms(nrSittribIcms) && Number(emp.TG_ISENTOICMS ?? 0) === 1) {
+      if (notEmpty(emp.NR_SITTRIBICMS)) {
+        nrSittribIcms = tgOrigemIcms + cleanStr(emp.NR_SITTRIBICMS);
+        vlPorIcm = 0;
+        if (Number(emp.FK_INFCOMPLICMS ?? 0) > 0) addInfCompl(emp.FK_INFCOMPLICMS, 'Isenção ICMS da Empresa', 'TB_EMPRESAS');
+        icmsWinner = 'Empresa Emitente Isenta (TB_EMPRESAS)';
+        logHierarchy({
+          tax: 'ICMS',
+          levelName: '6. Empresa Emitente',
+          tableSource: 'TB_EMPRESAS',
+          recordFound: true,
+          applied: true,
+          cstAfter: nrSittribIcms,
+          reason: 'Empresa emitente cadastrada com isenção de ICMS'
+        });
+      }
     } else if (!tributaIcms(nrSittribIcms) && emp.TG_ISENTOICMS === 1) {
       logHierarchy({
         tax: 'ICMS',
@@ -522,7 +599,7 @@ export class TaxEngine {
     }
 
     // 3.7 Apuração da Alíquota de ICMS (RETORNARICMS L1154-L1242)
-    let vlPorIcm = 0;
+    vlPorIcm = 0;
     if (tipo === 'S') {
       if (cad.TG_PESSOA === 'F') {
         vlPorIcm = Number(icm.VL_PORICMCONS ?? 0);
@@ -828,42 +905,47 @@ export class TaxEngine {
     // =========================================================================
     // --- 4. CÁLCULO DO PIS E COFINS (L3491-L3721 e L737-L890) ---
     // =========================================================================
-    // 4.1 PIS Hierarchy
-    let nrSittribPis = String(cfo.NR_SITTRIBPIS || '').trim();
+    // --- 4. CÁLCULO DO PIS E COFINS (L3491-L3721 e L737-L890) ---
+    // =========================================================================
+    // 4.1 PIS
+    let nrSittribPis = cleanStr(cfo.NR_SITTRIBPIS);
     let pisTributando = Number(cfo.TG_PIS ?? 0) === 1;
     let vlPorPis = cfo.TG_IMPORTACAO === 1 && cf.VL_PORPISIMP ? Number(cf.VL_PORPISIMP) : Number(cf.VL_PORPIS || 0);
     let pisWinner = 'CFOP Base';
 
     if (pisTributando) {
-      if (cfExPis.CD_SITTRIBUTARIA) {
-        nrSittribPis = String(cfExPis.CD_SITTRIBUTARIA).trim();
+      if (notEmpty(cfExPis.CD_SITTRIBUTARIA)) {
+        nrSittribPis = cleanStr(cfExPis.CD_SITTRIBUTARIA);
         vlPorPis = Number(cfExPis.VL_PORICMS ?? 0);
         pisTributando = Number(cfExPis.TG_PIS ?? 0) === 1;
-        addInfCompl(cfExPis.FK_INFCOMPL, 'Exceção PIS NCM/UF', 'TB_CLAFISEXC');
+        if (Number(cfExPis.FK_INFCOMPL ?? 0) > 0) addInfCompl(cfExPis.FK_INFCOMPL, 'Exceção PIS NCM/UF', 'TB_CLAFISEXC');
         pisWinner = 'Exceção NCM/UF PIS (TB_CLAFISEXC)';
       }
-      if (pisTributando && pro.NR_SITTRIBPIS) {
-        nrSittribPis = String(pro.NR_SITTRIBPIS).trim();
+      if (pisTributando && notEmpty(pro.NR_SITTRIBPIS)) {
+        nrSittribPis = cleanStr(pro.NR_SITTRIBPIS);
         pisTributando = Number(pro.TG_PIS ?? 0) === 1;
         pisWinner = 'Cadastro do Produto (TB_PRODUTOS)';
       }
-      if (pisTributando && cad.TG_PIS === 1) {
-        nrSittribPis = String(cad.NR_SITTRIBPIS || '').trim();
+      if (pisTributando && Number(cad.TG_PIS ?? 0) === 1) {
+        nrSittribPis = cleanStr(cad.NR_SITTRIBPIS);
         pisTributando = Number(cad.TG_PISTRIB ?? 0) === 1;
+        if (Number(cad.FK_INFCOMPLPIS ?? 0) > 0) addInfCompl(cad.FK_INFCOMPLPIS, 'Isenção Cliente PIS', 'TB_CADUNICO');
         pisWinner = 'Isenção Cliente (TB_CADUNICO)';
       }
-      if (pisTributando && emp.TG_ISENTOPIS === 1) {
-        nrSittribPis = String(emp.NR_SITTRIBPIS || '').trim();
+      if (pisTributando && Number(emp.TG_ISENTOPIS ?? 0) === 1) {
+        nrSittribPis = cleanStr(emp.NR_SITTRIBPIS);
         pisTributando = Number(emp.TG_PIS ?? 0) === 1;
+        if (Number(emp.FK_INFCOMPLPIS ?? 0) > 0) addInfCompl(emp.FK_INFCOMPLPIS, 'Isenção Empresa PIS', 'TB_EMPRESAS');
         pisWinner = 'Isenção Empresa (TB_EMPRESAS)';
       }
     }
 
-    const regraPis = regrasPis.find(r => String(r.TG_IMPOSTO).trim().toUpperCase() === 'PIS');
+    const regraPis = regrasPis.find(r => cleanStr(r.TG_IMPOSTO).toUpperCase() === 'PIS');
     if (pisTributando && regraPis) {
-      if (regraPis.CD_SITRIBUTARIA) {
-        nrSittribPis = String(regraPis.CD_SITRIBUTARIA).trim();
+      if (notEmpty(regraPis.CD_SITRIBUTARIA)) {
+        nrSittribPis = cleanStr(regraPis.CD_SITRIBUTARIA);
         vlPorPis = Number(regraPis.VL_PORIMPOSTO || 0);
+        if (Number(regraPis.FK_INFCOMPL ?? 0) > 0) addInfCompl(regraPis.FK_INFCOMPL, 'Regra Imposto PIS', 'TB_REGRAIMPOSTO');
         pisWinner = 'Regra de Imposto (TB_REGRAIMPOSTO)';
       }
       if (nrSittribPis === '01' && vlPorPis !== 1.65 && vlPorPis !== 0.65) {
@@ -875,6 +957,10 @@ export class TaxEngine {
         nrSittribPis = '02';
         pisWinner += ' (Ajuste CST: 01->02 pois Alíq != 1.65 e 0.65)';
       }
+    }
+
+    if (Number(cabecalho.tgIncentivoPis ?? 0) === 1 && Number(cad.FK_INFCOMPLPISINCT ?? 0) > 0) {
+      addInfCompl(cad.FK_INFCOMPLPISINCT, 'Incentivo Fiscal PIS', 'TB_CADUNICO');
     }
 
     const sitPis = findTaxSituation(cursors.tmpSitTribPis, nrSittribPis, 'TB_SITTRIBPIS', 'TG_PIS');
@@ -916,41 +1002,44 @@ export class TaxEngine {
     }
 
     // 4.2 COFINS Hierarchy
-    let nrSittribCofins = String(cfo.NR_SITTRIBCOFINS || '').trim();
+    let nrSittribCofins = cleanStr(cfo.NR_SITTRIBCOFINS);
     let cofinsTributando = Number(cfo.TG_COFINS ?? 0) === 1;
     let vlPorCofins = cfo.TG_IMPORTACAO === 1 && cf.VL_PORCOFINSIMP ? Number(cf.VL_PORCOFINSIMP) : Number(cf.VL_PORCOFINS || 0);
     let cofinsWinner = 'CFOP Base';
 
     if (cofinsTributando) {
-      if (cfExCofins.CD_SITTRIBUTARIA) {
-        nrSittribCofins = String(cfExCofins.CD_SITTRIBUTARIA).trim();
+      if (notEmpty(cfExCofins.CD_SITTRIBUTARIA)) {
+        nrSittribCofins = cleanStr(cfExCofins.CD_SITTRIBUTARIA);
         vlPorCofins = Number(cfExCofins.VL_PORICMS ?? 0);
         cofinsTributando = Number(cfExCofins.TG_COFINS ?? 0) === 1;
-        addInfCompl(cfExCofins.FK_INFCOMPL, 'Exceção COFINS NCM/UF', 'TB_CLAFISEXC');
+        if (Number(cfExCofins.FK_INFCOMPL ?? 0) > 0) addInfCompl(cfExCofins.FK_INFCOMPL, 'Exceção COFINS NCM/UF', 'TB_CLAFISEXC');
         cofinsWinner = 'Exceção NCM/UF COFINS (TB_CLAFISEXC)';
       }
-      if (cofinsTributando && pro.NR_SITTRIBCOFINS) {
-        nrSittribCofins = String(pro.NR_SITTRIBCOFINS).trim();
+      if (cofinsTributando && notEmpty(pro.NR_SITTRIBCOFINS)) {
+        nrSittribCofins = cleanStr(pro.NR_SITTRIBCOFINS);
         cofinsTributando = Number(pro.TG_COFINS ?? 0) === 1;
         cofinsWinner = 'Cadastro do Produto (TB_PRODUTOS)';
       }
-      if (cofinsTributando && cad.TG_COFINS === 1) {
-        nrSittribCofins = String(cad.NR_SITTRIBCOFINS || '').trim();
+      if (cofinsTributando && Number(cad.TG_COFINS ?? 0) === 1) {
+        nrSittribCofins = cleanStr(cad.NR_SITTRIBCOFINS);
         cofinsTributando = Number(cad.TG_COFINSTRIB ?? 0) === 1;
+        if (Number(cad.FK_INFCOMPLCOFINS ?? 0) > 0) addInfCompl(cad.FK_INFCOMPLCOFINS, 'Isenção Cliente COFINS', 'TB_CADUNICO');
         cofinsWinner = 'Isenção Cliente (TB_CADUNICO)';
       }
-      if (cofinsTributando && emp.TG_ISENTOCOFINS === 1) {
-        nrSittribCofins = String(emp.NR_SITTRIBCOFINS || '').trim();
+      if (cofinsTributando && Number(emp.TG_ISENTOCOFINS ?? 0) === 1) {
+        nrSittribCofins = cleanStr(emp.NR_SITTRIBCOFINS);
         cofinsTributando = Number(emp.TG_COFINS ?? 0) === 1;
+        if (Number(emp.FK_INFCOMPLCOFINS ?? 0) > 0) addInfCompl(emp.FK_INFCOMPLCOFINS, 'Isenção Empresa COFINS', 'TB_EMPRESAS');
         cofinsWinner = 'Isenção Empresa (TB_EMPRESAS)';
       }
     }
 
-    const regraCofins = regrasCofins.find(r => String(r.TG_IMPOSTO).trim().toUpperCase() === 'COFINS');
+    const regraCofins = regrasCofins.find(r => cleanStr(r.TG_IMPOSTO).toUpperCase() === 'COFINS');
     if (cofinsTributando && regraCofins) {
-      if (regraCofins.CD_SITRIBUTARIA) {
-        nrSittribCofins = String(regraCofins.CD_SITRIBUTARIA).trim();
+      if (notEmpty(regraCofins.CD_SITRIBUTARIA)) {
+        nrSittribCofins = cleanStr(regraCofins.CD_SITRIBUTARIA);
         vlPorCofins = Number(regraCofins.VL_PORIMPOSTO || 0);
+        if (Number(regraCofins.FK_INFCOMPL ?? 0) > 0) addInfCompl(regraCofins.FK_INFCOMPL, 'Regra Imposto COFINS', 'TB_REGRAIMPOSTO');
         cofinsWinner = 'Regra de Imposto (TB_REGRAIMPOSTO)';
       }
       if (nrSittribCofins === '01' && vlPorCofins !== 7.6 && vlPorCofins !== 3) {
@@ -962,6 +1051,10 @@ export class TaxEngine {
         nrSittribCofins = '02';
         cofinsWinner += ' (Ajuste CST: 01->02 pois Alíq != 7.6 e 3)';
       }
+    }
+
+    if (Number(cabecalho.tgIncentivoCofins ?? 0) === 1 && Number(cad.FK_INFCOMPLCOFINSINCT ?? 0) > 0) {
+      addInfCompl(cad.FK_INFCOMPLCOFINSINCT, 'Incentivo Fiscal COFINS', 'TB_CADUNICO');
     }
 
     const sitCofins = findTaxSituation(cursors.tmpSitTribCofins, nrSittribCofins, 'TB_SITTRIBCOFINS', 'TG_COFINS');

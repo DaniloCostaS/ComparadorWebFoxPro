@@ -47,6 +47,9 @@ export interface CabecalhoFiscalInput {
   tgOperacao?: number; // 1=Interna, 2=Interestadual, 3=Exterior
   tgImpressao?: string; // 'S' ou 'N'
   vlPorRedCompraGov?: number; // Redutor compras governamentais
+  tgIncentivoIpi?: number;
+  tgIncentivoPis?: number;
+  tgIncentivoCofins?: number;
 }
 
 export interface HierarchyStep {
