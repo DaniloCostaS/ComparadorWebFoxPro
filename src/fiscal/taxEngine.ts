@@ -171,6 +171,7 @@ export class TaxEngine {
 
     logHierarchy({
       tax: 'IPI',
+      levelNumber: 1,
       levelName: '1. CFOP Base',
       tableSource: 'TB_CFOP',
       recordFound: !!cfo.PK_ID,
@@ -190,6 +191,7 @@ export class TaxEngine {
         ipiWinner = 'NCM (TB_CLAFIS)';
         logHierarchy({
           tax: 'IPI',
+          levelNumber: 2,
           levelName: '2. NCM / Classificação Fiscal',
           tableSource: 'TB_CLAFIS',
           recordFound: true,
@@ -205,6 +207,7 @@ export class TaxEngine {
         ipiWinner = 'NCM (TB_CLAFIS)';
         logHierarchy({
           tax: 'IPI',
+          levelNumber: 2,
           levelName: '2. NCM / Classificação Fiscal',
           tableSource: 'TB_CLAFIS',
           recordFound: true,
@@ -223,6 +226,7 @@ export class TaxEngine {
         ipiWinner = 'Cadastro do Produto (TB_PRODUTOS)';
         logHierarchy({
           tax: 'IPI',
+          levelNumber: 3,
           levelName: '3. Produto',
           tableSource: 'TB_PRODUTOS',
           recordFound: true,
@@ -242,6 +246,7 @@ export class TaxEngine {
         ipiWinner = 'Isenção Cliente (TB_CADUNICO)';
         logHierarchy({
           tax: 'IPI',
+          levelNumber: 4,
           levelName: '4. Isenção Cliente',
           tableSource: 'TB_CADUNICO',
           recordFound: true,
@@ -261,6 +266,7 @@ export class TaxEngine {
         ipiWinner = 'Isenção Empresa Emitente (TB_EMPRESAS)';
         logHierarchy({
           tax: 'IPI',
+          levelNumber: 5,
           levelName: '5. Isenção Empresa',
           tableSource: 'TB_EMPRESAS',
           recordFound: true,
@@ -322,6 +328,7 @@ export class TaxEngine {
       ipiWinner = 'Regra de Imposto (TB_REGRAIMPOSTO)';
       logHierarchy({
         tax: 'IPI',
+        levelNumber: 6,
         levelName: '6. Regra de Imposto Dinâmica',
         tableSource: 'TB_REGRAIMPOSTO',
         recordFound: true,
@@ -403,6 +410,7 @@ export class TaxEngine {
 
     logHierarchy({
       tax: 'ICMS',
+      levelNumber: 1,
       levelName: '1. CFOP Base',
       tableSource: 'TB_CFOP',
       recordFound: !!cfo.PK_ID,
@@ -433,6 +441,7 @@ export class TaxEngine {
 
       logHierarchy({
         tax: 'ICMS',
+        levelNumber: 2,
         levelName: '2. Exceção NCM / UF',
         tableSource: 'TB_CLAFISEXC',
         recordFound: true,
@@ -444,6 +453,7 @@ export class TaxEngine {
     } else if (cfEx.PK_ID) {
       logHierarchy({
         tax: 'ICMS',
+        levelNumber: 2,
         levelName: '2. Exceção NCM / UF',
         tableSource: 'TB_CLAFISEXC',
         recordFound: true,
@@ -467,6 +477,7 @@ export class TaxEngine {
 
       logHierarchy({
         tax: 'ICMS',
+        levelNumber: 3,
         levelName: '3. Exceção por Cliente',
         tableSource: 'TB_EXCECAOICMS',
         recordFound: true,
@@ -478,6 +489,7 @@ export class TaxEngine {
     } else if (cfExCad.PK_ID && !tributaIcms(nrSittribIcms)) {
       logHierarchy({
         tax: 'ICMS',
+        levelNumber: 3,
         levelName: '3. Exceção por Cliente',
         tableSource: 'TB_EXCECAOICMS',
         recordFound: true,
@@ -494,7 +506,8 @@ export class TaxEngine {
         icmsWinner = 'Cadastro do Produto (TB_PRODUTOS)';
         logHierarchy({
           tax: 'ICMS',
-          levelName: '4. Produto',
+          levelNumber: 4,
+          levelName: '4. Cadastro do Produto',
           tableSource: 'TB_PRODUTOS',
           recordFound: true,
           applied: true,
@@ -505,7 +518,8 @@ export class TaxEngine {
     } else {
       logHierarchy({
         tax: 'ICMS',
-        levelName: '4. Produto',
+        levelNumber: 4,
+        levelName: '4. Cadastro do Produto',
         tableSource: 'TB_PRODUTOS',
         recordFound: !!(pro.PK_ID || pro.CD_SITTRIBUTARIA),
         applied: false,
@@ -526,7 +540,8 @@ export class TaxEngine {
         icmsWinner = 'Isenção Cliente (TB_CADUNICO)';
         logHierarchy({
           tax: 'ICMS',
-          levelName: '5. Cliente',
+          levelNumber: 5,
+          levelName: '5. Isenção / Perfil do Cliente',
           tableSource: 'TB_CADUNICO',
           recordFound: true,
           applied: true,
@@ -544,7 +559,8 @@ export class TaxEngine {
         icmsWinner = 'Empresa Emitente Isenta (TB_EMPRESAS)';
         logHierarchy({
           tax: 'ICMS',
-          levelName: '6. Empresa Emitente',
+          levelNumber: 6,
+          levelName: '6. Isenção Empresa Emitente',
           tableSource: 'TB_EMPRESAS',
           recordFound: true,
           applied: true,
@@ -555,7 +571,8 @@ export class TaxEngine {
     } else if (!tributaIcms(nrSittribIcms) && emp.TG_ISENTOICMS === 1) {
       logHierarchy({
         tax: 'ICMS',
-        levelName: '6. Empresa Emitente',
+        levelNumber: 6,
+        levelName: '6. Isenção Empresa Emitente',
         tableSource: 'TB_EMPRESAS',
         recordFound: true,
         applied: false,
@@ -579,7 +596,8 @@ export class TaxEngine {
 
       logHierarchy({
         tax: 'ICMS',
-      levelName: '7. Regra de Imposto Dinâmica',
+        levelNumber: 7,
+        levelName: '7. Regra de Imposto Dinâmica',
         tableSource: 'TB_REGRAIMPOSTO',
         recordFound: true,
         applied: true,
@@ -590,7 +608,8 @@ export class TaxEngine {
     } else if (!tributaIcms(nrSittribIcms) && regraIcms && regraIcms.CD_SITRIBUTARIA) {
       logHierarchy({
         tax: 'ICMS',
-      levelName: '7. Regra de Imposto Dinâmica',
+        levelNumber: 7,
+        levelName: '7. Regra de Imposto Dinâmica',
         tableSource: 'TB_REGRAIMPOSTO',
         recordFound: true,
         applied: false,
@@ -664,6 +683,28 @@ export class TaxEngine {
     let stWinner: string | undefined = undefined;
 
     if (cfo.TG_NAOCALCSUBSICMS === 0) {
+      logHierarchy({
+        tax: 'ICMS-ST',
+        levelNumber: 1,
+        levelName: '1. Configuração CFOP',
+        tableSource: 'TB_CFOP',
+        recordFound: true,
+        applied: true,
+        reason: `CFOP ${cfo.PK_ID || item.fkCfop} autoriza cálculo de Substituição Tributária (TG_NAOCALCSUBSICMS = 0)`
+      });
+
+      logHierarchy({
+        tax: 'ICMS-ST',
+        levelNumber: 2,
+        levelName: '2. Destino da Mercadoria',
+        tableSource: 'TB_DESTINOMERCADORIA',
+        recordFound: true,
+        applied: Number(dest.TG_CALCICMSST ?? 0) === 1,
+        reason: Number(dest.TG_CALCICMSST ?? 0) === 1
+          ? 'Destino da mercadoria configurado para calcular ICMS-ST'
+          : 'Destino da mercadoria NÃO calcula ST (TG_CALCICMSST = 0)'
+      });
+
       // Regra ST padrão (TB_SUBSTRIBUTARIA)
       if (icmSt.PK_ID && dest.TG_CALCICMSST === 1) {
         if (icmSt.CD_SITTRIBUTARIA) {
@@ -682,7 +723,8 @@ export class TaxEngine {
 
         logHierarchy({
           tax: 'ICMS-ST',
-          levelName: '9. Substituição Tributária',
+          levelNumber: 3,
+          levelName: '3. Protocolo / ST Estadual',
           tableSource: 'TB_SUBSTRIBUTARIA',
           recordFound: true,
           applied: true,
@@ -708,7 +750,8 @@ export class TaxEngine {
 
         logHierarchy({
           tax: 'ICMS-ST',
-          levelName: '9. Regra de Imposto ST',
+          levelNumber: 4,
+          levelName: '4. Regra de Imposto ST',
           tableSource: 'TB_REGRAIMPOSTO',
           recordFound: true,
           applied: true,
@@ -717,6 +760,16 @@ export class TaxEngine {
           reason: `ST sobreposta por regra de imposto: MVA ${vlPorIcmVaBcSt}%, Alíquota ${vlPorIcmSt}%`
         });
       }
+    } else {
+      logHierarchy({
+        tax: 'ICMS-ST',
+        levelNumber: 1,
+        levelName: '1. Configuração CFOP',
+        tableSource: 'TB_CFOP',
+        recordFound: true,
+        applied: false,
+        reason: `CFOP ${cfo.PK_ID || item.fkCfop} bloqueia cálculo de ICMS-ST (TG_NAOCALCSUBSICMS = 1)`
+      });
     }
 
     // TG_DEDUZIR transfere o ICMS próprio para a dedução da ST. O PRG zera
@@ -913,6 +966,19 @@ export class TaxEngine {
     let vlPorPis = cfo.TG_IMPORTACAO === 1 && cf.VL_PORPISIMP ? Number(cf.VL_PORPISIMP) : Number(cf.VL_PORPIS || 0);
     let pisWinner = 'CFOP Base';
 
+    logHierarchy({
+      tax: 'PIS',
+      levelNumber: 1,
+      levelName: '1. CFOP Base',
+      tableSource: 'TB_CFOP',
+      recordFound: !!cfo.PK_ID,
+      applied: true,
+      cstBefore: '',
+      cstAfter: nrSittribPis,
+      rate: vlPorPis,
+      reason: `CST Inicial de PIS definida pelo CFOP ${cfo.PK_ID || item.fkCfop}: ${nrSittribPis || '(em branco)'}`
+    });
+
     if (pisTributando) {
       if (notEmpty(cfExPis.CD_SITTRIBUTARIA)) {
         nrSittribPis = cleanStr(cfExPis.CD_SITTRIBUTARIA);
@@ -920,23 +986,67 @@ export class TaxEngine {
         pisTributando = Number(cfExPis.TG_PIS ?? 0) === 1;
         if (Number(cfExPis.FK_INFCOMPL ?? 0) > 0) addInfCompl(cfExPis.FK_INFCOMPL, 'Exceção PIS NCM/UF', 'TB_CLAFISEXC');
         pisWinner = 'Exceção NCM/UF PIS (TB_CLAFISEXC)';
+        logHierarchy({
+          tax: 'PIS',
+          levelNumber: 2,
+          levelName: '2. Exceção NCM / UF',
+          tableSource: 'TB_CLAFISEXC',
+          recordFound: true,
+          applied: true,
+          cstAfter: nrSittribPis,
+          rate: vlPorPis,
+          reason: `Exceção NCM/UF alterou CST de PIS para ${nrSittribPis} e Alíquota para ${vlPorPis}%`
+        });
       }
       if (pisTributando && notEmpty(pro.NR_SITTRIBPIS)) {
         nrSittribPis = cleanStr(pro.NR_SITTRIBPIS);
         pisTributando = Number(pro.TG_PIS ?? 0) === 1;
         pisWinner = 'Cadastro do Produto (TB_PRODUTOS)';
+        logHierarchy({
+          tax: 'PIS',
+          levelNumber: 3,
+          levelName: '3. Cadastro do Produto',
+          tableSource: 'TB_PRODUTOS',
+          recordFound: true,
+          applied: true,
+          cstAfter: nrSittribPis,
+          rate: vlPorPis,
+          reason: `Produto configurou CST de PIS ${nrSittribPis}`
+        });
       }
       if (pisTributando && Number(cad.TG_PIS ?? 0) === 1) {
         nrSittribPis = cleanStr(cad.NR_SITTRIBPIS);
         pisTributando = Number(cad.TG_PISTRIB ?? 0) === 1;
         if (Number(cad.FK_INFCOMPLPIS ?? 0) > 0) addInfCompl(cad.FK_INFCOMPLPIS, 'Isenção Cliente PIS', 'TB_CADUNICO');
         pisWinner = 'Isenção Cliente (TB_CADUNICO)';
+        logHierarchy({
+          tax: 'PIS',
+          levelNumber: 4,
+          levelName: '4. Isenção Cliente',
+          tableSource: 'TB_CADUNICO',
+          recordFound: true,
+          applied: true,
+          cstAfter: nrSittribPis,
+          rate: vlPorPis,
+          reason: `Cliente alterou CST de PIS para ${nrSittribPis}`
+        });
       }
       if (pisTributando && Number(emp.TG_ISENTOPIS ?? 0) === 1) {
         nrSittribPis = cleanStr(emp.NR_SITTRIBPIS);
         pisTributando = Number(emp.TG_PIS ?? 0) === 1;
         if (Number(emp.FK_INFCOMPLPIS ?? 0) > 0) addInfCompl(emp.FK_INFCOMPLPIS, 'Isenção Empresa PIS', 'TB_EMPRESAS');
         pisWinner = 'Isenção Empresa (TB_EMPRESAS)';
+        logHierarchy({
+          tax: 'PIS',
+          levelNumber: 5,
+          levelName: '5. Isenção Empresa Emitente',
+          tableSource: 'TB_EMPRESAS',
+          recordFound: true,
+          applied: true,
+          cstAfter: nrSittribPis,
+          rate: vlPorPis,
+          reason: `Empresa emitente alterou CST de PIS para ${nrSittribPis}`
+        });
       }
     }
 
@@ -947,6 +1057,17 @@ export class TaxEngine {
         vlPorPis = Number(regraPis.VL_PORIMPOSTO || 0);
         if (Number(regraPis.FK_INFCOMPL ?? 0) > 0) addInfCompl(regraPis.FK_INFCOMPL, 'Regra Imposto PIS', 'TB_REGRAIMPOSTO');
         pisWinner = 'Regra de Imposto (TB_REGRAIMPOSTO)';
+        logHierarchy({
+          tax: 'PIS',
+          levelNumber: 6,
+          levelName: '6. Regra de Imposto Dinâmica',
+          tableSource: 'TB_REGRAIMPOSTO',
+          recordFound: true,
+          applied: true,
+          cstAfter: nrSittribPis,
+          rate: vlPorPis,
+          reason: `Regra de imposto dinâmica sobrepôs PIS para CST ${nrSittribPis} e Alíquota ${vlPorPis}%`
+        });
       }
       if (nrSittribPis === '01' && vlPorPis !== 1.65 && vlPorPis !== 0.65) {
         nrSittribPis = '02';
@@ -965,17 +1086,6 @@ export class TaxEngine {
 
     const sitPis = findTaxSituation(cursors.tmpSitTribPis, nrSittribPis, 'TB_SITTRIBPIS', 'TG_PIS');
     if (Number(sitPis.TG_PIS) !== 1) vlPorPis = 0;
-
-    logHierarchy({
-      tax: 'PIS',
-      levelName: 'Hierarquia PIS',
-      tableSource: pisWinner,
-      recordFound: true,
-      applied: true,
-      cstAfter: nrSittribPis,
-      rate: vlPorPis,
-      reason: `Definido por: ${pisWinner}`
-    });
 
     // Base PIS com exclusão do ICMS (Tema 69 STF)
     let vlPisBc = vlPretot;
@@ -1007,6 +1117,19 @@ export class TaxEngine {
     let vlPorCofins = cfo.TG_IMPORTACAO === 1 && cf.VL_PORCOFINSIMP ? Number(cf.VL_PORCOFINSIMP) : Number(cf.VL_PORCOFINS || 0);
     let cofinsWinner = 'CFOP Base';
 
+    logHierarchy({
+      tax: 'COFINS',
+      levelNumber: 1,
+      levelName: '1. CFOP Base',
+      tableSource: 'TB_CFOP',
+      recordFound: !!cfo.PK_ID,
+      applied: true,
+      cstBefore: '',
+      cstAfter: nrSittribCofins,
+      rate: vlPorCofins,
+      reason: `CST Inicial de COFINS definida pelo CFOP ${cfo.PK_ID || item.fkCfop}: ${nrSittribCofins || '(em branco)'}`
+    });
+
     if (cofinsTributando) {
       if (notEmpty(cfExCofins.CD_SITTRIBUTARIA)) {
         nrSittribCofins = cleanStr(cfExCofins.CD_SITTRIBUTARIA);
@@ -1014,23 +1137,67 @@ export class TaxEngine {
         cofinsTributando = Number(cfExCofins.TG_COFINS ?? 0) === 1;
         if (Number(cfExCofins.FK_INFCOMPL ?? 0) > 0) addInfCompl(cfExCofins.FK_INFCOMPL, 'Exceção COFINS NCM/UF', 'TB_CLAFISEXC');
         cofinsWinner = 'Exceção NCM/UF COFINS (TB_CLAFISEXC)';
+        logHierarchy({
+          tax: 'COFINS',
+          levelNumber: 2,
+          levelName: '2. Exceção NCM / UF',
+          tableSource: 'TB_CLAFISEXC',
+          recordFound: true,
+          applied: true,
+          cstAfter: nrSittribCofins,
+          rate: vlPorCofins,
+          reason: `Exceção NCM/UF alterou CST de COFINS para ${nrSittribCofins} e Alíquota para ${vlPorCofins}%`
+        });
       }
       if (cofinsTributando && notEmpty(pro.NR_SITTRIBCOFINS)) {
         nrSittribCofins = cleanStr(pro.NR_SITTRIBCOFINS);
         cofinsTributando = Number(pro.TG_COFINS ?? 0) === 1;
         cofinsWinner = 'Cadastro do Produto (TB_PRODUTOS)';
+        logHierarchy({
+          tax: 'COFINS',
+          levelNumber: 3,
+          levelName: '3. Cadastro do Produto',
+          tableSource: 'TB_PRODUTOS',
+          recordFound: true,
+          applied: true,
+          cstAfter: nrSittribCofins,
+          rate: vlPorCofins,
+          reason: `Produto configurou CST de COFINS ${nrSittribCofins}`
+        });
       }
       if (cofinsTributando && Number(cad.TG_COFINS ?? 0) === 1) {
         nrSittribCofins = cleanStr(cad.NR_SITTRIBCOFINS);
         cofinsTributando = Number(cad.TG_COFINSTRIB ?? 0) === 1;
         if (Number(cad.FK_INFCOMPLCOFINS ?? 0) > 0) addInfCompl(cad.FK_INFCOMPLCOFINS, 'Isenção Cliente COFINS', 'TB_CADUNICO');
         cofinsWinner = 'Isenção Cliente (TB_CADUNICO)';
+        logHierarchy({
+          tax: 'COFINS',
+          levelNumber: 4,
+          levelName: '4. Isenção Cliente',
+          tableSource: 'TB_CADUNICO',
+          recordFound: true,
+          applied: true,
+          cstAfter: nrSittribCofins,
+          rate: vlPorCofins,
+          reason: `Cliente alterou CST de COFINS para ${nrSittribCofins}`
+        });
       }
       if (cofinsTributando && Number(emp.TG_ISENTOCOFINS ?? 0) === 1) {
         nrSittribCofins = cleanStr(emp.NR_SITTRIBCOFINS);
         cofinsTributando = Number(emp.TG_COFINS ?? 0) === 1;
         if (Number(emp.FK_INFCOMPLCOFINS ?? 0) > 0) addInfCompl(emp.FK_INFCOMPLCOFINS, 'Isenção Empresa COFINS', 'TB_EMPRESAS');
         cofinsWinner = 'Isenção Empresa (TB_EMPRESAS)';
+        logHierarchy({
+          tax: 'COFINS',
+          levelNumber: 5,
+          levelName: '5. Isenção Empresa Emitente',
+          tableSource: 'TB_EMPRESAS',
+          recordFound: true,
+          applied: true,
+          cstAfter: nrSittribCofins,
+          rate: vlPorCofins,
+          reason: `Empresa emitente alterou CST de COFINS para ${nrSittribCofins}`
+        });
       }
     }
 
@@ -1041,6 +1208,17 @@ export class TaxEngine {
         vlPorCofins = Number(regraCofins.VL_PORIMPOSTO || 0);
         if (Number(regraCofins.FK_INFCOMPL ?? 0) > 0) addInfCompl(regraCofins.FK_INFCOMPL, 'Regra Imposto COFINS', 'TB_REGRAIMPOSTO');
         cofinsWinner = 'Regra de Imposto (TB_REGRAIMPOSTO)';
+        logHierarchy({
+          tax: 'COFINS',
+          levelNumber: 6,
+          levelName: '6. Regra de Imposto Dinâmica',
+          tableSource: 'TB_REGRAIMPOSTO',
+          recordFound: true,
+          applied: true,
+          cstAfter: nrSittribCofins,
+          rate: vlPorCofins,
+          reason: `Regra de imposto dinâmica sobrepôs COFINS para CST ${nrSittribCofins} e Alíquota ${vlPorCofins}%`
+        });
       }
       if (nrSittribCofins === '01' && vlPorCofins !== 7.6 && vlPorCofins !== 3) {
         nrSittribCofins = '02';
@@ -1059,17 +1237,6 @@ export class TaxEngine {
 
     const sitCofins = findTaxSituation(cursors.tmpSitTribCofins, nrSittribCofins, 'TB_SITTRIBCOFINS', 'TG_COFINS');
     if (Number(sitCofins.TG_COFINS) !== 1) vlPorCofins = 0;
-
-    logHierarchy({
-      tax: 'COFINS',
-      levelName: 'Hierarquia COFINS',
-      tableSource: cofinsWinner,
-      recordFound: true,
-      applied: true,
-      cstAfter: nrSittribCofins,
-      rate: vlPorCofins,
-      reason: `Definido por: ${cofinsWinner}`
-    });
 
     let vlCofinsBc = vlPretot;
     if (semIcmsPis && vlIcm > 0) {
@@ -1120,8 +1287,47 @@ export class TaxEngine {
     }
 
     // =========================================================================
-    // --- 6. MONTAGEM DO RESULTADO FINAL ---
+    // --- 6. MONTAGEM DO RESULTADO FINAL E PÓS-PROCESSAMENTO DA PIRÂMIDE ---
     // =========================================================================
+    const resolveTaxWinner = (taxName: 'ICMS' | 'ICMS-ST' | 'IPI' | 'PIS' | 'COFINS'): number | undefined => {
+      const taxSteps = hierarchySteps.filter(s => s.tax === taxName);
+      const appliedSteps = taxSteps.filter(s => s.applied);
+      let winnerStep: HierarchyStep | undefined;
+
+      if (appliedSteps.length > 0) {
+        winnerStep = appliedSteps[appliedSteps.length - 1];
+        winnerStep.isWinner = true;
+        winnerStep.status = 'winner';
+
+        appliedSteps.slice(0, -1).forEach(s => {
+          s.isWinner = false;
+          s.status = 'overridden';
+        });
+      }
+
+      taxSteps.forEach(s => {
+        if (!s.applied) {
+          s.isWinner = false;
+          const reasonLow = (s.reason || '').toLowerCase();
+          if (reasonLow.includes('ignorado') || reasonLow.includes('isenta') || reasonLow.includes('não-tributada')) {
+            s.status = 'bypassed_exemption';
+          } else if (!s.recordFound) {
+            s.status = 'not_found';
+          } else {
+            s.status = 'overridden';
+          }
+        }
+      });
+
+      return winnerStep?.levelNumber;
+    };
+
+    const icmsWinnerLevel = resolveTaxWinner('ICMS');
+    const ipiWinnerLevel = resolveTaxWinner('IPI');
+    const pisWinnerLevel = resolveTaxWinner('PIS');
+    const cofinsWinnerLevel = resolveTaxWinner('COFINS');
+    const stWinnerLevel = stWinner ? resolveTaxWinner('ICMS-ST') : undefined;
+
     const memory: TaxCalculationMemory = {
       hierarchySteps,
       formulas,
@@ -1129,10 +1335,15 @@ export class TaxEngine {
       systemParameters,
       pyramidSummary: {
         icmsWinner,
+        icmsWinnerLevel,
         ipiWinner,
+        ipiWinnerLevel,
         pisWinner,
+        pisWinnerLevel,
         cofinsWinner,
-        stWinner
+        cofinsWinnerLevel,
+        stWinner,
+        stWinnerLevel
       }
     };
 

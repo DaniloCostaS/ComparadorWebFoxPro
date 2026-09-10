@@ -1178,25 +1178,75 @@
             </div>
           </div>
 
-          <!-- Pirâmide de Decisão Passo a Passo -->
-          <div class="space-y-3">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h3 class="font-bold text-sm text-gray-800 dark:text-slate-200 uppercase flex items-center gap-2">
-                <span>🌲</span> Pirâmide de Hierarquia (Linha do Tempo de Decisões)
-              </h3>
-              <div class="flex items-center gap-1.5 overflow-x-auto text-xs font-semibold">
-                <button type="button" data-tax="ALL" class="tax-filter-btn px-2.5 py-1 rounded-md bg-blue-600 text-white transition-colors">Todos</button>
-                <button type="button" data-tax="ICMS" class="tax-filter-btn px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition-colors">ICMS</button>
-                <button type="button" data-tax="ICMS-ST" class="tax-filter-btn px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition-colors">ST</button>
-                <button type="button" data-tax="IPI" class="tax-filter-btn px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition-colors">IPI</button>
-                <button type="button" data-tax="PIS" class="tax-filter-btn px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition-colors">PIS</button>
-                <button type="button" data-tax="COFINS" class="tax-filter-btn px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition-colors">COFINS</button>
+          <!-- Pirâmide Visual de Decisão Tributária por Imposto -->
+          <div class="space-y-4 pt-2">
+            
+            <!-- Cabeçalho e Seletor de Impostos -->
+            <div class="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-900 dark:via-slate-900/90 dark:to-blue-950/20 shadow-sm space-y-4">
+              <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="p-2 rounded-xl bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold text-lg">🔺</span>
+                    <div>
+                      <h3 class="font-extrabold text-base text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+                        Pirâmide de Decisão Fiscal
+                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">Interativa</span>
+                      </h3>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        Ordem de precedência de regras fiscais e destaque do degrau exato onde a informação foi encontrada.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Legenda Rápida de Cores -->
+                <div class="flex flex-wrap items-center gap-2 text-[11px] font-medium shrink-0">
+                  <div class="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <strong>Regra Vencedora (Aplicada)</strong>
+                  </div>
+                  <div class="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <span>Encontrada / Superada</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-200 dark:bg-slate-800 text-gray-600 dark:text-gray-400">
+                    <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+                    <span>Sem Registro</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Abas dos Impostos -->
+              <div class="flex items-center gap-2 overflow-x-auto pb-1 border-b border-gray-200 dark:border-slate-800" id="tax-pyramid-tabs">
+                <!-- Injetado dinamicamente via JS com botões para ICMS, ICMS-ST, IPI, PIS, COFINS e Visão Geral -->
+              </div>
+
+              <!-- Container da Pirâmide de Fato (Renderizado Dinamicamente) -->
+              <div id="tax-pyramid-container" class="py-3">
+                <!-- Degraus em pirâmide renderizados pelo taxSimulator.ts -->
+              </div>
+
+              <!-- Painel de Inspeção do Degrau Clicado -->
+              <div id="pyramid-detail-inspector" class="hidden p-4 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 shadow-sm transition-all duration-200">
+                <!-- Detalhes do degrau selecionado na pirâmide -->
               </div>
             </div>
 
-            <div id="hierarchy-steps-list" class="space-y-2.5">
-              <!-- Renderizado dinamicamente pelo taxSimulator.ts -->
+            <!-- Seção Opcional: Linha do Tempo Sequencial (Expansível) -->
+            <div class="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+              <button id="btn-toggle-linear-steps" type="button" class="w-full p-3.5 flex items-center justify-between text-left text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer">
+                <span class="flex items-center gap-2">
+                  <span>📜</span> Ver Log Sequencial de Eventos (Linha do Tempo Completa)
+                </span>
+                <span id="linear-steps-toggle-icon" class="text-xs text-gray-400">▼ Expandir</span>
+              </button>
+              <div id="linear-steps-wrapper" class="hidden p-4 border-t border-gray-200 dark:border-slate-800 space-y-2">
+                <div id="hierarchy-steps-list" class="space-y-2.5">
+                  <!-- Log textual tradicional mantido -->
+                </div>
+              </div>
             </div>
+
           </div>
 
           <!-- Memória de Fórmulas Matemáticas Abertas -->

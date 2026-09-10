@@ -9,10 +9,63 @@ import type {
   ItemFiscalInput,
   CabecalhoFiscalInput,
   CalculatedItemResult,
-  SimulationPayload
+  SimulationPayload,
+  HierarchyStep
 } from './fiscal/types';
 
 const STORAGE_KEY_SQL_CONFIG = 'comparador_sql_config';
+
+
+interface PyramidLevelTemplate {
+  levelNumber: number;
+  levelName: string;
+  tableSource: string;
+  description: string;
+  isBase?: boolean;
+  isTop?: boolean;
+}
+
+const TAX_PYRAMID_TEMPLATES: Record<string, PyramidLevelTemplate[]> = {
+  ICMS: [
+    { levelNumber: 7, levelName: '7. Regra de Imposto Dinâmica', tableSource: 'TB_REGRAIMPOSTO', description: 'Regra fiscal customizada (prioridade máxima do FoxPro)', isTop: true },
+    { levelNumber: 6, levelName: '6. Isenção Empresa Emitente', tableSource: 'TB_EMPRESAS', description: 'Tratamento de isenção vinculado ao cadastro da filial emitente' },
+    { levelNumber: 5, levelName: '5. Isenção / Perfil do Cliente', tableSource: 'TB_CADUNICO', description: 'Tratamento de isenção ou CST específica cadastrada no cliente/destinatário' },
+    { levelNumber: 4, levelName: '4. Cadastro do Produto', tableSource: 'TB_PRODUTOS', description: 'CST e parâmetros cadastrados diretamente no item' },
+    { levelNumber: 3, levelName: '3. Exceção por Cliente', tableSource: 'TB_EXCECAOICMS', description: 'Exceção fiscal de ICMS cadastrada exclusivamente para este cliente' },
+    { levelNumber: 2, levelName: '2. Exceção NCM por UF', tableSource: 'TB_CLAFISEXC', description: 'Exceção fiscal vinculada ao NCM da mercadoria para a UF da operação' },
+    { levelNumber: 1, levelName: '1. CFOP Base', tableSource: 'TB_CFOP', description: 'Configuração geral de CST do CFOP (regra padrão / base da pirâmide)', isBase: true },
+  ],
+  'ICMS-ST': [
+    { levelNumber: 4, levelName: '4. Regra de Imposto ST', tableSource: 'TB_REGRAIMPOSTO', description: 'Regra fiscal customizada de Substituição Tributária (sobreposição total)', isTop: true },
+    { levelNumber: 3, levelName: '3. Protocolo / ST Estadual', tableSource: 'TB_SUBSTRIBUTARIA', description: 'MVA %, Alíquota ST e Redução ST cadastradas para o NCM e UF' },
+    { levelNumber: 2, levelName: '2. Destino da Mercadoria', tableSource: 'TB_DESTINOMERCADORIA', description: 'Validação se o destino da operação calcula ICMS-ST' },
+    { levelNumber: 1, levelName: '1. Configuração CFOP', tableSource: 'TB_CFOP', description: 'Liberação do CFOP para apuração de ST', isBase: true },
+  ],
+  IPI: [
+    { levelNumber: 6, levelName: '6. Regra de Imposto Dinâmica', tableSource: 'TB_REGRAIMPOSTO', description: 'Regra fiscal customizada de IPI (prioridade máxima do FoxPro)', isTop: true },
+    { levelNumber: 5, levelName: '5. Isenção Empresa', tableSource: 'TB_EMPRESAS', description: 'Isenção de IPI no cadastro da filial emitente' },
+    { levelNumber: 4, levelName: '4. Isenção Cliente', tableSource: 'TB_CADUNICO', description: 'Isenção de IPI no cadastro do cliente/destinatário' },
+    { levelNumber: 3, levelName: '3. Produto', tableSource: 'TB_PRODUTOS', description: 'CST ou alíquota/valor por unidade definidos no produto' },
+    { levelNumber: 2, levelName: '2. NCM / Classificação Fiscal', tableSource: 'TB_CLAFIS', description: 'Alíquota e CST de IPI na classificação fiscal NCM' },
+    { levelNumber: 1, levelName: '1. CFOP Base', tableSource: 'TB_CFOP', description: 'CST inicial de IPI definida no cadastro de CFOP', isBase: true },
+  ],
+  PIS: [
+    { levelNumber: 6, levelName: '6. Regra de Imposto Dinâmica', tableSource: 'TB_REGRAIMPOSTO', description: 'Regra fiscal customizada de PIS (prioridade máxima do FoxPro)', isTop: true },
+    { levelNumber: 5, levelName: '5. Isenção Empresa Emitente', tableSource: 'TB_EMPRESAS', description: 'Isenção de PIS da filial emitente' },
+    { levelNumber: 4, levelName: '4. Isenção Cliente', tableSource: 'TB_CADUNICO', description: 'Isenção de PIS do cliente/destinatário' },
+    { levelNumber: 3, levelName: '3. Cadastro do Produto', tableSource: 'TB_PRODUTOS', description: 'CST de PIS parametrizada no cadastro do item' },
+    { levelNumber: 2, levelName: '2. Exceção NCM / UF', tableSource: 'TB_CLAFISEXC', description: 'Exceção de PIS configurada por NCM e UF' },
+    { levelNumber: 1, levelName: '1. CFOP Base', tableSource: 'TB_CFOP', description: 'CST inicial de PIS definida no CFOP', isBase: true },
+  ],
+  COFINS: [
+    { levelNumber: 6, levelName: '6. Regra de Imposto Dinâmica', tableSource: 'TB_REGRAIMPOSTO', description: 'Regra fiscal customizada de COFINS (prioridade máxima do FoxPro)', isTop: true },
+    { levelNumber: 5, levelName: '5. Isenção Empresa Emitente', tableSource: 'TB_EMPRESAS', description: 'Isenção de COFINS da filial emitente' },
+    { levelNumber: 4, levelName: '4. Isenção Cliente', tableSource: 'TB_CADUNICO', description: 'Isenção de COFINS do cliente/destinatário' },
+    { levelNumber: 3, levelName: '3. Cadastro do Produto', tableSource: 'TB_PRODUTOS', description: 'CST de COFINS parametrizada no cadastro do item' },
+    { levelNumber: 2, levelName: '2. Exceção NCM / UF', tableSource: 'TB_CLAFISEXC', description: 'Exceção de COFINS configurada por NCM e UF' },
+    { levelNumber: 1, levelName: '1. CFOP Base', tableSource: 'TB_CFOP', description: 'CST inicial de COFINS definida no CFOP', isBase: true },
+  ]
+};
 
 export class TaxSimulator {
   private sqlConfig: SqlServerConfig = {
@@ -29,6 +82,7 @@ export class TaxSimulator {
   private isConnected: boolean = false;
   private lastResult: CalculatedItemResult | null = null;
   private activeTaxFilter: string = 'ALL';
+  private activePyramidTax: string = 'ALL';
 
   constructor() {
     this.loadSavedConfig();
@@ -195,6 +249,23 @@ export class TaxSimulator {
         target.classList.add('bg-blue-600', 'text-white');
         this.renderHierarchySteps();
       });
+    });
+
+    // Toggle para o log sequencial linear
+    const btnToggleLinear = document.getElementById('btn-toggle-linear-steps');
+    const linearWrapper = document.getElementById('linear-steps-wrapper');
+    const linearToggleIcon = document.getElementById('linear-steps-toggle-icon');
+    btnToggleLinear?.addEventListener('click', () => {
+      if (linearWrapper) {
+        const isHidden = linearWrapper.classList.contains('hidden');
+        if (isHidden) {
+          linearWrapper.classList.remove('hidden');
+          if (linearToggleIcon) linearToggleIcon.textContent = '▲ Recolher';
+        } else {
+          linearWrapper.classList.add('hidden');
+          if (linearToggleIcon) linearToggleIcon.textContent = '▼ Expandir';
+        }
+      }
     });
   }
 
@@ -773,13 +844,18 @@ export class TaxSimulator {
     this.setText('summary-pis-winner', res.memory.pyramidSummary.pisWinner);
     this.setText('summary-cofins-winner', res.memory.pyramidSummary.cofinsWinner);
 
-    // 3. Renderizar Lista de Etapas da Pirâmide
+    // 3. Renderizar Pirâmide Visual de Decisão Fiscal (inicia por padrão na Visão Geral)
+    this.activePyramidTax = 'ALL';
+    this.renderPyramidTabs();
+    this.renderTaxPyramid(this.activePyramidTax);
+
+    // 4. Renderizar Lista de Etapas Lineares (Log Sequencial Opcional)
     this.renderHierarchySteps();
 
-    // 4. Renderizar Memória de Fórmulas Matemáticas
+    // 5. Renderizar Memória de Fórmulas Matemáticas
     this.renderFormulas();
 
-    // 5. Informações Complementares
+    // 6. Informações Complementares
     this.renderComplementaryInfo();
 
     // Rola suavemente até os resultados
@@ -835,6 +911,466 @@ export class TaxSimulator {
         </div>
       `;
     }).join('');
+  }
+
+
+  private renderPyramidTabs() {
+    const tabsContainer = document.getElementById('tax-pyramid-tabs');
+    if (!tabsContainer || !this.lastResult) return;
+    const res = this.lastResult;
+
+    const taxes = [
+      {
+        id: 'ALL',
+        label: 'Visão Geral',
+        icon: '✨',
+        badge: 'Todos os Tributos',
+        winner: 'Comparativo'
+      },
+      {
+        id: 'ICMS',
+        label: 'ICMS Próprio',
+        icon: '🏛️',
+        badge: `CST ${res.nrSittribIcms} | ${res.vlPorIcm}%`,
+        winner: res.memory.pyramidSummary.icmsWinner
+      },
+      {
+        id: 'ICMS-ST',
+        label: 'ICMS-ST',
+        icon: '🛡️',
+        badge: res.vlPorIcmSt > 0 ? `ST: ${res.vlPorIcmSt}%` : 'Sem ST',
+        winner: res.memory.pyramidSummary.stWinner || 'Sem ST'
+      },
+      {
+        id: 'IPI',
+        label: 'IPI',
+        icon: '⚙️',
+        badge: `CST ${res.nrSittribIpi} | ${res.vlPorIpi}%`,
+        winner: res.memory.pyramidSummary.ipiWinner
+      },
+      {
+        id: 'PIS',
+        label: 'PIS',
+        icon: '💧',
+        badge: `CST ${res.nrSittribPis} | ${res.vlPorPis}%`,
+        winner: res.memory.pyramidSummary.pisWinner
+      },
+      {
+        id: 'COFINS',
+        label: 'COFINS',
+        icon: '📊',
+        badge: `CST ${res.nrSittribCofins} | ${res.vlPorCofins}%`,
+        winner: res.memory.pyramidSummary.cofinsWinner
+      }
+    ];
+
+    tabsContainer.innerHTML = taxes.map(t => {
+      const isActive = this.activePyramidTax === t.id;
+      const activeClasses = isActive
+        ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400/40 font-bold'
+        : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700';
+
+      return `
+        <button type="button" data-tax-tab="${t.id}" class="pyramid-tab-btn px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center gap-2 cursor-pointer shrink-0 ${activeClasses}">
+          <span class="text-sm">${t.icon}</span>
+          <span>${t.label}</span>
+          <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}">
+            ${t.badge}
+          </span>
+        </button>
+      `;
+    }).join('');
+
+    tabsContainer.querySelectorAll('.pyramid-tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const taxId = target.getAttribute('data-tax-tab') || 'ALL';
+        this.activePyramidTax = taxId;
+        this.renderPyramidTabs();
+        this.renderTaxPyramid(taxId);
+      });
+    });
+  }
+
+  private renderTaxPyramid(taxName: string) {
+    const container = document.getElementById('tax-pyramid-container');
+    const inspector = document.getElementById('pyramid-detail-inspector');
+    if (inspector) inspector.classList.add('hidden');
+    if (!container || !this.lastResult) return;
+
+    if (taxName === 'ALL') {
+      this.renderAllPyramidsOverview(container);
+      return;
+    }
+
+    const tiers = TAX_PYRAMID_TEMPLATES[taxName] || TAX_PYRAMID_TEMPLATES['ICMS'];
+    const res = this.lastResult;
+    const taxSteps = res.memory.hierarchySteps.filter(s => s.tax === taxName);
+
+    // Identificar resumo do imposto
+    let taxVal = 0;
+    let taxCst = '';
+    let taxAliq = 0;
+    let taxBase = 0;
+
+    if (taxName === 'ICMS') {
+      taxVal = res.vlIcm;
+      taxCst = res.nrSittribIcms;
+      taxAliq = res.vlPorIcm;
+      taxBase = res.vlIcmbc;
+    } else if (taxName === 'ICMS-ST') {
+      taxVal = res.vlIcmSt;
+      taxCst = res.vlPorIcmSt > 0 ? res.nrSittribIcms : 'Sem ST';
+      taxAliq = res.vlPorIcmSt;
+      taxBase = res.vlIcmBcSt;
+    } else if (taxName === 'IPI') {
+      taxVal = res.vlIpi;
+      taxCst = res.nrSittribIpi;
+      taxAliq = res.vlPorIpi;
+      taxBase = res.vlIpiBc;
+    } else if (taxName === 'PIS') {
+      taxVal = res.vlPis;
+      taxCst = res.nrSittribPis;
+      taxAliq = res.vlPorPis;
+      taxBase = res.vlPisBc;
+    } else if (taxName === 'COFINS') {
+      taxVal = res.vlCofins;
+      taxCst = res.nrSittribCofins;
+      taxAliq = res.vlPorCofins;
+      taxBase = res.vlCofinsBc;
+    }
+
+    const winnerStep = taxSteps.find(s => s.isWinner) || taxSteps.filter(s => s.applied).slice(-1)[0];
+    const totalTiers = tiers.length;
+
+    let html = `
+      <div class="space-y-5 animate-in fade-in duration-200">
+        
+        <!-- Header do Imposto Ativo com Métricas -->
+        <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-xl shrink-0">
+              ${taxName === 'ICMS' ? '🏛️' : taxName === 'ICMS-ST' ? '🛡️' : taxName === 'IPI' ? '⚙️' : taxName === 'PIS' ? '💧' : '📊'}
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h4 class="font-extrabold text-sm text-gray-900 dark:text-white">${taxName}</h4>
+                <span class="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                  CST Final: ${taxCst || '-'}
+                </span>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                ${winnerStep ? `Regra vencedora: <strong class="text-emerald-600 dark:text-emerald-400">${winnerStep.levelName} (${winnerStep.tableSource})</strong>` : 'Nenhuma regra vencedora aplicada'}
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 text-xs font-mono shrink-0 bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+            <div>
+              <span class="text-[10px] text-gray-400 block uppercase font-sans">Base</span>
+              <strong class="text-gray-800 dark:text-slate-200">R$ ${taxBase.toFixed(2)}</strong>
+            </div>
+            <div class="h-6 w-px bg-slate-200 dark:bg-slate-800"></div>
+            <div>
+              <span class="text-[10px] text-gray-400 block uppercase font-sans">Alíquota</span>
+              <strong class="text-gray-800 dark:text-slate-200">${taxAliq}%</strong>
+            </div>
+            <div class="h-6 w-px bg-slate-200 dark:bg-slate-800"></div>
+            <div>
+              <span class="text-[10px] text-gray-400 block uppercase font-sans">Imposto Final</span>
+              <strong class="text-emerald-600 dark:text-emerald-400 font-bold text-sm">R$ ${taxVal.toFixed(2)}</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- O Desenho da Pirâmide Escalonada (Degraus Geométricos) -->
+        <div class="space-y-2 py-2 max-w-4xl mx-auto">
+    `;
+
+    tiers.forEach((tier, index) => {
+      // Largura proporcional centralizada: do topo (56%) até a base (100%)
+      const widthPercent = totalTiers > 1
+        ? Math.round(56 + (44 * index) / (totalTiers - 1))
+        : 100;
+
+      // Localiza o step correspondente
+      const step = taxSteps.find(s => s.levelNumber === tier.levelNumber || s.levelName?.startsWith(`${tier.levelNumber}.`));
+
+      const isWinner = step?.isWinner || (winnerStep && step && step === winnerStep);
+      const isApplied = step?.applied && !isWinner;
+      const isBypassed = step?.status === 'bypassed_exemption' || (!step?.applied && step?.reason?.toLowerCase().includes('isenta'));
+
+      let tierBg = '';
+      let badgeHtml = '';
+      let statusIcon = '';
+
+      if (isWinner) {
+        tierBg = 'bg-gradient-to-r from-emerald-500/25 via-emerald-600/30 to-teal-500/25 border-2 border-emerald-500 shadow-xl shadow-emerald-500/20 ring-4 ring-emerald-500/20 text-gray-900 dark:text-white scale-[1.01]';
+        statusIcon = '🎯';
+        badgeHtml = `
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="flex h-2 w-2 relative">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500 text-white shadow-xs">
+              🎯 Regra Vencedora
+            </span>
+          </div>
+        `;
+      } else if (isApplied) {
+        tierBg = 'bg-amber-500/10 dark:bg-amber-500/10 border border-amber-500/40 text-amber-900 dark:text-amber-200 hover:bg-amber-500/15';
+        statusIcon = '🔄';
+        badgeHtml = `
+          <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
+            Superada
+          </span>
+        `;
+      } else if (isBypassed) {
+        tierBg = 'bg-purple-500/10 dark:bg-purple-500/10 border border-purple-500/30 text-purple-900 dark:text-purple-300 hover:bg-purple-500/15';
+        statusIcon = '⛔';
+        badgeHtml = `
+          <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30 shrink-0">
+            Ignorada
+          </span>
+        `;
+      } else {
+        tierBg = 'bg-slate-100/70 dark:bg-slate-800/40 border border-dashed border-slate-300 dark:border-slate-700/60 text-gray-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-600';
+        statusIcon = '⚪';
+        badgeHtml = `
+          <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-200/60 dark:bg-slate-800 text-gray-500 dark:text-gray-400 shrink-0">
+            Sem Registro
+          </span>
+        `;
+      }
+
+      html += `
+        <div class="pyramid-tier mx-auto p-3 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-lg ${tierBg}"
+             style="width: ${widthPercent}%; min-width: min(100%, 380px);"
+             data-tier-level="${tier.levelNumber}"
+             title="Clique para inspecionar o nível ${tier.levelName}">
+          
+          <!-- Linha Superior: Ícone, Nível, Nome da Regra e Badge de Status -->
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0 overflow-hidden">
+              <span class="text-sm shrink-0">${statusIcon}</span>
+              <span class="text-[9px] font-bold font-mono px-1.5 py-0.5 rounded bg-slate-900/10 dark:bg-black/40 shrink-0">
+                ${tier.isTop ? '🔺 TOPO' : tier.isBase ? '🔻 BASE' : `NÍVEL ${tier.levelNumber}`}
+              </span>
+              <span class="font-bold text-xs sm:text-sm truncate text-gray-900 dark:text-gray-100">${tier.levelName}</span>
+              <code class="text-[10px] text-gray-500 dark:text-gray-400 font-mono shrink-0 hidden sm:inline-block">[${tier.tableSource}]</code>
+            </div>
+
+            <div class="shrink-0 flex items-center">
+              ${badgeHtml}
+            </div>
+          </div>
+
+          <!-- Linha Inferior: Justificativa/Descrição e Tags de CST / Alíquota -->
+          <div class="flex items-center justify-between gap-2 mt-1.5 pt-1.5 border-t border-black/5 dark:border-white/5">
+            <p class="text-[11px] opacity-80 truncate min-w-0 flex-1" title="${step?.reason || tier.description}">
+              ${step?.reason || tier.description}
+            </p>
+
+            ${(step?.cstAfter || (step?.rate !== undefined && step.rate > 0)) ? `
+              <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                ${step?.cstAfter ? `<span class="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-slate-950 text-gray-800 dark:text-slate-200 border border-slate-300 dark:border-slate-800">CST: ${step.cstAfter}</span>` : ''}
+                ${step?.rate !== undefined && step.rate > 0 ? `<span class="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">Alíq: ${step.rate}%</span>` : ''}
+              </div>
+            ` : ''}
+          </div>
+
+        </div>
+      `;
+    });
+
+    html += `
+        </div>
+      </div>
+    `;
+
+    container.innerHTML = html;
+
+    // Attach click listeners to inspect each tier
+    container.querySelectorAll('.pyramid-tier').forEach(el => {
+      el.addEventListener('click', () => {
+        const lvl = parseInt(el.getAttribute('data-tier-level') || '0', 10);
+        const tier = tiers.find(t => t.levelNumber === lvl);
+        const step = taxSteps.find(s => s.levelNumber === lvl || s.levelName?.startsWith(`${lvl}.`));
+        if (tier) {
+          this.inspectPyramidLevel(tier, step);
+        }
+      });
+    });
+  }
+
+  private inspectPyramidLevel(tier: PyramidLevelTemplate, step?: HierarchyStep) {
+    const inspector = document.getElementById('pyramid-detail-inspector');
+    if (!inspector || !this.lastResult) return;
+    const res = this.lastResult;
+
+    inspector.classList.remove('hidden');
+
+    const isWinner = step?.isWinner;
+    const isApplied = step?.applied && !isWinner;
+    const isBypassed = step?.status === 'bypassed_exemption';
+
+    let statusBadge = '';
+    if (isWinner) {
+      statusBadge = `<span class="px-2.5 py-1 rounded-md text-xs font-black uppercase bg-emerald-500 text-white shadow-xs">🎯 Regra Vencedora (Aplicada no Cálculo)</span>`;
+    } else if (isApplied) {
+      statusBadge = `<span class="px-2.5 py-1 rounded-md text-xs font-bold uppercase bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">🔄 Encontrada mas Substituída</span>`;
+    } else if (isBypassed) {
+      statusBadge = `<span class="px-2.5 py-1 rounded-md text-xs font-bold uppercase bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30">⛔ Ignorada por Isenção Prévia</span>`;
+    } else {
+      statusBadge = `<span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-200 dark:bg-slate-800 text-gray-500 dark:text-gray-400">⚪ Sem Registro no SQL Server</span>`;
+    }
+
+    inspector.innerHTML = `
+      <div class="space-y-3">
+        <div class="flex items-center justify-between border-b border-blue-200/60 dark:border-blue-900/40 pb-2.5">
+          <div class="flex items-center gap-2">
+            <span class="text-base">🔍</span>
+            <h4 class="font-extrabold text-sm text-gray-900 dark:text-white">
+              Inspeção do Nível: <span class="text-blue-600 dark:text-blue-400">${tier.levelName}</span>
+            </h4>
+            <span class="font-mono text-xs text-gray-500 dark:text-gray-400">[Tabela: <code>${tier.tableSource}</code>]</span>
+          </div>
+          <div class="flex items-center gap-2">
+            ${statusBadge}
+            <button id="btn-close-pyramid-inspector" type="button" class="p-1 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer" title="Fechar inspeção">
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          
+          <div class="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+            <span class="text-[10px] text-gray-400 uppercase font-bold block">Tabela de Consulta SQL</span>
+            <div class="font-mono font-bold text-gray-800 dark:text-slate-200 text-xs">${tier.tableSource}</div>
+            <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">${tier.description}</p>
+          </div>
+
+          <div class="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+            <span class="text-[10px] text-gray-400 uppercase font-bold block">Valores Capturados</span>
+            <div class="flex items-center gap-3 mt-1 font-mono text-xs">
+              <div>CST: <strong class="text-blue-600 dark:text-blue-400">${step?.cstAfter || 'N/A'}</strong></div>
+              <div>Alíq: <strong class="text-emerald-600 dark:text-emerald-400">${step?.rate !== undefined ? `${step.rate}%` : 'N/A'}</strong></div>
+              ${step?.reduction ? `<div>Redução: <strong class="text-amber-600 dark:text-amber-400">${step.reduction}%</strong></div>` : ''}
+            </div>
+            <div class="text-[10px] text-gray-400 mt-1">Status: ${step?.applied ? 'Aplicado' : 'Não Aplicado'}</div>
+          </div>
+
+          <div class="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+            <span class="text-[10px] text-gray-400 uppercase font-bold block">Chaves de Busca na Base</span>
+            <div class="text-[11px] font-mono text-gray-600 dark:text-gray-300 space-y-0.5">
+              <div>Produto: <strong>${res.fkProduto}</strong></div>
+              <div>CFOP: <strong>${res.fkCfop}</strong></div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="p-3 rounded-lg bg-blue-100/50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-xs">
+          <span class="text-[10px] uppercase font-bold text-blue-800 dark:text-blue-300 block mb-0.5">Justificativa da Decisão Fiscal (Regra FoxPro)</span>
+          <p class="text-gray-800 dark:text-slate-200 leading-relaxed font-medium">
+            ${step?.reason || 'Nenhum registro correspondente foi localizado nesta tabela do SQL Server durante a execução do cálculo. O motor de cálculo seguiu para o próximo nível da pirâmide.'}
+          </p>
+        </div>
+      </div>
+    `;
+
+    inspector.querySelector('#btn-close-pyramid-inspector')?.addEventListener('click', () => {
+      inspector.classList.add('hidden');
+    });
+
+    inspector.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  private renderAllPyramidsOverview(container: HTMLElement) {
+    if (!this.lastResult) return;
+    const res = this.lastResult;
+    const taxes = ['ICMS', 'ICMS-ST', 'IPI', 'PIS', 'COFINS'];
+
+    container.innerHTML = `
+      <div class="space-y-4 animate-in fade-in duration-200">
+        <div class="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
+          <span>Visão Geral Comparativa: Veja o nível vencedor em cada um dos 5 impostos.</span>
+          <span class="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">Clique no card para abrir a pirâmide completa</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          ${taxes.map(taxName => {
+            const tiers = TAX_PYRAMID_TEMPLATES[taxName] || [];
+            const taxSteps = res.memory.hierarchySteps.filter(s => s.tax === taxName);
+            const winnerStep = taxSteps.find(s => s.isWinner) || taxSteps.filter(s => s.applied).slice(-1)[0];
+            const totalTiers = tiers.length;
+
+            let taxVal = 0;
+            let taxCst = '';
+            if (taxName === 'ICMS') { taxVal = res.vlIcm; taxCst = res.nrSittribIcms; }
+            else if (taxName === 'ICMS-ST') { taxVal = res.vlIcmSt; taxCst = res.vlPorIcmSt > 0 ? res.nrSittribIcms : 'Sem ST'; }
+            else if (taxName === 'IPI') { taxVal = res.vlIpi; taxCst = res.nrSittribIpi; }
+            else if (taxName === 'PIS') { taxVal = res.vlPis; taxCst = res.nrSittribPis; }
+            else if (taxName === 'COFINS') { taxVal = res.vlCofins; taxCst = res.nrSittribCofins; }
+
+            return `
+              <div class="overview-tax-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md hover:border-blue-400 dark:hover:border-blue-600 transition-all cursor-pointer space-y-3"
+                   data-select-tax="${taxName}">
+                
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-lg">${taxName === 'ICMS' ? '🏛️' : taxName === 'ICMS-ST' ? '🛡️' : taxName === 'IPI' ? '⚙️' : taxName === 'PIS' ? '💧' : '📊'}</span>
+                    <h4 class="font-extrabold text-sm text-gray-900 dark:text-white">${taxName}</h4>
+                  </div>
+                  <span class="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">R$ ${taxVal.toFixed(2)}</span>
+                </div>
+
+                <!-- Mini Pirâmide -->
+                <div class="py-2 space-y-1 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                  ${tiers.map((tier, idx) => {
+                    const widthPct = Math.round(50 + (50 * idx) / (totalTiers - 1));
+                    const step = taxSteps.find(s => s.levelNumber === tier.levelNumber || s.levelName?.startsWith(`${tier.levelNumber}.`));
+                    const isWinner = step?.isWinner || (winnerStep && step && step === winnerStep);
+
+                    let barColor = 'bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-500';
+                    if (isWinner) {
+                      barColor = 'bg-emerald-500 text-white font-bold shadow-md shadow-emerald-500/30 ring-2 ring-emerald-400';
+                    } else if (step?.applied) {
+                      barColor = 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40';
+                    }
+
+                    return `
+                      <div class="mx-auto text-[10px] py-0.5 px-2 rounded flex items-center justify-between transition-all ${barColor}"
+                           style="width: ${widthPct}%;">
+                        <span class="truncate font-mono">${tier.levelNumber}. ${tier.tableSource}</span>
+                        ${isWinner ? '<span class="text-[9px] font-black shrink-0">🎯 VENCEDOR</span>' : ''}
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+
+                <div class="text-xs pt-1 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-gray-500 dark:text-gray-400">
+                  <span>CST: <strong class="text-gray-800 dark:text-slate-200 font-mono">${taxCst || '-'}</strong></span>
+                  <span class="text-[11px] text-blue-600 dark:text-blue-400 font-medium">Ver Pirâmide ➜</span>
+                </div>
+
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+
+    container.querySelectorAll('.overview-tax-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const selected = card.getAttribute('data-select-tax') || 'ICMS';
+        this.activePyramidTax = selected;
+        this.renderPyramidTabs();
+        this.renderTaxPyramid(selected);
+      });
+    });
   }
 
   private renderFormulas() {

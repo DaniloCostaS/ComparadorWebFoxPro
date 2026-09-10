@@ -54,10 +54,13 @@ export interface CabecalhoFiscalInput {
 
 export interface HierarchyStep {
   tax: 'ICMS' | 'ICMS-ST' | 'IPI' | 'PIS' | 'COFINS' | 'DIFAL' | 'IBS/CBS' | 'IS';
-  levelName: string; // Ex: '1. CFOP', '2. Exceção NCM UF', '3. Exceção Cliente', etc.
+  levelNumber?: number; // Posição na pirâmide (1=Base até N=Topo)
+  levelName: string; // Ex: '1. CFOP Base', '2. Exceção NCM / UF', etc.
   tableSource: string; // Ex: 'TB_CFOP', 'TB_CLAFISEXC', 'TB_EXCECAOICMS', 'TB_PRODUTOS', 'TB_EMPRESAS', 'TB_REGRAIMPOSTO'
   recordFound: boolean;
   applied: boolean;
+  isWinner?: boolean; // Se foi a regra vencedora / que definiu a tributação
+  status?: 'winner' | 'overridden' | 'not_found' | 'bypassed_exemption' | 'info';
   cstBefore?: string;
   cstAfter?: string;
   rate?: number;
@@ -81,10 +84,15 @@ export interface TaxCalculationMemory {
   systemParameters: Record<string, any>;
   pyramidSummary: {
     icmsWinner: string;
+    icmsWinnerLevel?: number;
     ipiWinner: string;
+    ipiWinnerLevel?: number;
     pisWinner: string;
+    pisWinnerLevel?: number;
     cofinsWinner: string;
+    cofinsWinnerLevel?: number;
     stWinner?: string;
+    stWinnerLevel?: number;
   };
 }
 
