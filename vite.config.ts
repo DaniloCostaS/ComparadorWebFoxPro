@@ -190,51 +190,9 @@ function localFileOpenerPlugin(): Plugin {
   }
 }
 
-function sqlServerBridgePlugin(): Plugin {
-  return {
-    name: 'sql-server-bridge',
-    configureServer(server) {
-      server.middlewares.use(async (req, res, next) => {
-        if (req.url && req.url.startsWith('/api/sql')) {
-          const cleanUrl = req.url.split('?')[0];
-          const subPath = cleanUrl.substring('/api/sql'.length);
-          try {
-            const { handleSqlApi } = await import('./src/server/sqlServerMiddleware.ts');
-            await handleSqlApi(req, res, subPath);
-          } catch (err: any) {
-            res.statusCode = 500;
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ success: false, error: err?.message || 'Erro no middleware SQL' }));
-          }
-          return;
-        }
-        next();
-      });
-    },
-    configurePreviewServer(server) {
-      server.middlewares.use(async (req, res, next) => {
-        if (req.url && req.url.startsWith('/api/sql')) {
-          const cleanUrl = req.url.split('?')[0];
-          const subPath = cleanUrl.substring('/api/sql'.length);
-          try {
-            const { handleSqlApi } = await import('./src/server/sqlServerMiddleware.ts');
-            await handleSqlApi(req, res, subPath);
-          } catch (err: any) {
-            res.statusCode = 500;
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ success: false, error: err?.message || 'Erro no middleware SQL' }));
-          }
-          return;
-        }
-        next();
-      });
-    }
-  }
-}
-
 export default defineConfig({
   base: './', // Permite rodar o HTML diretamente do disco via file://
-  plugins: [localFileOpenerPlugin(), sqlServerBridgePlugin()],
+  plugins: [localFileOpenerPlugin()],
   build: {
     outDir: 'dist',
     emptyOutDir: true,

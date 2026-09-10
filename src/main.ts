@@ -6,7 +6,6 @@ import { handleCodeReferencesSearch, renderTreeResults } from './codeReferences.
 import { beautifyText, minifyText } from './beautifier.ts';
 import { analyzeRepositoryCustomizations, type AnalysisSummary, type CustomizedItem } from './customizationAnalyzer.ts';
 import { validateSingleXml, validateBatchXml, SCHEMA_PACKAGES, type FileValidationResult } from './xmlValidator.ts';
-import { TaxSimulator } from './taxSimulator.ts';
 import { saveAs } from 'file-saver';
 import baseHtmlTemplate from './base.html?raw';
 import baseConsolidatedHtmlTemplate from './baseConsolidated.html?raw';
@@ -21,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabCodeReferences = document.getElementById('tab-code-references') as HTMLButtonElement;
   const tabCustomizations = document.getElementById('tab-customizations') as HTMLButtonElement;
   const tabXmlValidator = document.getElementById('tab-xml-validator') as HTMLButtonElement;
-  const tabTaxSimulator = document.getElementById('tab-tax-simulator') as HTMLButtonElement;
 
   const sectionBatch = document.getElementById('section-batch') as HTMLElement;
   const sectionText = document.getElementById('section-text') as HTMLElement;
@@ -31,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const sectionCodeReferences = document.getElementById('section-code-references') as HTMLElement;
   const sectionCustomizations = document.getElementById('section-customizations') as HTMLElement;
   const sectionXmlValidator = document.getElementById('section-xml-validator') as HTMLElement;
-  const sectionTaxSimulator = document.getElementById('section-tax-simulator') as HTMLElement;
 
   // Batch Elements
   const compareFilesInput = document.getElementById('compare-files') as HTMLInputElement;
@@ -117,11 +114,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Tab Logic ---
   function resetTabs() {
-    [tabBatch, tabText, tabBeautifier, tabFoxpro, tabFoxproBatch, tabCodeReferences, tabCustomizations, tabXmlValidator, tabTaxSimulator].forEach(t => {
+    [tabBatch, tabText, tabBeautifier, tabFoxpro, tabFoxproBatch, tabCodeReferences, tabCustomizations, tabXmlValidator].forEach(t => {
       t?.classList.remove('tab-active');
       t?.classList.add('tab-inactive');
     });
-    [sectionBatch, sectionText, sectionBeautifier, sectionFoxpro, sectionFoxproBatch, sectionCodeReferences, sectionCustomizations, sectionXmlValidator, sectionTaxSimulator].forEach(s => s?.classList.add('hidden'));
+    [sectionBatch, sectionText, sectionBeautifier, sectionFoxpro, sectionFoxproBatch, sectionCodeReferences, sectionCustomizations, sectionXmlValidator].forEach(s => s?.classList.add('hidden'));
     closeMobileSidebar();
   }
 
@@ -180,16 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
     tabXmlValidator.classList.add('tab-active');
     sectionXmlValidator.classList.remove('hidden');
   });
-
-  tabTaxSimulator?.addEventListener('click', () => {
-    resetTabs();
-    tabTaxSimulator.classList.remove('tab-inactive');
-    tabTaxSimulator.classList.add('tab-active');
-    sectionTaxSimulator.classList.remove('hidden');
-  });
-
-  // Inicializa o módulo do Simulador Tributário NF-e
-  new TaxSimulator();
 
   // --- Batch Logic Validation ---
 
