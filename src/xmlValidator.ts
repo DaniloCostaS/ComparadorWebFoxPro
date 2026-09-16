@@ -1,4 +1,5 @@
 import { validateXML, type XMLFileInfo, type XMLValidationError } from 'xmllint-wasm';
+import { validateBusinessRules } from './businessRulesValidator';
 
 export interface SchemaOption {
   id: string;
@@ -24,6 +25,15 @@ export interface ParsedValidationError {
   friendlyExplanation?: string;
 }
 
+export interface BusinessRuleError {
+  ruleId: string;
+  message: string;
+  elementName?: string;
+  relatedElements?: string[];
+  relatedPaths?: string[];
+  severity: 'error' | 'warning';
+}
+
 export interface FileValidationResult {
   fileName: string;
   valid: boolean;
@@ -31,6 +41,7 @@ export interface FileValidationResult {
   detectedSchemaName?: string;
   mainXsdUsed?: string;
   errors: ParsedValidationError[];
+  businessRulesErrors?: BusinessRuleError[];
   rawXml: string;
 }
 
@@ -117,7 +128,8 @@ export const SCHEMA_PACKAGES: SchemaPackage[] = [
     basePath: './Schemas/SEFAZ NF-e/Produção',
     mainSchemas: [
       { id: 'nfeProc', name: 'NF-e Processada com Protocolo (nfeProc)', rootElement: 'nfeProc', mainXsd: 'procNFe_v4.00.xsd' },
-      { id: 'nfe', name: 'NF-e (Nota Fiscal Eletrônica - NFe)', rootElement: 'NFe', mainXsd: 'nfe_v4.00.xsd' }
+      { id: 'nfe', name: 'NF-e (Nota Fiscal Eletrônica - NFe)', rootElement: 'NFe', mainXsd: 'nfe_v4.00.xsd' },
+      { id: 'enviNFe', name: 'Lote de Envio de NF-e (enviNFe)', rootElement: 'enviNFe', mainXsd: 'enviNFe_v4.00.xsd' }
     ],
     auxiliaryFiles: [
       'leiauteNFe_v4.00.xsd',
@@ -274,6 +286,46 @@ function translateErrorMessage(rawMessage: string): { friendlyExplanation: strin
 }
 
 /**
+ * Formata uma string XML para exibição "bonitinha" (pretty print)
+ */
+export function formatXmlString(xml: string): string {
+  // Remove espaços/quebras de linha entre tags para normalizar
+  let normalizedXml = xml.replace(/>\s+</g, '><');
+  
+  let formatted = '';
+  const reg = /(>)(<)(\/*)/g;
+  normalizedXml = normalizedXml.replace(reg, '$1\n$2$3');
+  
+  let pad = 0;
+  normalizedXml.split('\n').forEach((node) => {
+    node = node.trim();
+    if (!node) return;
+    
+    let indent = 0;
+    if (node.match(/.+<\/\w[^>]*>$/)) {
+      indent = 0;
+    } else if (node.match(/^<\/\w/)) {
+      if (pad !== 0) {
+        pad -= 1;
+      }
+    } else if (node.match(/^<\w[^>]*[^\/]>.*$/)) {
+      indent = 1;
+    } else {
+      indent = 0;
+    }
+    
+    let padding = '';
+    for (let i = 0; i < pad; i++) {
+      padding += '  ';
+    }
+    formatted += padding + node + '\n';
+    pad += indent;
+  });
+  
+  return formatted.trim();
+}
+
+/**
  * Valida um conteúdo XML contra um pacote de schemas XSD
  */
 export async function validateSingleXml(
@@ -282,6 +334,10 @@ export async function validateSingleXml(
   packageId: string = 'nfse_padrao_nacional_prod',
   forcedSchemaId: string = 'auto'
 ): Promise<FileValidationResult> {
+  // Formata o XML bonitinho ANTES da validação. 
+  // Assim os erros apontarão para as linhas corretas no visualizador.
+  xmlContent = formatXmlString(xmlContent);
+
   const schemaPkg = SCHEMA_PACKAGES.find(p => p.id === packageId) || SCHEMA_PACKAGES[0];
   
   // 1. Determina qual o schema principal
@@ -349,6 +405,9 @@ export async function validateSingleXml(
       };
     });
 
+    // 5. Validação de Regras de Negócio (Opcional, separada do XSD)
+    const businessRulesErrors = validateBusinessRules(xmlContent);
+
     return {
       fileName,
       valid: result.valid,
@@ -356,6 +415,7 @@ export async function validateSingleXml(
       detectedSchemaName: targetSchema.name,
       mainXsdUsed: targetSchema.mainXsd,
       errors: parsedErrors,
+      businessRulesErrors: businessRulesErrors,
       rawXml: xmlContent
     };
 
@@ -374,6 +434,7 @@ export async function validateSingleXml(
           friendlyExplanation: `Falha ao carregar ou processar o esquema XSD (${targetSchema?.mainXsd}): ${err?.message || err}`
         }
       ],
+      businessRulesErrors: [],
       rawXml: xmlContent
     };
   }

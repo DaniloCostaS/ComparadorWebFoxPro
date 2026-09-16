@@ -1805,7 +1805,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const total = results.length;
     const validCount = results.filter(r => r.valid).length;
     const invalidCount = results.filter(r => !r.valid).length;
-    const totalErrorsCount = results.reduce((acc, r) => acc + r.errors.length, 0);
+    const totalErrorsCount = results.reduce((acc, r) => acc + r.errors.length + (r.businessRulesErrors?.length || 0), 0);
 
     xmlStatTotal.textContent = String(total);
     xmlStatValid.textContent = String(validCount);
@@ -1845,7 +1845,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td class="px-4 py-3 font-semibold text-gray-900 truncate max-w-xs" title="${r.fileName}">${r.fileName}</td>
           <td class="px-4 py-3 text-xs text-gray-600 font-mono">${r.mainXsdUsed || 'N/A'}</td>
           <td class="px-4 py-3 text-center">${statusBadge}</td>
-          <td class="px-4 py-3 text-center font-bold ${r.errors.length > 0 ? 'text-red-600' : 'text-gray-400'}">${r.errors.length}</td>
+          <td class="px-4 py-3 text-center font-bold ${(r.errors.length + (r.businessRulesErrors?.length || 0)) > 0 ? 'text-red-600' : 'text-gray-400'}">${r.errors.length + (r.businessRulesErrors?.length || 0)}</td>
           <td class="px-4 py-3 text-right">
             <button type="button" data-result-idx="${results.indexOf(r)}" class="btn-open-xml-detail text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded border border-blue-200 text-xs font-bold transition-colors">
               Ver Erros & XML
@@ -1869,22 +1869,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openXmlDetailModal(res: FileValidationResult) {
     xmlModalTitle.textContent = `Validação: ${res.fileName}`;
-    xmlModalSubtitle.textContent = res.valid ? '✅ Arquivo 100% em conformidade com o schema XSD' : `❌ ${res.errors.length} inconformidade(s) encontrada(s)`;
+    const totalErrors = res.errors.length + (res.businessRulesErrors?.length || 0);
+    xmlModalSubtitle.textContent = totalErrors === 0 ? '✅ Arquivo 100% em conformidade com o schema XSD e Regras de Negócio' : `❌ ${totalErrors} inconformidade(s) encontrada(s)`;
     xmlModalXsdInfo.textContent = res.mainXsdUsed || 'Schema Padrão Nacional';
 
     // Lista de erros
+    let errorsHtml = '';
+
+    if (res.businessRulesErrors && res.businessRulesErrors.length > 0) {
+      errorsHtml += `
+        <div class="mb-4">
+          <h4 class="text-sm font-bold text-gray-700 mb-2 border-b pb-1">REGRAS DE NEGÓCIO (Cálculos / Lógica)</h4>
+          ${res.businessRulesErrors.map((err) => `
+            <div class="bg-white border-l-4 border-yellow-500 rounded-r-lg p-4 shadow-sm border border-gray-200 space-y-1 mb-2">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-yellow-800 text-xs uppercase">Regra: ${err.ruleId}</span>
+                ${err.elementName ? `<code class="bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded text-xs border border-yellow-200 font-mono">&lt;${err.elementName}&gt;</code>` : ''}
+              </div>
+              <p class="text-sm font-semibold text-gray-900">${err.message}</p>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    errorsHtml += `<div class="mb-2"><h4 class="text-sm font-bold text-gray-700 mb-2 border-b pb-1">ESTRUTURA XSD (Formato / Tipos)</h4></div>`;
+
     if (res.valid || res.errors.length === 0) {
-      xmlModalErrorsList.innerHTML = `
+      errorsHtml += `
         <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-green-800 text-sm font-semibold flex items-center gap-3">
           <svg class="w-6 h-6 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
           Nenhum erro de schema XSD foi encontrado neste arquivo XML!
         </div>
       `;
     } else {
-      xmlModalErrorsList.innerHTML = res.errors.map((err, i) => `
-        <div class="bg-white border-l-4 border-red-500 rounded-r-lg p-4 shadow-sm border border-gray-200 space-y-1">
+      errorsHtml += res.errors.map((err, i) => `
+        <div class="bg-white border-l-4 border-red-500 rounded-r-lg p-4 shadow-sm border border-gray-200 space-y-1 mb-2">
           <div class="flex items-center justify-between">
-            <span class="font-bold text-red-800 text-xs uppercase">Erro #${i + 1} ${err.lineNumber ? `(Linha ${err.lineNumber})` : ''}</span>
+            <span class="font-bold text-red-800 text-xs uppercase">Erro XSD #${i + 1} ${err.lineNumber ? `(Linha ${err.lineNumber})` : ''}</span>
             ${err.elementName ? `<code class="bg-red-50 text-red-700 px-2 py-0.5 rounded text-xs border border-red-200 font-mono">&lt;${err.elementName}&gt;</code>` : ''}
           </div>
           <p class="text-sm font-semibold text-gray-900">${err.friendlyExplanation}</p>
@@ -1895,15 +1917,86 @@ document.addEventListener('DOMContentLoaded', () => {
       `).join('');
     }
 
+    xmlModalErrorsList.innerHTML = errorsHtml;
+
     // Renderiza o XML com linhas e destaque de erro
     const errorLines = new Set(res.errors.map(e => e.lineNumber).filter((l): l is number => l !== null));
+    const brElements = new Set<string>();
+    const brPaths = new Set<string>();
+    
+    if (res.businessRulesErrors) {
+      res.businessRulesErrors.forEach(e => {
+        if (e.elementName) brElements.add(e.elementName);
+        if (e.relatedElements) {
+          e.relatedElements.forEach(el => brElements.add(el));
+        }
+        if (e.relatedPaths) {
+          e.relatedPaths.forEach(p => brPaths.add(p));
+        }
+      });
+    }
     const lines = res.rawXml.split('\n');
+    const tagStack: string[] = [];
 
     xmlModalCodeViewer.innerHTML = lines.map((lineContent, lineIdx) => {
       const lineNum = lineIdx + 1;
       const isErrorLine = errorLines.has(lineNum);
-      const bgClass = isErrorLine ? 'bg-red-900/50 text-red-200 border-l-4 border-red-500 font-bold px-2 py-1' : 'hover:bg-gray-800/60 px-2 py-0.5';
-      const lineBadge = isErrorLine ? `<span class="bg-red-600 text-white text-[10px] px-1 py-0.2 rounded mr-2 font-mono">ERRO</span>` : '';
+      
+      let isBrLine = false;
+      const tagRegex = /<(\/?)([a-zA-Z0-9_\-:]+)(?:\s+[^>]*?)?(\/?)>/g;
+      let match;
+
+      while ((match = tagRegex.exec(lineContent)) !== null) {
+          const isClosing = match[1] === '/';
+          const tagName = match[2];
+          const isSelfClosing = match[3] === '/';
+
+          if (isClosing) {
+              const currentPathStr = tagStack.join('/');
+              if (brPaths.size > 0) {
+                  for (const brPath of brPaths) {
+                      if (currentPathStr.endsWith(brPath) || currentPathStr.endsWith(brPath + '/' + tagName)) {
+                          isBrLine = true;
+                      }
+                  }
+              }
+              tagStack.pop();
+          } else {
+              tagStack.push(tagName);
+              const currentPathStr = tagStack.join('/');
+              if (brPaths.size > 0) {
+                  for (const brPath of brPaths) {
+                      if (currentPathStr.endsWith(brPath)) {
+                          isBrLine = true;
+                      }
+                  }
+              }
+              if (isSelfClosing) {
+                  tagStack.pop();
+              }
+          }
+      }
+
+      // Fallback para elementos simples caso paths não tenham dado match (retrocompatibilidade ou regras antigas)
+      if (!isBrLine && !isErrorLine && brElements.size > 0 && brPaths.size === 0) {
+         for (const el of brElements) {
+            if (lineContent.includes(`<${el}>`) || lineContent.includes(`<${el} `) || lineContent.includes(`</${el}>`)) {
+               isBrLine = true;
+               break;
+            }
+         }
+      }
+
+      let bgClass = 'hover:bg-gray-800/60 px-2 py-0.5';
+      let lineBadge = '';
+
+      if (isErrorLine) {
+         bgClass = 'bg-red-900/50 text-red-200 border-l-4 border-red-500 font-bold px-2 py-1';
+         lineBadge = `<span class="bg-red-600 text-white text-[10px] px-1 py-0.2 rounded mr-2 font-mono">ERRO XSD</span>`;
+      } else if (isBrLine) {
+         bgClass = 'bg-yellow-900/40 text-yellow-100 border-l-4 border-yellow-500 font-bold px-2 py-1';
+         lineBadge = `<span class="bg-yellow-600 text-white text-[10px] px-1 py-0.2 rounded mr-2 font-mono">ALERTA REGRA</span>`;
+      }
 
       return `
         <div class="flex items-start ${bgClass}">
@@ -1940,12 +2033,20 @@ document.addEventListener('DOMContentLoaded', () => {
       report += `[${idx + 1}] Arquivo: ${r.fileName}\n`;
       report += `     Schema: ${r.mainXsdUsed}\n`;
       report += `     Status: ${r.valid ? 'VÁLIDO' : 'INVÁLIDO'}\n`;
-      report += `     Erros: ${r.errors.length}\n`;
+      report += `     Erros XSD: ${r.errors.length}\n`;
 
       r.errors.forEach((err, eIdx) => {
-        report += `     - Erro #${eIdx + 1}${err.lineNumber ? ` (Linha ${err.lineNumber})` : ''}: ${err.friendlyExplanation}\n`;
+        report += `     - Erro XSD #${eIdx + 1}${err.lineNumber ? ` (Linha ${err.lineNumber})` : ''}: ${err.friendlyExplanation}\n`;
         report += `       Detalhes libxml: ${err.rawMessage}\n`;
       });
+
+      if (r.businessRulesErrors && r.businessRulesErrors.length > 0) {
+         report += `     Erros de Regras de Negócio: ${r.businessRulesErrors.length}\n`;
+         r.businessRulesErrors.forEach((err) => {
+           report += `     - Regra #${err.ruleId}: ${err.message}\n`;
+         });
+      }
+
       report += `-----------------------------------------------\n`;
     });
 
