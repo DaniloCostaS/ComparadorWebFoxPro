@@ -6,6 +6,7 @@ import { handleCodeReferencesSearch, renderTreeResults } from './codeReferences.
 import { beautifyText, minifyText } from './beautifier.ts';
 import { analyzeRepositoryCustomizations, type AnalysisSummary, type CustomizedItem } from './customizationAnalyzer.ts';
 import { validateSingleXml, validateBatchXml, SCHEMA_PACKAGES, type FileValidationResult } from './xmlValidator.ts';
+import { parseSqlPlan } from './sqlPlanReader.ts';
 import { saveAs } from 'file-saver';
 import baseHtmlTemplate from './base.html?raw';
 import baseConsolidatedHtmlTemplate from './baseConsolidated.html?raw';
@@ -20,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabCodeReferences = document.getElementById('tab-code-references') as HTMLButtonElement;
   const tabCustomizations = document.getElementById('tab-customizations') as HTMLButtonElement;
   const tabXmlValidator = document.getElementById('tab-xml-validator') as HTMLButtonElement;
+  const tabSqlPlan = document.getElementById('tab-sql-plan') as HTMLButtonElement;
 
   const sectionBatch = document.getElementById('section-batch') as HTMLElement;
   const sectionText = document.getElementById('section-text') as HTMLElement;
@@ -29,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const sectionCodeReferences = document.getElementById('section-code-references') as HTMLElement;
   const sectionCustomizations = document.getElementById('section-customizations') as HTMLElement;
   const sectionXmlValidator = document.getElementById('section-xml-validator') as HTMLElement;
+  const sectionSqlPlan = document.getElementById('section-sql-plan') as HTMLElement;
 
   // Batch Elements
   const compareFilesInput = document.getElementById('compare-files') as HTMLInputElement;
@@ -114,11 +117,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Tab Logic ---
   function resetTabs() {
-    [tabBatch, tabText, tabBeautifier, tabFoxpro, tabFoxproBatch, tabCodeReferences, tabCustomizations, tabXmlValidator].forEach(t => {
+    [tabBatch, tabText, tabBeautifier, tabFoxpro, tabFoxproBatch, tabCodeReferences, tabCustomizations, tabXmlValidator, tabSqlPlan].forEach(t => {
       t?.classList.remove('tab-active');
       t?.classList.add('tab-inactive');
     });
-    [sectionBatch, sectionText, sectionBeautifier, sectionFoxpro, sectionFoxproBatch, sectionCodeReferences, sectionCustomizations, sectionXmlValidator].forEach(s => s?.classList.add('hidden'));
+    [sectionBatch, sectionText, sectionBeautifier, sectionFoxpro, sectionFoxproBatch, sectionCodeReferences, sectionCustomizations, sectionXmlValidator, sectionSqlPlan].forEach(s => s?.classList.add('hidden'));
     closeMobileSidebar();
   }
 
@@ -2103,6 +2106,197 @@ document.addEventListener('DOMContentLoaded', () => {
     }).catch(() => {
       alert('Não foi possível copiar o relatório.');
     });
+  });
+
+  // --- Lógica: Leitor de Plano SQL ---
+  tabSqlPlan?.addEventListener('click', () => {
+    resetTabs();
+    tabSqlPlan.classList.remove('tab-inactive');
+    tabSqlPlan.classList.add('tab-active');
+    sectionSqlPlan.classList.remove('hidden');
+  });
+
+  const sqlPlanInput = document.getElementById('sql-plan-input') as HTMLTextAreaElement;
+  const btnAnalyzeSqlPlan = document.getElementById('btn-analyze-sql-plan') as HTMLButtonElement;
+  const btnSqlPlanClear = document.getElementById('btn-sql-plan-clear') as HTMLButtonElement;
+  const sqlPlanResults = document.getElementById('sql-plan-results') as HTMLElement;
+  
+  const sqlPlanWarningsContainer = document.getElementById('sql-plan-warnings-container') as HTMLElement;
+  const sqlPlanImplicitConversionsContent = document.getElementById('sql-plan-implicit-conversions-content') as HTMLElement;
+  const sqlPlanImplicitConversionsList = document.getElementById('sql-plan-implicit-conversions-list') as HTMLElement;
+  const sqlPlanSargabilityContent = document.getElementById('sql-plan-sargability-content') as HTMLElement;
+  const sqlPlanSargabilityList = document.getElementById('sql-plan-sargability-list') as HTMLElement;
+
+  const sqlPlanMissingIndexesContent = document.getElementById('sql-plan-missing-indexes-content') as HTMLElement;
+  const sqlPlanCostlyOpsContent = document.getElementById('sql-plan-costly-ops-content') as HTMLElement;
+  const sqlPlanScansContent = document.getElementById('sql-plan-scans-content') as HTMLElement;
+
+  btnSqlPlanClear?.addEventListener('click', () => {
+    sqlPlanInput.value = '';
+    sqlPlanResults.classList.add('hidden');
+  });
+
+  btnAnalyzeSqlPlan?.addEventListener('click', () => {
+    const xml = sqlPlanInput.value.trim();
+    if (!xml) {
+      alert('Por favor, cole o XML do plano de execução.');
+      return;
+    }
+
+    try {
+      const analysis = parseSqlPlan(xml);
+
+      // Dicionário de Tooltips para operações
+      const getOperationTooltip = (physicalOp: string) => {
+        const dict: Record<string, string> = {
+          'Clustered Index Seek': 'O SQL foi diretamente a linhas específicas (ou a um intervalo) da tabela usando a chave primária. É altamente eficiente, pois evita varrer dados desnecessários.',
+          'Index Seek': 'O SQL usou um índice secundário para ir direto aos dados que satisfazem o filtro. Excelente para a performance.',
+          'Clustered Index Scan': 'O SQL leu a tabela principal inteira do começo ao fim. Pode ser normal para tabelas pequenas, mas costuma ser um gargalo em tabelas grandes. Indica filtros fracos ou falta de índices.',
+          'Table Scan': 'O SQL leu uma tabela sem chave primária (Heap) inteira, linha a linha. Péssimo para performance. Considere adicionar uma Chave Primária ou Índices.',
+          'Index Scan': 'O SQL varreu um índice secundário inteiro. É mais leve que ler a tabela toda, mas indica que a query não conseguiu filtrar valores específicos e teve que ler tudo.',
+          'Key Lookup': 'O SQL usou um índice, mas ele não continha todas as colunas pedidas no SELECT. Foi necessário um "pulo" (lookup) na tabela principal por linha. Resolvido adicionando colunas no INCLUDE do índice.',
+          'RID Lookup': 'Semelhante ao Key Lookup, mas ocorre numa tabela sem chave primária (Heap).',
+          'Nested Loops': 'O SQL pega cada linha de um conjunto (A) e varre o outro conjunto (B) procurando correspondências. Rápido para volumes pequenos, mas muito lento se ambas tabelas forem gigantes.',
+          'Hash Match': 'O SQL cria uma estrutura na memória (Hash) para cruzar ou agrupar conjuntos grandes e não-ordenados. É a melhor opção para grandes volumes, mas consome bastante CPU e Memória RAM.',
+          'Merge Join': 'O SQL cruza tabelas lendo ambas sequencialmente, porque elas já chegaram previamente ordenadas. É extremamente rápido e eficiente, mas exige ordenação prévia.',
+          'Sort': 'O SQL gastou recursos para ordenar os dados (devido a ORDER BY, DISTINCT ou Merge Join). Pode ser um grande gargalo e usar memória (TempDB) se o volume for alto.',
+          'Concatenation': 'O SQL uniu múltiplos conjuntos de resultados empilhando as linhas, como numa operação UNION ALL.',
+          'Compute Scalar': 'O SQL calculou um novo valor linha a linha (ex: somas, conversões de dados, cálculos matemáticos). Geralmente é inofensivo e muito rápido.',
+          'Filter': 'O SQL aplicou uma condição lógica linha a linha para descartar dados que não passaram no filtro.',
+          'Stream Aggregate': 'O SQL agrupou rapidamente dados (ex: GROUP BY) que já estavam previamente ordenados. Muito leve e rápido.',
+          'Table Spool': 'O SQL precisou salvar um resultado intermediário temporariamente no TempDB para ser reutilizado várias vezes na mesma query.'
+        };
+        
+        const key = Object.keys(dict).find(k => physicalOp.includes(k));
+        const tooltip = key ? dict[key] : '';
+        
+        if (tooltip) {
+           return `<span class="border-b border-dashed border-gray-400 cursor-help" title="${tooltip}">${physicalOp}</span>`;
+        }
+        return physicalOp;
+      };
+
+      // Função auxiliar para badges
+      const getEducationalBadge = (physicalOp: string) => {
+        if (physicalOp.includes('Index Seek')) {
+          return '<span class="inline-block px-2 py-0.5 mt-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-[10px] font-bold rounded-full" title="✅ Busca Otimizada: O banco foi direto ao registro usando um índice.">✅ Busca Otimizada</span>';
+        }
+        if (physicalOp.includes('Table Scan') || physicalOp.includes('Clustered Index Scan')) {
+          return '<span class="inline-block px-2 py-0.5 mt-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-[10px] font-bold rounded-full" title="⚠️ Varredura: O banco precisou ler a tabela inteira (ou grande parte dela) para achar o dado. Sinal de que falta um índice.">⚠️ Varredura Completa</span>';
+        }
+        if (physicalOp.includes('Hash') || physicalOp.includes('Sort')) {
+          return '<span class="inline-block px-2 py-0.5 mt-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-[10px] font-bold rounded-full" title="Atenção: Operações de Hash ou Sort consomem muita CPU e Memória.">⚡ Alto Custo CPU/Memória</span>';
+        }
+        return '';
+      };
+      
+      // Renderizar Warnings (SARGabilidade & Conversões)
+      let hasWarnings = false;
+
+      if (analysis.implicitConversions.length > 0) {
+        sqlPlanImplicitConversionsList.innerHTML = analysis.implicitConversions.map(warn => `
+          <div class="text-sm bg-orange-100 dark:bg-orange-950/50 p-2 rounded border border-orange-200 dark:border-orange-800 text-orange-900 dark:text-orange-200">
+            <strong>Problema:</strong> ${warn.issue}<br/>
+            <span class="font-mono text-xs text-orange-700 dark:text-orange-400 mt-1 block">Expressão Relatada: ${warn.expression}</span>
+          </div>
+        `).join('');
+        sqlPlanImplicitConversionsContent.classList.remove('hidden');
+        hasWarnings = true;
+      } else {
+        sqlPlanImplicitConversionsContent.classList.add('hidden');
+      }
+
+      if (analysis.sargabilityWarnings.length > 0) {
+        sqlPlanSargabilityList.innerHTML = analysis.sargabilityWarnings.map(warn => `
+          <div class="text-sm bg-blue-100 dark:bg-blue-950/50 p-2 rounded border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200">
+            <strong>${warn.issue}</strong><br/>
+            <span class="text-xs text-blue-800 dark:text-blue-300">${warn.suggestion}</span><br/>
+            <span class="font-mono text-xs bg-white dark:bg-slate-900 p-1 mt-1 block rounded border border-blue-100 dark:border-slate-700">${warn.statement}</span>
+          </div>
+        `).join('');
+        sqlPlanSargabilityContent.classList.remove('hidden');
+        hasWarnings = true;
+      } else {
+        sqlPlanSargabilityContent.classList.add('hidden');
+      }
+
+      if (hasWarnings) {
+        sqlPlanWarningsContainer.classList.remove('hidden');
+        sqlPlanWarningsContainer.classList.add('flex');
+      } else {
+        sqlPlanWarningsContainer.classList.add('hidden');
+        sqlPlanWarningsContainer.classList.remove('flex');
+      }
+
+      // Renderizar Missing Indexes
+      if (analysis.missingIndexes.length > 0) {
+        sqlPlanMissingIndexesContent.innerHTML = analysis.missingIndexes.map(idx => `
+          <div class="mb-3 p-3 bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 rounded-lg shadow-sm">
+            <div class="font-bold text-sm text-gray-800 dark:text-gray-200 mb-1">Impacto Estimado: <span class="text-amber-600 dark:text-amber-400">${idx.impact}%</span></div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-2"><strong>Objeto:</strong> ${idx.database}.${idx.schema}.${idx.table}</div>
+            ${idx.equalityColumns.length ? `<div class="text-xs text-gray-700 dark:text-gray-300"><span class="font-bold">Igualdade:</span> ${idx.equalityColumns.join(', ')}</div>` : ''}
+            ${idx.inequalityColumns.length ? `<div class="text-xs text-gray-700 dark:text-gray-300"><span class="font-bold">Desigualdade:</span> ${idx.inequalityColumns.join(', ')}</div>` : ''}
+            ${idx.includeColumns.length ? `<div class="text-xs text-gray-700 dark:text-gray-300"><span class="font-bold">Includes:</span> ${idx.includeColumns.join(', ')}</div>` : ''}
+            <div class="mt-3">
+              <span class="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase">Script Sugerido:</span>
+              <div class="mt-1 bg-gray-50 dark:bg-slate-950 p-2 rounded-lg border border-gray-200 dark:border-slate-800 relative group">
+                <button class="absolute top-2 right-2 text-xs bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity" onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText); this.innerText='Copiado!'; setTimeout(()=>this.innerText='Copiar', 2000);">Copiar</button>
+                <pre class="text-[11px] font-mono text-gray-800 dark:text-gray-200 overflow-x-auto whitespace-pre-wrap leading-relaxed"><code class="select-all">${idx.createScript}</code></pre>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        sqlPlanMissingIndexesContent.innerHTML = '<div class="text-sm text-gray-500">Nenhum índice ausente (Missing Index) sugerido neste plano.</div>';
+      }
+
+      // Renderizar Costly Operations
+      if (analysis.costlyOperations.length > 0) {
+        sqlPlanCostlyOpsContent.innerHTML = analysis.costlyOperations.map(op => `
+          <div class="mb-3 p-3 bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/50 rounded-lg shadow-sm">
+            <div class="flex justify-between items-start mb-1">
+              <div>
+                <div class="font-bold text-sm text-red-700 dark:text-red-400">${getOperationTooltip(op.physicalOp)} <span class="text-gray-500 dark:text-gray-400 font-normal text-xs">(${op.logicalOp})</span></div>
+                ${getEducationalBadge(op.physicalOp)}
+              </div>
+              <div class="text-xs font-mono bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 px-2 py-0.5 rounded text-right">
+                Cost: ${op.nodeCost.toFixed(4)}<br/>
+                <span class="font-bold text-[10px]">${op.nodeCostPercent.toFixed(1)}% do total</span>
+              </div>
+            </div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mt-2"><strong>Objeto:</strong> ${op.object}</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400"><strong>Linhas Estimadas:</strong> ${parseFloat(op.estimateRows).toLocaleString('pt-BR')}</div>
+          </div>
+        `).join('');
+      } else {
+        sqlPlanCostlyOpsContent.innerHTML = '<div class="text-sm text-gray-500">Nenhuma operação relacional encontrada.</div>';
+      }
+
+      // Renderizar Scans Perigosos
+      if (analysis.dangerousScans.length > 0) {
+        sqlPlanScansContent.innerHTML = analysis.dangerousScans.map(scan => `
+          <div class="mb-3 p-3 bg-white dark:bg-slate-900 border border-orange-200 dark:border-orange-900/50 rounded-lg shadow-sm">
+            <div class="flex justify-between items-start mb-1">
+              <div>
+                <div class="font-bold text-sm text-orange-700 dark:text-orange-400 mb-1">${getOperationTooltip(scan.physicalOp)}</div>
+                ${getEducationalBadge(scan.physicalOp)}
+              </div>
+              <div class="text-xs font-mono bg-orange-50 dark:bg-orange-900/20 text-orange-800 dark:text-orange-300 px-2 py-0.5 rounded text-right">
+                Cost: ${scan.nodeCost.toFixed(4)}<br/>
+                <span class="font-bold text-[10px]">${scan.nodeCostPercent.toFixed(1)}% do total</span>
+              </div>
+            </div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mt-2"><strong>Objeto:</strong> ${scan.object}</div>
+          </div>
+        `).join('');
+      } else {
+        sqlPlanScansContent.innerHTML = '<div class="text-sm text-gray-500">Nenhum scan total (Table Scan ou Clustered Index Scan) encontrado neste plano. 🎉</div>';
+      }
+
+      sqlPlanResults.classList.remove('hidden');
+    } catch (e: any) {
+      alert('Erro ao processar o XML: ' + e.message);
+    }
   });
 
 });

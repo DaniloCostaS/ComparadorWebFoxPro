@@ -159,6 +159,14 @@
         </svg>
         <span class="truncate font-semibold text-blue-300">Validador de XML</span>
       </button>
+
+      <button id="tab-sql-plan"
+        class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
+        <svg class="w-5 h-5 flex-shrink-0 text-fuchsia-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+        </svg>
+        <span class="truncate font-semibold text-fuchsia-400">Leitor Plano SQL</span>
+      </button>
     </nav>
 
     <!-- Rodapé do Menu Lateral com Alternador Dark Mode -->
@@ -1302,6 +1310,100 @@
         </div>
 
       </section>
+
+      <!-- Seção: Leitor de Plano de Execução SQL -->
+      <section id="section-sql-plan" class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
+        <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-gray-200 dark:border-slate-800 mb-6 gap-4">
+          <div>
+            <h2 class="text-2xl font-bold text-fuchsia-800 dark:text-fuchsia-400 flex items-center gap-2">
+              <svg class="w-7 h-7 text-fuchsia-600 dark:text-fuchsia-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+              </svg>
+              Leitor de Plano de Execução SQL
+            </h2>
+            <p class="text-gray-600 dark:text-slate-400 text-sm mt-1">Cole o XML gerado pelo SQL Server Execution Plan (Showplan) para extrair gargalos de performance automaticamente.</p>
+          </div>
+        </div>
+
+        <!-- Entrada de XML -->
+        <div class="mb-6">
+          <div class="flex items-center justify-between mb-2">
+            <label for="sql-plan-input" class="text-xs font-bold text-gray-600 dark:text-slate-400 uppercase">XML do Plano de Execução (Showplan XML):</label>
+            <button id="btn-sql-plan-clear" type="button" class="text-xs text-red-600 dark:text-red-400 hover:underline font-semibold">Limpar</button>
+          </div>
+          <textarea id="sql-plan-input" rows="10" class="w-full p-4 font-mono text-xs bg-gray-50 dark:bg-slate-950 text-gray-800 dark:text-slate-200 rounded-xl border border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none shadow-inner" placeholder="Cole o plano de execução aqui (<ShowPlanXML xmlns=...)"></textarea>
+        </div>
+
+        <!-- Botão Analisar -->
+        <div class="flex justify-end mb-8">
+          <button id="btn-analyze-sql-plan" type="button" class="bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-8 rounded-lg shadow-md transition-all flex items-center gap-2 text-base cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            Analisar Plano de Execução
+          </button>
+        </div>
+
+        <!-- Resultados da Análise -->
+        <div id="sql-plan-results" class="hidden space-y-6">
+          
+          <!-- Alertas Educativos de SARGabilidade e Conversão (Dinâmicos) -->
+          <div id="sql-plan-warnings-container" class="hidden flex-col gap-4">
+            
+            <!-- Conversões Implícitas -->
+            <div id="sql-plan-implicit-conversions-content" class="hidden bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-800/60 rounded-xl overflow-hidden p-4 shadow-sm">
+              <div class="flex items-center gap-2 mb-3">
+                <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                <h3 class="font-bold text-orange-800 dark:text-orange-300">Avisos de Conversão Implícita (Assassino Silencioso de Performance)</h3>
+              </div>
+              <div id="sql-plan-implicit-conversions-list" class="space-y-2"></div>
+            </div>
+
+            <!-- SARGabilidade -->
+            <div id="sql-plan-sargability-content" class="hidden bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-800/60 rounded-xl overflow-hidden p-4 shadow-sm">
+              <div class="flex items-center gap-2 mb-3">
+                <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <h3 class="font-bold text-blue-800 dark:text-blue-300">Boas Práticas de Queries (SARGabilidade)</h3>
+              </div>
+              <div id="sql-plan-sargability-list" class="space-y-2"></div>
+            </div>
+            
+          </div>
+
+          <!-- Índices Ausentes (Missing Indexes) -->
+          <div class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
+            <div class="bg-amber-100 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800/50 px-4 py-3 flex items-center gap-2">
+              <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+              <h3 class="font-bold text-amber-800 dark:text-amber-300">Índices Ausentes (Missing Indexes)</h3>
+            </div>
+            <div class="p-4" id="sql-plan-missing-indexes-content">
+              <!-- Renderizado via JS -->
+            </div>
+          </div>
+
+          <!-- Operações Custosas -->
+          <div class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
+            <div class="bg-red-100 dark:bg-red-900/30 border-b border-red-200 dark:border-red-800/50 px-4 py-3 flex items-center gap-2">
+              <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <h3 class="font-bold text-red-800 dark:text-red-300">Operações Custosas (Costly Operations)</h3>
+            </div>
+            <div class="p-4" id="sql-plan-costly-ops-content">
+              <!-- Renderizado via JS -->
+            </div>
+          </div>
+
+          <!-- Scans Perigosos -->
+          <div class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
+            <div class="bg-orange-100 dark:bg-orange-900/30 border-b border-orange-200 dark:border-orange-800/50 px-4 py-3 flex items-center gap-2">
+              <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              <h3 class="font-bold text-orange-800 dark:text-orange-300">Scans Perigosos (Table Scan / Index Scan)</h3>
+            </div>
+            <div class="p-4" id="sql-plan-scans-content">
+              <!-- Renderizado via JS -->
+            </div>
+          </div>
+
+        </div>
+      </section>
+
     </main>
 
     <script type="module" src="/src/main.ts"></script>
