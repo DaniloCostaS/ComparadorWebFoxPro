@@ -273,8 +273,18 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --- FoxPro Single Logic Validation ---
+  const btnPreviewFoxpro = document.getElementById('btn-preview-foxpro') as HTMLButtonElement;
+  const foxproPreviewContainer = document.getElementById('foxpro-preview-container') as HTMLElement;
+  const foxproPreviewIframe = document.getElementById('foxpro-preview-iframe') as HTMLIFrameElement;
+  const foxproPreviewFilename = document.getElementById('foxpro-preview-filename') as HTMLElement;
+  const btnCloseFoxproPreview = document.getElementById('btn-close-foxpro-preview') as HTMLButtonElement;
+
   function validateFoxPro() {
-    btnProcessFoxpro.disabled = !(foxAntesFilesInput.files && foxAntesFilesInput.files.length >= 1 && foxDepoisFilesInput.files && foxDepoisFilesInput.files.length >= 1);
+    const isValid = !!(foxAntesFilesInput.files && foxAntesFilesInput.files.length >= 1 && foxDepoisFilesInput.files && foxDepoisFilesInput.files.length >= 1);
+    btnProcessFoxpro.disabled = !isValid;
+    if (btnPreviewFoxpro) {
+      btnPreviewFoxpro.disabled = !isValid;
+    }
   }
 
   foxAntesFilesInput.addEventListener('change', (e) => {
@@ -299,11 +309,11 @@ document.addEventListener('DOMContentLoaded', () => {
       validateFoxPro();
   });
 
-  btnProcessFoxpro.addEventListener('click', async () => {
+  async function parseFoxProSingle(): Promise<{ antesText: string, depoisText: string, finalName: string } | null> {
       const antesFiles = foxAntesFilesInput.files;
       const depoisFiles = foxDepoisFilesInput.files;
 
-      if (!antesFiles || antesFiles.length < 1 || !depoisFiles || depoisFiles.length < 1) return;
+      if (!antesFiles || antesFiles.length < 1 || !depoisFiles || depoisFiles.length < 1) return null;
 
       const getBuffers = async (files: FileList) => {
           let bin1: ArrayBuffer | null = null;
@@ -346,15 +356,53 @@ document.addEventListener('DOMContentLoaded', () => {
               depoisText = parser.parse(depois.bin1, depois.bin2);
           } else {
               alert('Por favor, selecione arquivos válidos (.PRG) ou o par correto de binários (.SCX/.SCT ou .FRX/.FRT) para ambas as versões.');
-              return;
+              return null;
           }
 
-          await handleTextProcess(antesText, depoisText, baseHtmlTemplate, finalName);
-          alert('Comparação concluída e baixada com sucesso!');
+          return { antesText, depoisText, finalName };
       } catch (err) {
           console.error(err);
           alert('Erro ao processar os arquivos.');
+          return null;
       }
+  }
+
+  btnPreviewFoxpro?.addEventListener('click', async () => {
+    const parsed = await parseFoxProSingle();
+    if (!parsed) return;
+
+    const { antesText, depoisText, finalName } = parsed;
+    const finalHtml = generateDiffHtml(antesText, depoisText, baseHtmlTemplate, finalName);
+
+    if (foxproPreviewFilename) {
+      foxproPreviewFilename.textContent = finalName;
+    }
+    if (foxproPreviewContainer) {
+      foxproPreviewContainer.classList.remove('hidden');
+    }
+    if (foxproPreviewIframe) {
+      foxproPreviewIframe.srcdoc = finalHtml;
+    }
+
+    foxproPreviewContainer?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  btnCloseFoxproPreview?.addEventListener('click', () => {
+    if (foxproPreviewContainer) {
+      foxproPreviewContainer.classList.add('hidden');
+    }
+    if (foxproPreviewIframe) {
+      foxproPreviewIframe.srcdoc = '';
+    }
+  });
+
+  btnProcessFoxpro.addEventListener('click', async () => {
+      const parsed = await parseFoxProSingle();
+      if (!parsed) return;
+
+      const { antesText, depoisText, finalName } = parsed;
+      await handleTextProcess(antesText, depoisText, baseHtmlTemplate, finalName);
+      alert('Comparação concluída e baixada com sucesso!');
   });
 
   // --- FoxPro Batch Logic Validation ---

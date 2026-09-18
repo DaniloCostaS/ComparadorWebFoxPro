@@ -68,39 +68,39 @@
 
       <!-- Navegação de Ferramentas -->
       <nav class="flex-1 overflow-y-auto p-4 space-y-1.5 font-medium text-sm">
-        <button id="tab-batch" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-active">
+        <button id="tab-batch" class="hidden sidebar-item w-full items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive" style="display: none;">
           <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
           <span class="truncate">Modo Lote (FoxCompare)</span>
         </button>
 
-        <button id="tab-text" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-          <span class="truncate">Comparador Texto</span>
-        </button>
-
-        <button id="tab-beautifier" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
-          <span class="truncate">Embelezador de Texto</span>
+        <button id="tab-text" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-active">
+          <svg class="w-5 h-5 flex-shrink-0 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          <span class="truncate font-semibold text-green-300">Comparador Texto</span>
         </button>
 
         <button id="tab-foxpro" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
-          <span class="truncate">FoxPro Único</span>
+          <svg class="w-5 h-5 flex-shrink-0 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
+          <span class="truncate font-semibold text-green-300">FoxPro Único</span>
         </button>
 
         <button id="tab-foxpro-batch" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-          <span class="truncate">Lote FoxPro (.SCX)</span>
+          <svg class="w-5 h-5 flex-shrink-0 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+          <span class="truncate font-semibold text-green-300">Lote FoxPro (.SCX)</span>
         </button>
 
         <button id="tab-code-references" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-          <span class="truncate">Code References</span>
+          <svg class="w-5 h-5 flex-shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <span class="truncate font-semibold text-amber-300">Code References</span>
         </button>
 
         <button id="tab-customizations" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-          <span class="truncate">Analisar Customizações</span>
+          <svg class="w-5 h-5 flex-shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+          <span class="truncate font-semibold text-amber-300">Analisar Customizações</span>
+        </button>
+
+        <button id="tab-beautifier" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
+          <svg class="w-5 h-5 flex-shrink-0 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+          <span class="truncate font-semibold text-blue-300">Embelezador de Texto</span>
         </button>
 
         <button id="tab-xml-validator" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
@@ -143,7 +143,7 @@
       <main class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
       
       <!-- Seção: Processamento em Lote -->
-      <section id="section-batch" class="block bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
+      <section id="section-batch" class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
         <h2 class="text-2xl font-bold mb-4 text-blue-800 dark:text-blue-400">Processamento em Lote</h2>
         <p class="text-gray-600 dark:text-slate-400 mb-6">Selecione o arquivo <code class="bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 px-1.5 py-0.5 rounded border border-gray-200 dark:border-slate-700">ComparadorBase - Interativo.html</code> e em seguida os arquivos HTML com as comparações geradas pelo BeyondCompare. A ferramenta vai extrair o conteúdo e gerar um arquivo ZIP com todos os HTMLs finais.</p>
 
@@ -183,7 +183,7 @@
       </section>
 
       <!-- Seção: Comparador de Texto -->
-      <section id="section-text" class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
+      <section id="section-text" class="block bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
         <h2 class="text-2xl font-bold mb-4 text-blue-800 dark:text-blue-400">Comparador Nativo de Texto</h2>
         <p class="text-gray-600 dark:text-slate-400 mb-6">Cole o código original e o código modificado abaixo. A ferramenta irá gerar o arquivo HTML final sem a necessidade do BeyondCompare.</p>
 
@@ -350,16 +350,35 @@
           </div>
         </div>
 
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+        <div class="flex flex-col sm:flex-row items-center gap-4 mb-6">
           <div class="w-full sm:w-1/2">
              <label class="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">Nome do Arquivo Final</label>
              <input type="text" id="fox-file-name" class="w-full p-2.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Ex: FORM_NOVO">
           </div>
-          <div class="w-full sm:w-auto flex items-end">
-            <button id="btn-process-foxpro" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-              Comparar e Baixar HTML
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <button id="btn-preview-foxpro" class="bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 border border-gray-300 dark:border-slate-700 font-bold py-2.5 px-6 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2" disabled>
+            <svg class="w-5 h-5 text-gray-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+            Visualizar na Tela
+          </button>
+          <button id="btn-process-foxpro" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer" disabled>
+            Comparar e Baixar HTML
+          </button>
+        </div>
+
+        <!-- Container da Visualização na Tela FoxPro Único -->
+        <div id="foxpro-preview-container" class="mt-6 border border-gray-300 dark:border-slate-700 rounded-xl overflow-hidden hidden bg-white dark:bg-slate-900 shadow-md">
+          <div class="bg-gray-100 dark:bg-slate-800 px-4 py-3 border-b border-gray-300 dark:border-slate-700 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="text-sm font-bold text-gray-700 dark:text-slate-300">Visualização Interativa na Tela:</span>
+              <span id="foxpro-preview-filename" class="text-sm font-bold text-blue-800 dark:text-blue-400"></span>
+            </div>
+            <button id="btn-close-foxpro-preview" class="text-xs bg-white dark:bg-slate-700 hover:bg-red-50 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1">
+              ✕ Fechar Visualização
             </button>
           </div>
+          <iframe id="foxpro-preview-iframe" class="w-full h-[680px] border-none bg-white"></iframe>
         </div>
       </section>
 
