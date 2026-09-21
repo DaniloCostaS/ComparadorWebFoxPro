@@ -6,7 +6,7 @@ import { handleCodeReferencesSearch, renderTreeResults } from './codeReferences.
 import { beautifyText, minifyText } from './beautifier.ts';
 import { analyzeRepositoryCustomizations, type AnalysisSummary, type CustomizedItem } from './customizationAnalyzer.ts';
 import { validateSingleXml, validateBatchXml, SCHEMA_PACKAGES, type FileValidationResult } from './xmlValidator.ts';
-import { parseSqlPlan } from './sqlPlanReader.ts';
+import { parseSqlPlan, SQL_OPERATIONS_DICTIONARY, getOperationTooltip, getEducationalBadge } from './sqlPlanReader.ts';
 import { saveAs } from 'file-saver';
 import baseHtmlTemplate from './base.html?raw';
 import baseConsolidatedHtmlTemplate from './baseConsolidated.html?raw';
@@ -2131,6 +2131,69 @@ document.addEventListener('DOMContentLoaded', () => {
   const sqlPlanCostlyOpsContent = document.getElementById('sql-plan-costly-ops-content') as HTMLElement;
   const sqlPlanScansContent = document.getElementById('sql-plan-scans-content') as HTMLElement;
 
+  // Modal Dicionário de Operações SQL
+  const btnOpenSqlDictModal = document.getElementById('btn-open-sql-dict-modal') as HTMLButtonElement;
+  const sqlDictModal = document.getElementById('sql-dict-modal') as HTMLElement;
+  const btnCloseSqlDictModal = document.getElementById('btn-close-sql-dict-modal') as HTMLButtonElement;
+  const btnCloseSqlDictModalFooter = document.getElementById('btn-close-sql-dict-modal-footer') as HTMLButtonElement;
+  const sqlDictSearchInput = document.getElementById('sql-dict-search-input') as HTMLInputElement;
+  const sqlDictModalList = document.getElementById('sql-dict-modal-list') as HTMLElement;
+
+  function renderSqlDict(filterText = '') {
+    if (!sqlDictModalList) return;
+    const filter = filterText.toLowerCase().trim();
+    const entries = Object.entries(SQL_OPERATIONS_DICTIONARY).filter(([name, info]) => {
+      if (!filter) return true;
+      return (
+        name.toLowerCase().includes(filter) ||
+        info.category.toLowerCase().includes(filter) ||
+        info.description.toLowerCase().includes(filter)
+      );
+    });
+
+    if (entries.length === 0) {
+      sqlDictModalList.innerHTML = `<div class="p-6 text-center text-sm text-gray-500 dark:text-gray-400">Nenhuma operação encontrada para "<strong>${escapeHtml(filterText)}</strong>".</div>`;
+      return;
+    }
+
+    sqlDictModalList.innerHTML = entries.map(([name, info]) => `
+      <div class="p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-xs hover:border-fuchsia-300 dark:hover:border-fuchsia-800 transition-colors">
+        <div class="flex items-center justify-between mb-1.5 gap-2 flex-wrap">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-sm text-fuchsia-800 dark:text-fuchsia-300 font-mono">${escapeHtml(name)}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-fuchsia-50 dark:bg-fuchsia-950/50 text-fuchsia-700 dark:text-fuchsia-300 font-semibold uppercase border border-fuchsia-200 dark:border-fuchsia-900">${escapeHtml(info.category)}</span>
+          </div>
+          ${info.badgeText ? `<span class="inline-block px-2 py-0.5 ${info.badgeClass || ''} text-[10px] font-bold rounded-full">${escapeHtml(info.badgeText)}</span>` : ''}
+        </div>
+        <p class="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">${escapeHtml(info.description)}</p>
+      </div>
+    `).join('');
+  }
+
+  btnOpenSqlDictModal?.addEventListener('click', () => {
+    if (sqlDictSearchInput) sqlDictSearchInput.value = '';
+    renderSqlDict('');
+    sqlDictModal?.classList.remove('hidden');
+    sqlDictSearchInput?.focus();
+  });
+
+  const closeSqlDictModal = () => {
+    sqlDictModal?.classList.add('hidden');
+  };
+
+  btnCloseSqlDictModal?.addEventListener('click', closeSqlDictModal);
+  btnCloseSqlDictModalFooter?.addEventListener('click', closeSqlDictModal);
+
+  sqlDictModal?.addEventListener('click', (e) => {
+    if (e.target === sqlDictModal) {
+      closeSqlDictModal();
+    }
+  });
+
+  sqlDictSearchInput?.addEventListener('input', () => {
+    renderSqlDict(sqlDictSearchInput.value);
+  });
+
   btnSqlPlanClear?.addEventListener('click', () => {
     sqlPlanInput.value = '';
     sqlPlanResults.classList.add('hidden');
@@ -2145,50 +2208,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const analysis = parseSqlPlan(xml);
-
-      // Dicionário de Tooltips para operações
-      const getOperationTooltip = (physicalOp: string) => {
-        const dict: Record<string, string> = {
-          'Clustered Index Seek': 'O SQL foi diretamente a linhas específicas (ou a um intervalo) da tabela usando a chave primária. É altamente eficiente, pois evita varrer dados desnecessários.',
-          'Index Seek': 'O SQL usou um índice secundário para ir direto aos dados que satisfazem o filtro. Excelente para a performance.',
-          'Clustered Index Scan': 'O SQL leu a tabela principal inteira do começo ao fim. Pode ser normal para tabelas pequenas, mas costuma ser um gargalo em tabelas grandes. Indica filtros fracos ou falta de índices.',
-          'Table Scan': 'O SQL leu uma tabela sem chave primária (Heap) inteira, linha a linha. Péssimo para performance. Considere adicionar uma Chave Primária ou Índices.',
-          'Index Scan': 'O SQL varreu um índice secundário inteiro. É mais leve que ler a tabela toda, mas indica que a query não conseguiu filtrar valores específicos e teve que ler tudo.',
-          'Key Lookup': 'O SQL usou um índice, mas ele não continha todas as colunas pedidas no SELECT. Foi necessário um "pulo" (lookup) na tabela principal por linha. Resolvido adicionando colunas no INCLUDE do índice.',
-          'RID Lookup': 'Semelhante ao Key Lookup, mas ocorre numa tabela sem chave primária (Heap).',
-          'Nested Loops': 'O SQL pega cada linha de um conjunto (A) e varre o outro conjunto (B) procurando correspondências. Rápido para volumes pequenos, mas muito lento se ambas tabelas forem gigantes.',
-          'Hash Match': 'O SQL cria uma estrutura na memória (Hash) para cruzar ou agrupar conjuntos grandes e não-ordenados. É a melhor opção para grandes volumes, mas consome bastante CPU e Memória RAM.',
-          'Merge Join': 'O SQL cruza tabelas lendo ambas sequencialmente, porque elas já chegaram previamente ordenadas. É extremamente rápido e eficiente, mas exige ordenação prévia.',
-          'Sort': 'O SQL gastou recursos para ordenar os dados (devido a ORDER BY, DISTINCT ou Merge Join). Pode ser um grande gargalo e usar memória (TempDB) se o volume for alto.',
-          'Concatenation': 'O SQL uniu múltiplos conjuntos de resultados empilhando as linhas, como numa operação UNION ALL.',
-          'Compute Scalar': 'O SQL calculou um novo valor linha a linha (ex: somas, conversões de dados, cálculos matemáticos). Geralmente é inofensivo e muito rápido.',
-          'Filter': 'O SQL aplicou uma condição lógica linha a linha para descartar dados que não passaram no filtro.',
-          'Stream Aggregate': 'O SQL agrupou rapidamente dados (ex: GROUP BY) que já estavam previamente ordenados. Muito leve e rápido.',
-          'Table Spool': 'O SQL precisou salvar um resultado intermediário temporariamente no TempDB para ser reutilizado várias vezes na mesma query.'
-        };
-        
-        const key = Object.keys(dict).find(k => physicalOp.includes(k));
-        const tooltip = key ? dict[key] : '';
-        
-        if (tooltip) {
-           return `<span class="border-b border-dashed border-gray-400 cursor-help" title="${tooltip}">${physicalOp}</span>`;
-        }
-        return physicalOp;
-      };
-
-      // Função auxiliar para badges
-      const getEducationalBadge = (physicalOp: string) => {
-        if (physicalOp.includes('Index Seek')) {
-          return '<span class="inline-block px-2 py-0.5 mt-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-[10px] font-bold rounded-full" title="✅ Busca Otimizada: O banco foi direto ao registro usando um índice.">✅ Busca Otimizada</span>';
-        }
-        if (physicalOp.includes('Table Scan') || physicalOp.includes('Clustered Index Scan')) {
-          return '<span class="inline-block px-2 py-0.5 mt-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-[10px] font-bold rounded-full" title="⚠️ Varredura: O banco precisou ler a tabela inteira (ou grande parte dela) para achar o dado. Sinal de que falta um índice.">⚠️ Varredura Completa</span>';
-        }
-        if (physicalOp.includes('Hash') || physicalOp.includes('Sort')) {
-          return '<span class="inline-block px-2 py-0.5 mt-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-[10px] font-bold rounded-full" title="Atenção: Operações de Hash ou Sort consomem muita CPU e Memória.">⚡ Alto Custo CPU/Memória</span>';
-        }
-        return '';
-      };
       
       // Renderizar Warnings (SARGabilidade & Conversões)
       let hasWarnings = false;

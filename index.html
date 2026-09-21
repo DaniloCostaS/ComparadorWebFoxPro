@@ -1323,6 +1323,12 @@
             </h2>
             <p class="text-gray-600 dark:text-slate-400 text-sm mt-1">Cole o XML gerado pelo SQL Server Execution Plan (Showplan) para extrair gargalos de performance automaticamente.</p>
           </div>
+          <button id="btn-open-sql-dict-modal" type="button" class="self-start md:self-auto inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-fuchsia-300 dark:border-fuchsia-800 bg-fuchsia-50 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/60 transition-colors shadow-sm cursor-pointer">
+            <svg class="w-5 h-5 text-fuchsia-600 dark:text-fuchsia-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+            </svg>
+            Dicionário de Operações
+          </button>
         </div>
 
         <!-- Entrada de XML -->
@@ -1401,6 +1407,32 @@
             </div>
           </div>
 
+        </div>
+        <!-- Modal Dicionário de Operações SQL -->
+        <div id="sql-dict-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden">
+            <div class="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between bg-fuchsia-50 dark:bg-fuchsia-950/30">
+              <div class="flex items-center gap-2">
+                <svg class="w-6 h-6 text-fuchsia-600 dark:text-fuchsia-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                </svg>
+                <div>
+                  <h3 class="text-lg font-bold text-fuchsia-800 dark:text-fuchsia-300">Dicionário de Operações SQL</h3>
+                  <p class="text-xs text-gray-500 dark:text-slate-400">Guia de operadores de plano de execução (Showplan) e impacto na performance</p>
+                </div>
+              </div>
+              <button type="button" id="btn-close-sql-dict-modal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl font-bold p-1 leading-none cursor-pointer">&times;</button>
+            </div>
+            <div class="p-3 border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950">
+              <input type="text" id="sql-dict-search-input" placeholder="Filtrar por nome, categoria ou descrição (ex: Index Spool, Parallelism, Seek, Scan...)" class="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-fuchsia-500 focus:outline-none" />
+            </div>
+            <div id="sql-dict-modal-list" class="p-4 overflow-y-auto space-y-3 flex-1">
+              <!-- Renderizado via JS -->
+            </div>
+            <div class="p-3 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 flex justify-end">
+              <button type="button" id="btn-close-sql-dict-modal-footer" class="px-4 py-2 bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-800 dark:text-gray-200 rounded-lg font-medium text-sm transition-colors cursor-pointer">Fechar</button>
+            </div>
+          </div>
         </div>
       </section>
 
