@@ -569,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
           } else if (item.category === 'unchanged') {
               badgeHtml = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">⚪ Sem Alteração (Idêntico)</span>`;
           } else if (item.category === 'new') {
-              badgeHtml = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">🟡 Novo (Apenas Depois)</span>`;
+              badgeHtml = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">✨ Novo (Adicionado)</span>`;
           } else if (item.category === 'missing') {
               badgeHtml = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">🟣 Ausente (Apenas Antes)</span>`;
           } else {

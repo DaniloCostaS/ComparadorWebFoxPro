@@ -146,7 +146,7 @@ export async function handleFoxProBatchProcess(
 
     try {
         const zip = new JSZip();
-        const batchDataItems: Array<{ id: string, fileName: string, rowsHtml: string, isError?: boolean }> = [];
+        const batchDataItems: Array<{ id: string, fileName: string, rowsHtml: string, isError?: boolean, isNew?: boolean }> = [];
         let successCount = 0;
         let unchangedCount = 0;
         let newCount = 0;
@@ -174,69 +174,67 @@ export async function handleFoxProBatchProcess(
             }
 
             const antesFiles = antesMap.get(mapKey);
+            const isNewFile = !antesFiles;
 
-            if (!antesFiles) {
-                // Arquivo Novo (Apenas no Depois)
-                const msg = `Objeto '${baseName}' detectado como NOVO (não existe na origem)`;
-                logBatch(`Aviso: ${msg}. Ignorado.`, false, true);
-                results.push({ name: baseName, mapKey, category: 'new', message: msg });
-                newCount++;
-                continue;
+            if (!isNewFile) {
+                const antesIsScx = !!(antesFiles.scx && antesFiles.sct);
+                const antesIsFrx = !!(antesFiles.frx && antesFiles.frt);
+                const antesIsPrg = !!antesFiles.prg;
+
+                if (!antesIsScx && !antesIsFrx && !antesIsPrg) {
+                    const msg = `Objeto de origem '${baseName}' está incompleto`;
+                    logBatch(`Aviso: ${msg}. Ignorado.`, true);
+                    results.push({ name: baseName, mapKey, category: 'error', message: msg });
+                    errorCount++;
+                    continue;
+                }
+
+                if ((isPrg && !antesIsPrg) || (isScx && !antesIsScx) || (isFrx && !antesIsFrx)) {
+                    const msg = `Tipos incompatíveis entre origem e destino para '${baseName}'`;
+                    logBatch(`Erro: ${msg}.`, true);
+                    results.push({ name: baseName, mapKey, category: 'error', message: msg });
+                    errorCount++;
+                    continue;
+                }
             }
 
-            const antesIsScx = !!(antesFiles.scx && antesFiles.sct);
-            const antesIsFrx = !!(antesFiles.frx && antesFiles.frt);
-            const antesIsPrg = !!antesFiles.prg;
-
-            if (!antesIsScx && !antesIsFrx && !antesIsPrg) {
-                const msg = `Objeto de origem '${baseName}' está incompleto`;
-                logBatch(`Aviso: ${msg}. Ignorado.`, true);
-                results.push({ name: baseName, mapKey, category: 'error', message: msg });
-                errorCount++;
-                continue;
-            }
-
-            // Se chegou aqui, temos tudo para comparar!
+            // Se chegou aqui, temos tudo para comparar ou processar o novo objeto!
             try {
                 let antesText = '';
                 let depoisText = '';
 
-                if (isPrg && antesIsPrg) {
+                if (isPrg) {
                     const dec = new TextDecoder('windows-1252');
-                    
-                    const bufAntes = await antesFiles.prg!.arrayBuffer();
-                    antesText = parser.parsePrg(dec.decode(bufAntes));
-                    
+                    if (!isNewFile) {
+                        const bufAntes = await antesFiles!.prg!.arrayBuffer();
+                        antesText = parser.parsePrg(dec.decode(bufAntes));
+                    }
                     const bufDepois = await depoisFiles.prg!.arrayBuffer();
                     depoisText = parser.parsePrg(dec.decode(bufDepois));
 
-                } else if (isScx && antesIsScx) {
-                    const scxAntesBuf = await antesFiles.scx!.arrayBuffer();
-                    const sctAntesBuf = await antesFiles.sct!.arrayBuffer();
-                    antesText = parser.parse(scxAntesBuf, sctAntesBuf);
-
+                } else if (isScx) {
+                    if (!isNewFile) {
+                        const scxAntesBuf = await antesFiles!.scx!.arrayBuffer();
+                        const sctAntesBuf = await antesFiles!.sct!.arrayBuffer();
+                        antesText = parser.parse(scxAntesBuf, sctAntesBuf);
+                    }
                     const scxDepoisBuf = await depoisFiles.scx!.arrayBuffer();
                     const sctDepoisBuf = await depoisFiles.sct!.arrayBuffer();
                     depoisText = parser.parse(scxDepoisBuf, sctDepoisBuf);
 
-                } else if (isFrx && antesIsFrx) {
-                    const frxAntesBuf = await antesFiles.frx!.arrayBuffer();
-                    const frtAntesBuf = await antesFiles.frt!.arrayBuffer();
-                    antesText = parser.parse(frxAntesBuf, frtAntesBuf);
-
+                } else if (isFrx) {
+                    if (!isNewFile) {
+                        const frxAntesBuf = await antesFiles!.frx!.arrayBuffer();
+                        const frtAntesBuf = await antesFiles!.frt!.arrayBuffer();
+                        antesText = parser.parse(frxAntesBuf, frtAntesBuf);
+                    }
                     const frxDepoisBuf = await depoisFiles.frx!.arrayBuffer();
                     const frtDepoisBuf = await depoisFiles.frt!.arrayBuffer();
                     depoisText = parser.parse(frxDepoisBuf, frtDepoisBuf);
-                } else {
-                     const msg = `Tipos incompatíveis ou par incompleto para '${baseName}'`;
-                     logBatch(`Erro: ${msg}.`, true);
-                     results.push({ name: baseName, mapKey, category: 'error', message: msg });
-                     errorCount++;
-                     continue;
                 }
 
-                // Verificar se o conteúdo é exatamente igual
-                if (antesText.trim() === depoisText.trim()) {
+                // Verificar se o conteúdo é exatamente igual (apenas se já existia na origem)
+                if (!isNewFile && antesText.trim() === depoisText.trim()) {
                     const msg = `Conteúdo idêntico no antes e depois (sem alterações)`;
                     logBatch(`Ignorado: '${baseName}' existe na origem e no destino, mas está sem alterações. HTML não gerado.`, false, true);
                     results.push({ name: baseName, mapKey, category: 'unchanged', message: msg });
@@ -251,9 +249,10 @@ export async function handleFoxProBatchProcess(
                 if (isConsolidated) {
                     const rowsHtml = generateDiffRows(antesText, depoisText);
                     batchDataItems.push({
-                        id: `file_${successCount}`,
+                        id: `file_${batchDataItems.length}`,
                         fileName: formattedFileName,
-                        rowsHtml
+                        rowsHtml,
+                        isNew: isNewFile
                     });
                 } else {
                     const finalHtml = generateDiffHtml(antesText, depoisText, baseContent, formattedFileName, customPrefix);
@@ -262,10 +261,17 @@ export async function handleFoxProBatchProcess(
                 }
 
                 successCount++;
-                results.push({ name: baseName, mapKey, category: 'changed', message: 'Modificações detectadas - HTML gerado' });
-                logBatch(`Sucesso: '${baseName}' com alterações`);
+                if (isNewFile) {
+                    newCount++;
+                    const msg = isScx ? 'Nova tela detectada - incluída no lote' : isPrg ? 'Novo programa detectado - incluído no lote' : 'Novo relatório detectado - incluído no lote';
+                    results.push({ name: baseName, mapKey, category: 'new', message: msg });
+                    logBatch(`Sucesso: '${baseName}' detectado como NOVO (${isScx ? 'tela' : isPrg ? 'programa' : 'relatório'}) e incluído no lote`);
+                } else {
+                    results.push({ name: baseName, mapKey, category: 'changed', message: 'Modificações detectadas - HTML gerado' });
+                    logBatch(`Sucesso: '${baseName}' com alterações`);
+                }
             } catch(e: any) {
-                const msg = `Erro ao parsear '${baseName}': ${e.message}`;
+                const msg = `Erro ao processar '${baseName}': ${e.message}`;
                 logBatch(msg, true);
                 results.push({ name: baseName, mapKey, category: 'error', message: msg });
                 errorCount++;
@@ -299,15 +305,15 @@ export async function handleFoxProBatchProcess(
                 
                 const blob = new Blob([finalConsolidatedHtml], { type: 'text/html;charset=utf-8' });
                 saveAs(blob, outName);
-                logBatch(`Concluído: HTML agrupado gerado com ${batchDataItems.length} arquivo(s).`);
+                logBatch(`Concluído: HTML agrupado gerado com ${batchDataItems.length} arquivo(s)${newCount > 0 ? ` (${newCount} novo(s))` : ''}.`);
             } else {
                 logBatch('Gerando arquivo ZIP...', false);
                 const content = await zip.generateAsync({ type: 'blob' });
                 saveAs(content, 'Comparacoes_Lote_FoxPro.zip');
-                logBatch(`Concluído: ${successCount} salvos no ZIP, ${unchangedCount} sem alteração, ${newCount} novos (depois)${checkMissing ? `, ${missingCount} ausentes (antes)` : ''}, ${errorCount} erros.`);
+                logBatch(`Concluído: ${successCount} salvos no ZIP (${newCount} novo(s)), ${unchangedCount} sem alteração${checkMissing ? `, ${missingCount} ausentes (antes)` : ''}, ${errorCount} erros.`);
             }
         } else {
-            logBatch('Nenhum arquivo com alterações foi encontrado para gerar o relatório.', true);
+            logBatch('Nenhum arquivo com alterações ou novo foi encontrado para gerar o relatório.', true);
         }
 
     } catch (e: any) {
