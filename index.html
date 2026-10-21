@@ -150,6 +150,16 @@
         <span class="truncate font-semibold text-blue-300">Embelezador de Texto</span>
       </button>
 
+      <button id="tab-markdown"
+        class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
+        <svg class="w-5 h-5 flex-shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"></path>
+          <path d="M7 15V9l3 3.5L13 9v6"></path>
+          <path d="M17 9v6l2-2m-2 2l-2-2"></path>
+        </svg>
+        <span class="truncate font-semibold text-indigo-300">Leitor Markdown</span>
+      </button>
+
       <button id="tab-xml-validator"
         class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
         <svg class="w-5 h-5 flex-shrink-0 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1434,6 +1444,182 @@
             </div>
           </div>
         </div>
+      </section>
+
+      <!-- Seção: Leitor de Markdown (.md) -->
+      <section id="section-markdown" class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
+        <!-- Cabeçalho Principal -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-gray-200 dark:border-slate-800 mb-6 gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-2xl font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-2">
+                <svg class="w-7 h-7 text-indigo-600 dark:text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"></path>
+                  <path d="M7 15V9l3 3.5L13 9v6"></path>
+                  <path d="M17 9v6l2-2m-2 2l-2-2"></path>
+                </svg>
+                Leitor de Markdown (.md)
+              </h2>
+              <span class="text-[11px] uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900">GFM & Highlighting</span>
+            </div>
+            <p class="text-gray-600 dark:text-slate-400 text-sm mt-1">Visualize, edite e exporte arquivos Markdown com tipografia refinada, suporte a tabelas, blocos de código com destaque e sumário navegável.</p>
+          </div>
+
+          <!-- Ações Rápidas de Arquivo -->
+          <div class="flex items-center flex-wrap gap-2">
+            <input type="file" id="md-file-input" accept=".md,.markdown,.mdown,.mkd,.txt" class="hidden" />
+            <button id="btn-md-open-file" type="button" class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors shadow-xs cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+              Abrir Arquivo .md
+            </button>
+            <button id="btn-md-load-readme" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-xs cursor-pointer">
+              <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              README do Projeto
+            </button>
+            <button id="btn-md-load-example" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-xs cursor-pointer">
+              <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+              Exemplo Completo
+            </button>
+            <button id="btn-md-clear" type="button" class="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors cursor-pointer">
+              Limpar
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de Ferramentas / Controles de Visualização -->
+        <div class="bg-gray-50 dark:bg-slate-950 p-3 rounded-xl border border-gray-200 dark:border-slate-800 mb-4 flex flex-wrap items-center justify-between gap-3">
+          
+          <!-- Lado Esquerdo: Modos de Visualização e Nome do Arquivo -->
+          <div class="flex items-center flex-wrap gap-2">
+            <div class="inline-flex rounded-lg border border-gray-300 dark:border-slate-700 p-0.5 bg-white dark:bg-slate-900 shadow-xs">
+              <button id="btn-md-view-split" type="button" class="px-3 py-1.5 text-xs font-bold rounded-md transition-colors bg-indigo-600 text-white dark:bg-indigo-500 cursor-pointer flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
+                Lado a Lado
+              </button>
+              <button id="btn-md-view-preview" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                Apenas Prévia
+              </button>
+              <button id="btn-md-view-editor" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                Apenas Editor
+              </button>
+            </div>
+
+            <!-- Botão Sumário -->
+            <button id="btn-md-toggle-toc" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs" title="Exibir / Ocultar Sumário">
+              <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+              <span>Sumário</span>
+              <span id="md-toc-count" class="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900">0</span>
+            </button>
+
+            <!-- Arquivo Atual -->
+            <div class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 text-xs">
+              <span class="text-gray-400 dark:text-slate-500">Arquivo:</span>
+              <span id="md-current-filename" class="font-mono font-bold text-gray-800 dark:text-slate-200 truncate max-w-[180px]">documento.md</span>
+            </div>
+          </div>
+
+          <!-- Centro: Busca de Texto no Documento -->
+          <div class="relative flex-1 min-w-[200px] max-w-xs">
+            <svg class="w-4 h-4 absolute left-3 top-2.5 text-gray-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" id="md-search-input" placeholder="Buscar no documento..." class="w-full pl-9 pr-20 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            <span id="md-search-match-count" class="absolute right-2.5 top-2 text-[10px] text-gray-400 dark:text-slate-500 pointer-events-none">0 resultados</span>
+          </div>
+
+          <!-- Lado Direito: Ações de Cópia e Exportação -->
+          <div class="flex items-center flex-wrap gap-1.5">
+            <button id="btn-md-copy-markdown" type="button" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1" title="Copiar código Markdown">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+              <span>Copiar MD</span>
+            </button>
+            <button id="btn-md-copy-html" type="button" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1" title="Copiar código HTML renderizado">
+              <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+              <span>Copiar HTML</span>
+            </button>
+            <button id="btn-md-export-html" type="button" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-indigo-300 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer flex items-center gap-1" title="Baixar como arquivo HTML completo e estilizado">
+              <svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              <span>Baixar HTML</span>
+            </button>
+            <button id="btn-md-print" type="button" class="p-1.5 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-slate-800 transition-colors cursor-pointer" title="Imprimir / Salvar como PDF">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            </button>
+            <button id="btn-md-fullscreen" type="button" class="p-1.5 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-slate-800 transition-colors cursor-pointer" title="Modo Tela Cheia (Zen Mode)">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Barra de Estatísticas do Documento -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <div class="p-2.5 bg-gray-50 dark:bg-slate-950 rounded-lg border border-gray-200 dark:border-slate-800 flex items-center justify-between">
+            <span class="text-xs text-gray-500 dark:text-slate-400 font-medium">Palavras:</span>
+            <span id="md-stat-words" class="text-sm font-bold text-gray-900 dark:text-slate-100 font-mono">0</span>
+          </div>
+          <div class="p-2.5 bg-gray-50 dark:bg-slate-950 rounded-lg border border-gray-200 dark:border-slate-800 flex items-center justify-between">
+            <span class="text-xs text-gray-500 dark:text-slate-400 font-medium">Caracteres:</span>
+            <span id="md-stat-chars" class="text-sm font-bold text-gray-900 dark:text-slate-100 font-mono">0</span>
+          </div>
+          <div class="p-2.5 bg-gray-50 dark:bg-slate-950 rounded-lg border border-gray-200 dark:border-slate-800 flex items-center justify-between">
+            <span class="text-xs text-gray-500 dark:text-slate-400 font-medium">Linhas:</span>
+            <span id="md-stat-lines" class="text-sm font-bold text-gray-900 dark:text-slate-100 font-mono">0</span>
+          </div>
+          <div class="p-2.5 bg-gray-50 dark:bg-slate-950 rounded-lg border border-gray-200 dark:border-slate-800 flex items-center justify-between">
+            <span class="text-xs text-gray-500 dark:text-slate-400 font-medium">Tempo de Leitura:</span>
+            <span id="md-stat-readtime" class="text-sm font-bold text-indigo-600 dark:text-indigo-400 font-mono">~0 min</span>
+          </div>
+        </div>
+
+        <!-- Área Principal com Editor e Prévia (Split Panes) -->
+        <div id="md-panes-container" class="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[720px]">
+          
+          <!-- Painel Esquerdo: Editor Markdown -->
+          <div id="md-pane-editor" class="flex flex-col border border-gray-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
+            <div class="px-4 py-2.5 bg-gray-100 dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
+              <span class="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                Editor Markdown (Entrada)
+              </span>
+              <span class="text-[11px] text-gray-400 dark:text-slate-500">Suporta arrastar e soltar arquivo .md</span>
+            </div>
+            <textarea id="md-editor-input" class="w-full flex-1 p-4 font-mono text-xs leading-relaxed bg-gray-50 dark:bg-slate-950 text-gray-800 dark:text-slate-200 focus:outline-none resize-none" placeholder="Digite ou cole seu conteúdo Markdown aqui..."></textarea>
+          </div>
+
+          <!-- Painel Direito: Prévia Formatada + Sumário Lateral -->
+          <div id="md-pane-preview" class="flex flex-col border border-gray-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs bg-white dark:bg-slate-900">
+            <div class="px-4 py-2.5 bg-gray-100 dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
+              <span class="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                Prévia Formatada (Visualização Bonita)
+              </span>
+              <span class="text-[11px] text-gray-400 dark:text-slate-500">Renderização Instantânea</span>
+            </div>
+            
+            <div id="md-preview-container" class="flex-1 flex overflow-hidden relative">
+              <!-- Conteúdo Markdown Renderizado -->
+              <div id="md-preview-content" class="markdown-body p-6 flex-1 min-w-0 overflow-y-auto bg-white dark:bg-slate-900">
+                <!-- Renderizado via marked & highlight.js -->
+              </div>
+
+              <!-- Sumário / Índice Lateral (Navegável) -->
+              <div id="md-pane-toc" class="w-64 border-l border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/70 p-4 overflow-y-auto flex-shrink-0 flex flex-col">
+                <div class="flex items-center justify-between pb-2 mb-3 border-b border-gray-200 dark:border-slate-800">
+                  <span class="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+                    Índice de Tópicos
+                  </span>
+                </div>
+                <div id="md-toc-list" class="space-y-1 flex-1">
+                  <!-- Links gerados via JS -->
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
       </section>
 
     </main>

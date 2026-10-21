@@ -7,6 +7,8 @@ import { beautifyText, minifyText } from './beautifier.ts';
 import { analyzeRepositoryCustomizations, type AnalysisSummary, type CustomizedItem } from './customizationAnalyzer.ts';
 import { validateSingleXml, validateBatchXml, SCHEMA_PACKAGES, type FileValidationResult } from './xmlValidator.ts';
 import { parseSqlPlan, SQL_OPERATIONS_DICTIONARY, getOperationTooltip, getEducationalBadge } from './sqlPlanReader.ts';
+import './markdownViewer.css';
+import { initMarkdownViewerUI } from './markdownViewer.ts';
 import { saveAs } from 'file-saver';
 import baseHtmlTemplate from './base.html?raw';
 import baseConsolidatedHtmlTemplate from './baseConsolidated.html?raw';
@@ -22,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabCustomizations = document.getElementById('tab-customizations') as HTMLButtonElement;
   const tabXmlValidator = document.getElementById('tab-xml-validator') as HTMLButtonElement;
   const tabSqlPlan = document.getElementById('tab-sql-plan') as HTMLButtonElement;
+  const tabMarkdown = document.getElementById('tab-markdown') as HTMLButtonElement;
 
   const sectionBatch = document.getElementById('section-batch') as HTMLElement;
   const sectionText = document.getElementById('section-text') as HTMLElement;
@@ -32,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const sectionCustomizations = document.getElementById('section-customizations') as HTMLElement;
   const sectionXmlValidator = document.getElementById('section-xml-validator') as HTMLElement;
   const sectionSqlPlan = document.getElementById('section-sql-plan') as HTMLElement;
+  const sectionMarkdown = document.getElementById('section-markdown') as HTMLElement;
 
   // Batch Elements
   const compareFilesInput = document.getElementById('compare-files') as HTMLInputElement;
@@ -117,11 +121,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Tab Logic ---
   function resetTabs() {
-    [tabBatch, tabText, tabBeautifier, tabFoxpro, tabFoxproBatch, tabCodeReferences, tabCustomizations, tabXmlValidator, tabSqlPlan].forEach(t => {
+    [tabBatch, tabText, tabBeautifier, tabFoxpro, tabFoxproBatch, tabCodeReferences, tabCustomizations, tabXmlValidator, tabSqlPlan, tabMarkdown].forEach(t => {
       t?.classList.remove('tab-active');
       t?.classList.add('tab-inactive');
     });
-    [sectionBatch, sectionText, sectionBeautifier, sectionFoxpro, sectionFoxproBatch, sectionCodeReferences, sectionCustomizations, sectionXmlValidator, sectionSqlPlan].forEach(s => s?.classList.add('hidden'));
+    [sectionBatch, sectionText, sectionBeautifier, sectionFoxpro, sectionFoxproBatch, sectionCodeReferences, sectionCustomizations, sectionXmlValidator, sectionSqlPlan, sectionMarkdown].forEach(s => s?.classList.add('hidden'));
     closeMobileSidebar();
   }
 
@@ -2317,5 +2321,15 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Erro ao processar o XML: ' + e.message);
     }
   });
+
+  // --- Lógica: Leitor de Markdown (.md) ---
+  tabMarkdown?.addEventListener('click', () => {
+    resetTabs();
+    tabMarkdown.classList.remove('tab-inactive');
+    tabMarkdown.classList.add('tab-active');
+    sectionMarkdown.classList.remove('hidden');
+  });
+
+  initMarkdownViewerUI();
 
 });
