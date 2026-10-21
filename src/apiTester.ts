@@ -235,7 +235,7 @@ export class ApiTesterController {
       id: uid(),
       name: 'Nova Requisição',
       method: 'GET',
-      url: 'https://jsonplaceholder.typicode.com/todos/1',
+      url: '',
       params: [],
       headers: [
         { id: uid(), key: 'Accept', value: 'application/json', enabled: true }
@@ -269,6 +269,14 @@ export class ApiTesterController {
       const rawCurrent = localStorage.getItem(STORAGE_KEY_CURRENT_REQ);
       if (rawCurrent) {
         this.currentRequest = JSON.parse(rawCurrent);
+        // Se a requisição pertencer a uma coleção, sincroniza com a versão salva na coleção
+        if (this.currentRequest.collectionId) {
+          const col = this.collections.find((c) => c.id === this.currentRequest.collectionId);
+          const reqInCol = col?.requests.find((r) => r.id === this.currentRequest.id);
+          if (reqInCol) {
+            this.currentRequest = JSON.parse(JSON.stringify(reqInCol));
+          }
+        }
       } else if (this.collections[0]?.requests[0]) {
         this.currentRequest = JSON.parse(JSON.stringify(this.collections[0].requests[0]));
       }
@@ -280,8 +288,20 @@ export class ApiTesterController {
     }
   }
 
+  // Atualiza a requisição atual dentro da coleção à qual pertence (auto-save contínuo)
+  public updateCurrentRequestInCollection() {
+    if (!this.currentRequest || !this.currentRequest.collectionId) return;
+    const col = this.collections.find((c) => c.id === this.currentRequest.collectionId);
+    if (!col) return;
+    const idx = col.requests.findIndex((r) => r.id === this.currentRequest.id);
+    if (idx >= 0) {
+      col.requests[idx] = JSON.parse(JSON.stringify(this.currentRequest));
+    }
+  }
+
   public saveState() {
     try {
+      this.updateCurrentRequestInCollection();
       localStorage.setItem(STORAGE_KEY_COLLECTIONS, JSON.stringify(this.collections));
       localStorage.setItem(STORAGE_KEY_ENVIRONMENTS, JSON.stringify(this.environments));
       localStorage.setItem(STORAGE_KEY_GLOBALS, JSON.stringify(this.globalVariables));
@@ -756,7 +776,7 @@ loHttp = .NULL.`;
       const endTime = performance.now();
       const durationMs = Math.round(endTime - startTime);
 
-      const isCors = err.name === 'TypeError' && err.message.includes('fetch');
+      const isCors = err.name === 'TypeError' || (err.message && err.message.toLowerCase().includes('fetch')) || (err.message && err.message.toLowerCase().includes('network'));
 
       const errorData: ApiResponseData = {
         status: 0,
@@ -1268,7 +1288,7 @@ export function initApiTesterUI() {
           <div class="api-req-item group flex items-center justify-between px-2.5 py-1.5 hover:bg-gray-100 dark:hover:bg-slate-800/80 cursor-pointer transition-colors ${isCurrent ? 'bg-indigo-50 dark:bg-indigo-950/40 border-l-2 border-indigo-600' : ''}" data-col-id="${col.id}" data-req-id="${req.id}">
             <div class="flex items-center gap-2 min-w-0">
               <span class="http-method-badge ${methodClass}">${req.method}</span>
-              <span class="text-xs text-gray-800 dark:text-slate-200 truncate font-medium" title="${escapeHtml(req.name)}">${escapeHtml(req.name)}</span>
+              <span class="api-req-name text-xs text-gray-800 dark:text-slate-200 truncate font-medium" title="${escapeHtml(req.name)}">${escapeHtml(req.name)}</span>
             </div>
             <button type="button" class="btn-del-req opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity cursor-pointer" data-col-id="${col.id}" data-req-id="${req.id}" title="Excluir Requisição">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -1335,6 +1355,7 @@ export function initApiTesterUI() {
         const col = controller.getCollections().find((c) => c.id === colId);
         const req = col?.requests.find((r) => r.id === reqId);
         if (req) {
+          syncUIToRequest(); // Salva alterações pendentes da requisição anterior antes de trocar
           controller.setCurrentRequest(JSON.parse(JSON.stringify(req)));
           syncRequestToUI(req);
           renderCollectionsList(cleanFilter);
@@ -1367,6 +1388,7 @@ export function initApiTesterUI() {
         const colId = (btn as HTMLElement).dataset.colId!;
         const name = await promptText('Nova Requisição', 'Nome da requisição:', 'Nova Consulta', 'Ex: Obter Clientes');
         if (name) {
+          syncUIToRequest(); // Salva alterações pendentes antes de criar nova
           const newReq = controller.createEmptyRequest();
           newReq.name = name;
           newReq.collectionId = colId;
@@ -1480,7 +1502,18 @@ export function initApiTesterUI() {
     // Pretty Format
     if (resBodyPretty) {
       if (!res.body.trim()) {
-        resBodyPretty.innerHTML = '<span class="text-gray-400 italic">Corpo de resposta vazio.</span>';
+        if (res.isCorsError) {
+          resBodyPretty.innerHTML = `
+            <div class="p-8 text-center text-amber-600 dark:text-amber-400 space-y-2">
+              <div class="font-bold text-sm">Bloqueio de Segurança do Navegador (CORS / Mixed Content)</div>
+              <div class="text-xs text-gray-500 dark:text-slate-400 max-w-md mx-auto">
+                O navegador impediu a leitura dos dados retornados pelo servidor. Siga o passo a passo com a extensão recomendada no banner amarelo acima para liberar o acesso imediatamente.
+              </div>
+            </div>
+          `;
+        } else {
+          resBodyPretty.innerHTML = '<span class="text-gray-400 italic">Corpo de resposta vazio.</span>';
+        }
       } else {
         try {
           const parsedJson = JSON.parse(res.body);
@@ -2198,12 +2231,15 @@ export function initApiTesterUI() {
     if (resLoadingState) resLoadingState.classList.add('hidden');
   });
 
-  // Atalho de Teclado Ctrl + Enter para enviar
+  // Atalho de Teclado Ctrl + Enter para enviar e Ctrl + S para salvar
   window.addEventListener('keydown', (e) => {
     const isApiTesterActive = !document.getElementById('section-api-tester')?.classList.contains('hidden');
     if (isApiTesterActive && e.ctrlKey && e.key === 'Enter') {
       e.preventDefault();
       handleSend();
+    } else if (isApiTesterActive && e.ctrlKey && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      btnSaveToCol?.click();
     }
   });
 
@@ -2211,6 +2247,14 @@ export function initApiTesterUI() {
   methodSelect?.addEventListener('change', () => {
     updateMethodSelectColor(methodSelect.value);
     syncUIToRequest();
+    const currentReq = controller.getCurrentRequest();
+    if (currentReq.id) {
+      const badgeEl = collectionsList?.querySelector(`.api-req-item[data-req-id="${currentReq.id}"] .http-method-badge`);
+      if (badgeEl) {
+        badgeEl.textContent = currentReq.method;
+        badgeEl.className = `http-method-badge http-method-${currentReq.method.toLowerCase()}`;
+      }
+    }
   });
 
   // Inputs básicos e Autocomplete de Variáveis {{...}}
@@ -2258,7 +2302,14 @@ export function initApiTesterUI() {
     }
   });
 
-  requestNameInput?.addEventListener('input', syncUIToRequest);
+  requestNameInput?.addEventListener('input', () => {
+    syncUIToRequest();
+    const currentReq = controller.getCurrentRequest();
+    if (currentReq.id) {
+      const nameEl = collectionsList?.querySelector(`.api-req-item[data-req-id="${currentReq.id}"] .api-req-name`);
+      if (nameEl) nameEl.textContent = currentReq.name;
+    }
+  });
 
   // Adicionar Parâmetro & Header
   btnAddParam?.addEventListener('click', () => {
@@ -2444,6 +2495,7 @@ export function initApiTesterUI() {
 
   // Criar Nova Requisição Solta
   btnNewReq?.addEventListener('click', () => {
+    syncUIToRequest();
     const newReq = controller.createEmptyRequest();
     controller.setCurrentRequest(newReq);
     syncRequestToUI(newReq);
@@ -2451,6 +2503,7 @@ export function initApiTesterUI() {
 
   // Salvar na Coleção
   btnSaveToCol?.addEventListener('click', async () => {
+    syncUIToRequest();
     const cols = controller.getCollections();
     if (cols.length === 0) {
       showToast('Crie uma coleção primeiro no painel esquerdo.', 'warning');
@@ -2458,8 +2511,20 @@ export function initApiTesterUI() {
     }
 
     const currentReq = controller.getCurrentRequest();
-    const defaultColId = currentReq.collectionId || cols[0].id;
 
+    // Se a requisição já pertence a uma coleção existente, salva direto
+    if (currentReq.collectionId) {
+      const parentCol = cols.find((c) => c.id === currentReq.collectionId);
+      if (parentCol) {
+        controller.saveCurrentRequestToCollection(currentReq.collectionId, currentReq.name);
+        renderCollectionsList(searchReqInput?.value || '');
+        showToast(`Requisição "${currentReq.name}" salva com sucesso!`, 'success');
+        return;
+      }
+    }
+
+    // Se é uma requisição nova/solta, pergunta nome e coleção de destino
+    const defaultColId = cols[0].id;
     const result = await promptDialog({
       title: 'Salvar Requisição na Coleção',
       label: 'Nome da requisição:',

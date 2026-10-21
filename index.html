@@ -1957,16 +1957,69 @@
               </div>
 
               <!-- Banner de Alerta CORS (se houver erro de CORS) -->
-              <div id="api-res-cors-warning" class="hidden p-4 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-300 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs space-y-2">
-                <div class="flex items-center gap-2 font-bold">
-                  <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                  <span>Possível Bloqueio de Política CORS (Navegador)</span>
+              <div id="api-res-cors-warning" class="hidden p-4 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-300 dark:border-amber-800/60 text-amber-950 dark:text-amber-100 text-xs space-y-3">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex items-center gap-2 font-bold text-sm text-amber-900 dark:text-amber-200">
+                    <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <span>Bloqueio de Segurança do Navegador (CORS ou Conteúdo HTTP Misto)</span>
+                  </div>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200/80 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex-shrink-0">
+                    Status 0 / Failed to fetch
+                  </span>
                 </div>
-                <p>O navegador impediu a leitura direta da resposta porque a API de destino não retornou o cabeçalho <code>Access-Control-Allow-Origin</code>. Dicas para desenvolvedores:</p>
-                <ul class="list-disc pl-5 space-y-1">
-                  <li>Se a API for local, habilite o middleware CORS (ex: <code>app.use(cors())</code> em Express ou <code>[EnableCors]</code> em .NET).</li>
-                  <li>Você pode clicar em <strong>"Gerar Código" &gt; "cURL"</strong> no topo para testar via terminal sem restrições de CORS.</li>
-                </ul>
+
+                <p class="text-xs text-amber-800 dark:text-amber-200/90 leading-relaxed">
+                  O navegador impediu a conexão direta com o servidor de destino porque ele não retornou o cabeçalho <code>Access-Control-Allow-Origin</code> ou porque esta página roda em <strong>HTTPS (nuvem)</strong> tentando acessar um endereço <strong>HTTP interno/local</strong>.
+                </p>
+
+                <!-- Box de Ação Rápida com as Extensões Recomendadas -->
+                <div class="p-3.5 bg-white/95 dark:bg-slate-900/95 rounded-xl border border-amber-200 dark:border-amber-800/80 shadow-2xs space-y-3">
+                  <div class="flex items-center justify-between gap-2 flex-wrap">
+                    <span class="font-bold text-gray-900 dark:text-slate-100 text-xs flex items-center gap-1.5">
+                      <span>🚀 Como resolver no navegador sem precisar alterar o servidor:</span>
+                    </span>
+                    <span class="text-[10px] text-gray-500 dark:text-slate-400 font-medium">Leva menos de 1 minuto</span>
+                  </div>
+
+                  <p class="text-[11px] text-gray-600 dark:text-slate-300">
+                    Instale uma das extensões gratuitas da <strong>Chrome Web Store</strong> (compatível com Google Chrome, Microsoft Edge, Brave e Opera):
+                  </p>
+
+                  <div class="flex flex-wrap items-center gap-2.5">
+                    <a href="https://chromewebstore.google.com/detail/allow-cors-access-control/lhobafahddgcelffkeicbaginigeejlf" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-all shadow-sm hover:shadow cursor-pointer group">
+                      <svg class="w-4 h-4 text-indigo-200 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                      <span>Instalar "Allow CORS" (Recomendada)</span>
+                      <svg class="w-3.5 h-3.5 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    </a>
+
+                    <a href="https://chromewebstore.google.com/detail/cors-unblock/lfhmikememgdcahcdlaciloancbhjino" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 border border-gray-300 dark:border-slate-700 transition-colors shadow-2xs cursor-pointer">
+                      <span>Opção 2: "CORS Unblock"</span>
+                      <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    </a>
+                  </div>
+
+                  <!-- Passo a passo simples -->
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px] text-gray-600 dark:text-slate-400">
+                    <div class="flex items-center gap-2 bg-gray-50 dark:bg-slate-950 p-2.5 rounded-lg border border-gray-200/60 dark:border-slate-800">
+                      <span class="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center flex-shrink-0 text-xs">1</span>
+                      <span>Clique no botão para abrir e instalar na loja oficial.</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-gray-50 dark:bg-slate-950 p-2.5 rounded-lg border border-gray-200/60 dark:border-slate-800">
+                      <span class="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center flex-shrink-0 text-xs">2</span>
+                      <span>Ative o ícone da extensão no topo do navegador (<strong class="text-emerald-600 dark:text-emerald-400">ON</strong>).</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-gray-50 dark:bg-slate-950 p-2.5 rounded-lg border border-gray-200/60 dark:border-slate-800">
+                      <span class="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center flex-shrink-0 text-xs">3</span>
+                      <span>Volte aqui e clique em <strong>Enviar</strong> novamente!</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between text-[11px] text-amber-800/80 dark:text-amber-300/70 pt-0.5">
+                  <span>💡 Dica alternativa: Para disparar no terminal sem extensões, clique em <strong>"Gerar Código" &gt; "cURL"</strong> no menu superior.</span>
+                </div>
               </div>
 
               <!-- Estado Vazio (Antes do primeiro envio) -->
