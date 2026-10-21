@@ -9,6 +9,8 @@ import { validateSingleXml, validateBatchXml, SCHEMA_PACKAGES, type FileValidati
 import { parseSqlPlan, SQL_OPERATIONS_DICTIONARY, getOperationTooltip, getEducationalBadge } from './sqlPlanReader.ts';
 import './markdownViewer.css';
 import { initMarkdownViewerUI } from './markdownViewer.ts';
+import './apiTester.css';
+import { initApiTesterUI } from './apiTester.ts';
 import { saveAs } from 'file-saver';
 import baseHtmlTemplate from './base.html?raw';
 import baseConsolidatedHtmlTemplate from './baseConsolidated.html?raw';
@@ -25,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabXmlValidator = document.getElementById('tab-xml-validator') as HTMLButtonElement;
   const tabSqlPlan = document.getElementById('tab-sql-plan') as HTMLButtonElement;
   const tabMarkdown = document.getElementById('tab-markdown') as HTMLButtonElement;
+  const tabApiTester = document.getElementById('tab-api-tester') as HTMLButtonElement;
 
   const sectionBatch = document.getElementById('section-batch') as HTMLElement;
   const sectionText = document.getElementById('section-text') as HTMLElement;
@@ -36,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const sectionXmlValidator = document.getElementById('section-xml-validator') as HTMLElement;
   const sectionSqlPlan = document.getElementById('section-sql-plan') as HTMLElement;
   const sectionMarkdown = document.getElementById('section-markdown') as HTMLElement;
+  const sectionApiTester = document.getElementById('section-api-tester') as HTMLElement;
 
   // Batch Elements
   const compareFilesInput = document.getElementById('compare-files') as HTMLInputElement;
@@ -121,11 +125,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Tab Logic ---
   function resetTabs() {
-    [tabBatch, tabText, tabBeautifier, tabFoxpro, tabFoxproBatch, tabCodeReferences, tabCustomizations, tabXmlValidator, tabSqlPlan, tabMarkdown].forEach(t => {
+    [tabBatch, tabText, tabBeautifier, tabFoxpro, tabFoxproBatch, tabCodeReferences, tabCustomizations, tabXmlValidator, tabSqlPlan, tabMarkdown, tabApiTester].forEach(t => {
       t?.classList.remove('tab-active');
       t?.classList.add('tab-inactive');
     });
-    [sectionBatch, sectionText, sectionBeautifier, sectionFoxpro, sectionFoxproBatch, sectionCodeReferences, sectionCustomizations, sectionXmlValidator, sectionSqlPlan, sectionMarkdown].forEach(s => s?.classList.add('hidden'));
+    [sectionBatch, sectionText, sectionBeautifier, sectionFoxpro, sectionFoxproBatch, sectionCodeReferences, sectionCustomizations, sectionXmlValidator, sectionSqlPlan, sectionMarkdown, sectionApiTester].forEach(s => s?.classList.add('hidden'));
     closeMobileSidebar();
   }
 
@@ -2331,5 +2335,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   initMarkdownViewerUI();
+
+  // --- Lógica: Testador de API (HTTP Client) ---
+  tabApiTester?.addEventListener('click', () => {
+    resetTabs();
+    tabApiTester.classList.remove('tab-inactive');
+    tabApiTester.classList.add('tab-active');
+    sectionApiTester.classList.remove('hidden');
+  });
+
+  initApiTesterUI();
 
 });

@@ -177,6 +177,14 @@
         </svg>
         <span class="truncate font-semibold text-fuchsia-400">Leitor Plano SQL</span>
       </button>
+
+      <button id="tab-api-tester"
+        class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
+        <svg class="w-5 h-5 flex-shrink-0 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+        </svg>
+        <span class="truncate font-semibold text-cyan-300">Testador de API</span>
+      </button>
     </nav>
 
     <!-- Rodapé do Menu Lateral com Alternador Dark Mode -->
@@ -1618,6 +1626,448 @@
             </div>
           </div>
 
+        </div>
+
+      </section>
+
+      <!-- Seção: Testador de API (HTTP Client) -->
+      <section id="section-api-tester" class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
+        
+        <!-- Cabeçalho Principal -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-gray-200 dark:border-slate-800 mb-6 gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-2xl font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-2">
+                <svg class="w-7 h-7 text-cyan-500 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                Testador de API (HTTP Client)
+              </h2>
+              <span class="text-[11px] uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-900">Postman & Bruno Style</span>
+            </div>
+            <p class="text-gray-600 dark:text-slate-400 text-sm mt-1">Dispare chamadas REST, organize coleções, configure variáveis de ambiente e inspecione payloads em tempo real.</p>
+          </div>
+
+          <!-- Controles de Topo: Ambiente, Snippets e Salvar -->
+          <div class="flex items-center flex-wrap gap-2">
+            <!-- Seletor de Ambiente -->
+            <div class="flex items-center gap-1.5 bg-gray-100 dark:bg-slate-950 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-slate-800">
+              <span class="text-[11px] font-semibold text-gray-500 dark:text-slate-400">Ambiente:</span>
+              <select id="api-active-env-select" class="text-xs bg-transparent dark:bg-slate-950 text-gray-800 dark:text-slate-100 font-medium focus:outline-none cursor-pointer">
+                <!-- Populado via JS -->
+              </select>
+              <button id="btn-api-manage-envs" type="button" class="text-gray-400 hover:text-cyan-500 p-1 transition-colors cursor-pointer" title="Gerenciar Ambientes e Variáveis">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              </button>
+            </div>
+
+            <!-- Snippets -->
+            <button id="btn-api-show-snippet" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-2xs cursor-pointer" title="Gerar código em cURL, C#, Python, FoxPro, JS">
+              <svg class="w-3.5 h-3.5 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+              Gerar Código
+            </button>
+
+            <!-- Salvar na Coleção -->
+            <button id="btn-api-save-to-col" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border border-cyan-300 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-100 dark:hover:bg-cyan-900/60 transition-colors shadow-2xs cursor-pointer">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+              Salvar
+            </button>
+          </div>
+        </div>
+
+        <!-- Layout Central: Sidebar de Coleções à Esquerda + Área de Trabalho à Direita -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[750px]">
+          
+          <!-- Coluna 1: Sidebar de Coleções & Histórico (4 cols em LG) -->
+          <div class="lg:col-span-4 xl:col-span-3 flex flex-col border border-gray-200 dark:border-slate-800 rounded-xl overflow-hidden bg-gray-50 dark:bg-slate-950/60 shadow-xs">
+            
+            <!-- Abas da Sidebar (Coleções vs Histórico) -->
+            <div class="flex border-b border-gray-200 dark:border-slate-800 bg-gray-100 dark:bg-slate-950">
+              <button id="api-tab-sidebar-cols" type="button" class="flex-1 py-2.5 text-xs font-bold border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 text-center transition-colors cursor-pointer">
+                📁 Coleções
+              </button>
+              <button id="api-tab-sidebar-hist" type="button" class="flex-1 py-2.5 text-xs font-semibold border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-center transition-colors cursor-pointer">
+                🕒 Histórico
+              </button>
+            </div>
+
+            <!-- Toolbar da Sidebar -->
+            <div class="p-2.5 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between gap-1 flex-wrap bg-white dark:bg-slate-900">
+              <div class="flex items-center gap-1">
+                <button id="btn-api-new-req" type="button" class="px-2 py-1 text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 rounded border border-indigo-200 dark:border-indigo-800 cursor-pointer" title="Nova Requisição em branco">+ Req</button>
+                <button id="btn-api-new-col" type="button" class="px-2 py-1 text-[11px] font-semibold bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 text-gray-700 dark:text-slate-300 rounded border border-gray-300 dark:border-slate-700 cursor-pointer" title="Criar Nova Coleção">+ Pasta</button>
+              </div>
+              <div class="flex items-center gap-1">
+                <button id="btn-api-import" type="button" class="px-2 py-1 text-[11px] font-semibold bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 text-gray-700 dark:text-slate-300 rounded border border-gray-300 dark:border-slate-700 cursor-pointer" title="Importar comando cURL ou arquivo JSON">Importar</button>
+                <button id="btn-api-export" type="button" class="px-2 py-1 text-[11px] font-semibold bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 text-gray-700 dark:text-slate-300 rounded border border-gray-300 dark:border-slate-700 cursor-pointer" title="Exportar todas as Coleções em arquivo JSON">Exportar</button>
+              </div>
+            </div>
+
+            <!-- Campo de Busca de Requisições -->
+            <div class="p-2 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <div class="relative">
+                <svg class="w-3.5 h-3.5 absolute left-2.5 top-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input type="text" id="api-search-req-input" placeholder="Filtrar requisições..." class="w-full pl-8 pr-2 py-1 text-xs bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              </div>
+            </div>
+
+            <!-- Conteúdo: Coleções -->
+            <div id="api-pane-sidebar-cols" class="flex-1 p-2 space-y-2 overflow-y-auto api-scrollbar max-h-[620px]">
+              <div id="api-collections-list" class="space-y-2">
+                <!-- Populado via JS -->
+              </div>
+            </div>
+
+            <!-- Conteúdo: Histórico -->
+            <div id="api-pane-sidebar-hist" class="hidden flex-1 p-2 space-y-2 overflow-y-auto api-scrollbar max-h-[620px]">
+              <div class="flex justify-end mb-1">
+                <button id="btn-api-clear-hist" type="button" class="text-[10px] text-red-500 hover:underline cursor-pointer">Limpar Histórico</button>
+              </div>
+              <div id="api-history-list" class="space-y-2">
+                <!-- Populado via JS -->
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Coluna 2: Bancada de Trabalho da Requisição e Resposta (8 cols em LG) -->
+          <div class="lg:col-span-8 xl:col-span-9 flex flex-col space-y-4">
+            
+            <!-- Barra de Nome da Requisição -->
+            <div class="flex items-center gap-2">
+              <input type="text" id="api-request-name" class="font-bold text-base bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-slate-700 text-gray-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500 px-1 py-0.5 rounded transition-colors w-full" value="Nova Requisição" placeholder="Nome da requisição..." />
+            </div>
+
+            <!-- Barra Principal de Requisição: Método + URL + Botão Enviar -->
+            <div class="relative flex items-center gap-2 bg-gray-50 dark:bg-slate-950 p-2 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
+              <select id="api-method-select" class="px-3 py-2 text-xs font-bold font-mono bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+                <option value="DELETE">DELETE</option>
+                <option value="OPTIONS">OPTIONS</option>
+                <option value="HEAD">HEAD</option>
+              </select>
+
+              <div class="relative flex-1 flex items-center">
+                <input type="text" id="api-url-input" class="w-full pl-3 pr-28 py-2 text-xs font-mono bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 shadow-2xs" placeholder="https://api.exemplo.com/v1/recurso ou {{baseUrl}}/api/..." value="https://jsonplaceholder.typicode.com/todos/1" />
+
+                <!-- Botão de Variáveis {{x}} integrado no input -->
+                <button id="btn-api-vars-picker" type="button" class="absolute right-1 px-2.5 py-1 text-[11px] font-mono font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/80 dark:hover:bg-cyan-900 border border-cyan-200 dark:border-cyan-800 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs" title="Selecionar ou Copiar Variável de Ambiente">
+                  <span class="text-xs font-bold">{ }</span>
+                  <span class="font-sans font-semibold text-[11px]">Variáveis</span>
+                </button>
+              </div>
+
+              <button id="btn-api-send" type="button" class="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs rounded-lg transition-all shadow-md flex items-center gap-1.5 cursor-pointer" title="Enviar requisição (Atalho: Ctrl + Enter)">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                <span>Enviar</span>
+              </button>
+
+              <button id="btn-api-cancel" type="button" class="hidden px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg transition-all shadow-md cursor-pointer">
+                Cancelar
+              </button>
+
+              <!-- Popover de Seleção & Cópia de Variáveis -->
+              <div id="api-vars-popover" class="hidden absolute top-[calc(100%+8px)] left-0 right-0 z-50 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl shadow-2xl p-4 modal-animate-pop">
+                <!-- Conteúdo dinâmico via JS -->
+              </div>
+            </div>
+
+            <!-- Configurações da Requisição (Abas: Params, Headers, Auth, Body) -->
+            <div class="border border-gray-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-xs">
+              
+              <!-- Cabeçalho das Abas -->
+              <div class="flex border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 px-2">
+                <button id="btn-api-tab-params" type="button" class="px-4 py-2 text-xs font-bold border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 cursor-pointer">
+                  Params
+                </button>
+                <button id="btn-api-tab-headers" type="button" class="px-4 py-2 text-xs font-semibold border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 cursor-pointer">
+                  Headers
+                </button>
+                <button id="btn-api-tab-auth" type="button" class="px-4 py-2 text-xs font-semibold border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 cursor-pointer">
+                  Auth
+                </button>
+                <button id="btn-api-tab-body" type="button" class="px-4 py-2 text-xs font-semibold border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 cursor-pointer">
+                  Body
+                </button>
+              </div>
+
+              <!-- Painel: Params -->
+              <div id="api-tab-pane-params" class="p-3">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-[11px] text-gray-500 dark:text-slate-400 font-medium">Parâmetros de Query String (sincronizados com a URL):</span>
+                  <button id="btn-api-add-param" type="button" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">+ Adicionar Parâmetro</button>
+                </div>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left text-xs api-key-val-table">
+                    <thead>
+                      <tr class="text-gray-400 border-b border-gray-200 dark:border-slate-800">
+                        <th class="p-2 w-10 text-center">Ativo</th>
+                        <th class="p-2 w-1/3">Parâmetro</th>
+                        <th class="p-2">Valor</th>
+                        <th class="p-2 w-10 text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="api-params-tbody">
+                      <!-- Populado via JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Painel: Headers -->
+              <div id="api-tab-pane-headers" class="hidden p-3">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-[11px] text-gray-500 dark:text-slate-400 font-medium">Cabeçalhos HTTP da Requisição:</span>
+                  <button id="btn-api-add-header" type="button" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">+ Adicionar Cabeçalho</button>
+                </div>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left text-xs api-key-val-table">
+                    <thead>
+                      <tr class="text-gray-400 border-b border-gray-200 dark:border-slate-800">
+                        <th class="p-2 w-10 text-center">Ativo</th>
+                        <th class="p-2 w-1/3">Cabeçalho (Header)</th>
+                        <th class="p-2">Valor</th>
+                        <th class="p-2 w-10 text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="api-headers-tbody">
+                      <!-- Populado via JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Painel: Auth -->
+              <div id="api-tab-pane-auth" class="hidden p-4 space-y-4">
+                <div class="flex items-center gap-3">
+                  <span class="text-xs font-bold text-gray-700 dark:text-slate-300">Tipo de Autenticação:</span>
+                  <select id="api-auth-type-select" class="px-3 py-1.5 text-xs bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-800 dark:text-slate-200 focus:outline-none cursor-pointer">
+                    <option value="none">Sem Autenticação (No Auth)</option>
+                    <option value="bearer">Bearer Token</option>
+                    <option value="basic">Basic Auth (Usuário / Senha)</option>
+                    <option value="apikey">API Key</option>
+                  </select>
+                </div>
+
+                <!-- Subpane: Bearer -->
+                <div id="api-auth-pane-bearer" class="hidden space-y-2 p-3 bg-gray-50 dark:bg-slate-950 rounded-lg border border-gray-200 dark:border-slate-800">
+                  <label class="block text-xs font-semibold text-gray-600 dark:text-slate-400">Token JWT / Bearer:</label>
+                  <input type="text" id="api-auth-bearer-token" class="w-full px-3 py-1.5 text-xs font-mono bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-800 dark:text-slate-200" placeholder="eyJhbGciOiJIUzI1Ni... ou {{apiToken}}" />
+                </div>
+
+                <!-- Subpane: Basic -->
+                <div id="api-auth-pane-basic" class="hidden grid grid-cols-2 gap-3 p-3 bg-gray-50 dark:bg-slate-950 rounded-lg border border-gray-200 dark:border-slate-800">
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Usuário:</label>
+                    <input type="text" id="api-auth-basic-user" class="w-full px-3 py-1.5 text-xs font-mono bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-800 dark:text-slate-200" placeholder="admin" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Senha:</label>
+                    <input type="password" id="api-auth-basic-pass" class="w-full px-3 py-1.5 text-xs font-mono bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-800 dark:text-slate-200" placeholder="••••••••" />
+                  </div>
+                </div>
+
+                <!-- Subpane: API Key -->
+                <div id="api-auth-pane-apikey" class="hidden grid grid-cols-3 gap-3 p-3 bg-gray-50 dark:bg-slate-950 rounded-lg border border-gray-200 dark:border-slate-800">
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Chave (Key):</label>
+                    <input type="text" id="api-auth-apikey-name" class="w-full px-3 py-1.5 text-xs font-mono bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-800 dark:text-slate-200" placeholder="X-API-KEY" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Valor:</label>
+                    <input type="text" id="api-auth-apikey-value" class="w-full px-3 py-1.5 text-xs font-mono bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-800 dark:text-slate-200" placeholder="segredo123" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Local:</label>
+                    <select id="api-auth-apikey-location" class="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-800 dark:text-slate-200">
+                      <option value="header">Header</option>
+                      <option value="query">Query Params</option>
+                    </select>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Painel: Body -->
+              <div id="api-tab-pane-body" class="hidden p-3 space-y-2">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-gray-700 dark:text-slate-300">Formato do Corpo:</span>
+                    <select id="api-body-type-select" class="px-2.5 py-1 text-xs bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-800 dark:text-slate-200">
+                      <option value="none">Nenhum (None)</option>
+                      <option value="json">JSON (application/json)</option>
+                      <option value="xml">XML (application/xml)</option>
+                      <option value="raw">Raw (Texto Puro)</option>
+                    </select>
+                  </div>
+                  <button id="btn-api-format-body" type="button" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+                    ✨ Formatar JSON
+                  </button>
+                </div>
+                <textarea id="api-body-content" rows="6" class="w-full p-3 font-mono text-xs bg-gray-50 dark:bg-slate-950 text-gray-800 dark:text-slate-200 border border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder='{\n  "chave": "valor"\n}'></textarea>
+              </div>
+
+            </div>
+
+            <!-- Painel de Resposta HTTP -->
+            <div class="border border-gray-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-xs flex flex-col flex-1 min-h-[350px]">
+              
+              <!-- Barra de Status da Resposta -->
+              <div id="api-res-status-bar" class="hidden px-4 py-2.5 bg-gray-100 dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <span id="api-res-status-badge" class="px-3 py-1 text-xs font-bold font-mono rounded-lg border"></span>
+                  <span id="api-res-duration" class="text-xs font-mono text-gray-600 dark:text-slate-400"></span>
+                  <span id="api-res-size" class="text-xs font-mono text-gray-600 dark:text-slate-400"></span>
+                </div>
+
+                <!-- Abas da Resposta -->
+                <div class="inline-flex rounded-lg border border-gray-300 dark:border-slate-700 p-0.5 bg-white dark:bg-slate-900 shadow-2xs">
+                  <button id="btn-api-res-tab-pretty" type="button" class="px-3 py-1 text-xs font-bold rounded-md transition-colors bg-indigo-600 text-white dark:bg-indigo-500 cursor-pointer">Pretty</button>
+                  <button id="btn-api-res-tab-raw" type="button" class="px-3 py-1 text-xs font-semibold rounded-md transition-colors text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 cursor-pointer">Raw</button>
+                  <button id="btn-api-res-tab-headers" type="button" class="px-3 py-1 text-xs font-semibold rounded-md transition-colors text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 cursor-pointer">Headers</button>
+                </div>
+
+                <!-- Ações na Resposta -->
+                <div class="flex items-center gap-1.5">
+                  <button id="btn-api-copy-res" type="button" class="p-1.5 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded hover:bg-gray-200 dark:hover:bg-slate-800 cursor-pointer" title="Copiar resposta">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                  </button>
+                  <button id="btn-api-download-res" type="button" class="p-1.5 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded hover:bg-gray-200 dark:hover:bg-slate-800 cursor-pointer" title="Baixar resposta">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                  </button>
+                  <button id="btn-api-send-to-xml" type="button" class="hidden text-xs font-semibold text-fuchsia-600 dark:text-fuchsia-400 hover:underline px-2 cursor-pointer" title="Enviar este XML para o Validador de XML">Validar XML</button>
+                  <button id="btn-api-send-to-beautifier" type="button" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline px-2 cursor-pointer" title="Enviar para o Embelezador de Texto">Embelezar</button>
+                  <button id="btn-api-send-to-comparator" type="button" class="text-xs font-semibold text-green-600 dark:text-green-400 hover:underline px-2 cursor-pointer" title="Enviar para o Comparador de Texto">Comparar</button>
+                </div>
+              </div>
+
+              <!-- Banner de Alerta CORS (se houver erro de CORS) -->
+              <div id="api-res-cors-warning" class="hidden p-4 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-300 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs space-y-2">
+                <div class="flex items-center gap-2 font-bold">
+                  <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                  <span>Possível Bloqueio de Política CORS (Navegador)</span>
+                </div>
+                <p>O navegador impediu a leitura direta da resposta porque a API de destino não retornou o cabeçalho <code>Access-Control-Allow-Origin</code>. Dicas para desenvolvedores:</p>
+                <ul class="list-disc pl-5 space-y-1">
+                  <li>Se a API for local, habilite o middleware CORS (ex: <code>app.use(cors())</code> em Express ou <code>[EnableCors]</code> em .NET).</li>
+                  <li>Você pode clicar em <strong>"Gerar Código" &gt; "cURL"</strong> no topo para testar via terminal sem restrições de CORS.</li>
+                </ul>
+              </div>
+
+              <!-- Estado Vazio (Antes do primeiro envio) -->
+              <div id="api-res-empty-state" class="flex-1 flex flex-col items-center justify-center p-12 text-center text-gray-400 dark:text-slate-500">
+                <svg class="w-16 h-16 mb-4 opacity-30 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <p class="text-sm font-semibold">Nenhuma resposta recebida ainda</p>
+                <p class="text-xs mt-1">Configure o método e a URL acima e clique em <strong>Enviar</strong> ou pressione <kbd class="px-1.5 py-0.5 rounded bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-slate-300 font-mono text-[10px]">Ctrl + Enter</kbd>.</p>
+              </div>
+
+              <!-- Estado de Carregamento -->
+              <div id="api-res-loading-state" class="hidden flex-1 flex flex-col items-center justify-center p-12 text-center text-cyan-600 dark:text-cyan-400">
+                <svg class="animate-spin w-10 h-10 mb-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <span class="text-xs font-bold">Disparando requisição HTTP...</span>
+              </div>
+
+              <!-- Área de Conteúdo da Resposta -->
+              <div id="api-res-content-area" class="hidden flex-1 flex flex-col overflow-hidden">
+                <div id="api-res-pane-pretty" class="flex-1 p-4 overflow-y-auto api-scrollbar bg-slate-950 text-slate-100 max-h-[450px]">
+                  <pre id="api-res-body-pretty"></pre>
+                </div>
+
+                <div id="api-res-pane-raw" class="hidden flex-1 p-2">
+                  <textarea id="api-res-body-raw" readonly class="w-full h-full min-h-[300px] p-3 font-mono text-xs bg-gray-50 dark:bg-slate-950 text-gray-800 dark:text-slate-200 border-none focus:outline-none resize-none"></textarea>
+                </div>
+
+                <div id="api-res-pane-headers" class="hidden flex-1 p-4 overflow-y-auto api-scrollbar max-h-[450px]">
+                  <table class="w-full text-left">
+                    <thead>
+                      <tr class="border-b border-gray-200 dark:border-slate-800 text-xs text-gray-400">
+                        <th class="p-2">Cabeçalho</th>
+                        <th class="p-2">Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody id="api-res-headers-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- MODAL: Gerenciador de Ambientes -->
+        <div id="api-modal-envs" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden">
+            <div class="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between bg-cyan-50 dark:bg-cyan-950/30">
+              <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                <h3 class="text-base font-bold text-gray-800 dark:text-slate-100">Gerenciador de Ambientes e Variáveis</h3>
+              </div>
+              <button id="btn-close-api-modal-envs" type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl font-bold cursor-pointer leading-none">&times;</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1 space-y-4 api-scrollbar">
+              <p class="text-xs text-gray-600 dark:text-slate-400">Configure variáveis para substituir dinamicamente nos parâmetros, URLs ou cabeçalhos usando <code>{{nomeVariavel}}</code>.</p>
+              <div id="api-modal-envs-list" class="space-y-4">
+                <!-- Populado via JS -->
+              </div>
+            </div>
+            <div class="p-3 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 flex justify-between items-center">
+              <button id="btn-api-modal-add-env" type="button" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer">+ Novo Ambiente</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODAL: Gerador de Snippets de Código -->
+        <div id="api-modal-snippet" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden">
+            <div class="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between bg-indigo-50 dark:bg-indigo-950/30">
+              <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                <h3 class="text-base font-bold text-gray-800 dark:text-slate-100">Gerador de Snippet de Código</h3>
+              </div>
+              <button id="btn-close-api-modal-snippet" type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl font-bold cursor-pointer leading-none">&times;</button>
+            </div>
+            <div class="p-3 border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-gray-600 dark:text-slate-400">Linguagem:</span>
+                <select id="api-snippet-lang-select" class="px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-800 dark:text-slate-200 font-semibold cursor-pointer">
+                  <option value="curl">cURL (Terminal)</option>
+                  <option value="fetch">JavaScript (Fetch API)</option>
+                  <option value="csharp">C# (.NET HttpClient)</option>
+                  <option value="python">Python (requests)</option>
+                  <option value="foxpro">Visual FoxPro (ServerXMLHTTP)</option>
+                </select>
+              </div>
+              <button id="btn-api-copy-snippet" type="button" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                Copiar Código
+              </button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1 bg-slate-950 text-slate-100 font-mono text-xs api-scrollbar">
+              <div id="api-snippet-content"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODAL: Importar cURL / JSON -->
+        <div id="api-modal-import" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full flex flex-col shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden">
+            <div class="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between bg-gray-50 dark:bg-slate-950">
+              <h3 class="text-base font-bold text-gray-800 dark:text-slate-100">Importar Requisição ou Coleção</h3>
+              <button id="btn-close-api-modal-import" type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl font-bold cursor-pointer leading-none">&times;</button>
+            </div>
+            <div class="p-4 space-y-3">
+              <p class="text-xs text-gray-600 dark:text-slate-400">Cole abaixo um <strong>comando cURL</strong> (ex: <code>curl -X POST "http://..." -H "..." -d "..."</code>), um <strong>JSON de Coleção do Postman (v2.1)</strong> ou um <strong>JSON de Backup do PWI</strong>:</p>
+              <textarea id="api-import-text" rows="10" class="w-full p-3 font-mono text-xs bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="Cole o cURL ou JSON aqui..."></textarea>
+            </div>
+            <div class="p-3 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950 flex justify-end gap-2">
+              <button id="btn-api-confirm-import" type="button" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer">Importar Dados</button>
+            </div>
+          </div>
         </div>
 
       </section>

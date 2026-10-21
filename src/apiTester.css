@@ -1,0 +1,227 @@
+/* Estilos dedicados do Testador de API (HTTP Client) */
+
+/* Cores dos Métodos HTTP */
+.http-method-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.5rem;
+}
+
+.http-method-get {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.http-method-post {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.http-method-put {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.http-method-patch {
+  background-color: rgba(139, 92, 246, 0.15);
+  color: #8b5cf6;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+.http-method-delete {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.http-method-options,
+.http-method-head {
+  background-color: rgba(100, 116, 139, 0.15);
+  color: #64748b;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+/* Status Codes */
+.http-status-2xx {
+  background-color: #ecfdf5;
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+.dark .http-status-2xx {
+  background-color: rgba(6, 95, 70, 0.3);
+  color: #6ee7b7;
+  border-color: #065f46;
+}
+
+.http-status-3xx {
+  background-color: #eff6ff;
+  color: #1e40af;
+  border-color: #bfdbfe;
+}
+.dark .http-status-3xx {
+  background-color: rgba(30, 64, 175, 0.3);
+  color: #93c5fd;
+  border-color: #1e40af;
+}
+
+.http-status-4xx {
+  background-color: #fffbeb;
+  color: #92400e;
+  border-color: #fde68a;
+}
+.dark .http-status-4xx {
+  background-color: rgba(146, 64, 14, 0.3);
+  color: #fcd34d;
+  border-color: #92400e;
+}
+
+.http-status-5xx {
+  background-color: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+.dark .http-status-5xx {
+  background-color: rgba(153, 27, 27, 0.3);
+  color: #fca5a5;
+  border-color: #991b1b;
+}
+
+/* Variáveis Interpoladas (Highlight de {{var}}) */
+.api-var-badge {
+  color: #0284c7;
+  background-color: rgba(14, 165, 233, 0.12);
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.dark .api-var-badge {
+  color: #38bdf8;
+  background-color: rgba(56, 189, 248, 0.15);
+}
+
+/* Tabela de Parâmetros e Headers */
+.api-key-val-table input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+}
+
+/* Response Pre / Code */
+#api-res-body-pretty {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  tab-size: 2;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Scrollbars finas para painéis */
+.api-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.api-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.api-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 3px;
+}
+.api-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+/* UI Feedback - Modais e Notificações Toast */
+@keyframes modalPopup {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-animate-pop {
+  animation: modalPopup 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes toastSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(100%) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes toastSlideOut {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(100%) scale(0.9);
+  }
+}
+
+.toast-animate-in {
+  animation: toastSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.toast-animate-out {
+  animation: toastSlideOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Correção de Legibilidade do Dropdown de Ambientes e Selects em Modo Escuro / Claro */
+select {
+  color-scheme: light;
+}
+
+html.dark select,
+.dark select {
+  color-scheme: dark;
+}
+
+select option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+html.dark select option,
+.dark select option {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+#api-active-env-select {
+  color-scheme: light;
+}
+
+html.dark #api-active-env-select,
+.dark #api-active-env-select {
+  color-scheme: dark;
+  background-color: #020617 !important;
+  color: #f8fafc !important;
+}
+
+#api-active-env-select option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+html.dark #api-active-env-select option,
+.dark #api-active-env-select option {
+  background-color: #020617 !important;
+  color: #f8fafc !important;
+}
