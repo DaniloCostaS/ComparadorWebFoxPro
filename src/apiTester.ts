@@ -92,6 +92,8 @@ const STORAGE_KEY_ENVIRONMENTS = 'pwi_api_environments_v1';
 const STORAGE_KEY_ACTIVE_ENV = 'pwi_api_active_env_v1';
 const STORAGE_KEY_HISTORY = 'pwi_api_history_v1';
 const STORAGE_KEY_CURRENT_REQ = 'pwi_api_current_req_v1';
+const STORAGE_KEY_COLLAPSED_COLS = 'pwi_api_collapsed_cols_v1';
+const STORAGE_KEY_GLOBALS = 'pwi_api_globals_v1';
 
 function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
@@ -105,6 +107,11 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+const DEFAULT_GLOBALS: EnvironmentVariable[] = [
+  { key: 'ServerIISPWI', value: 'http://localhost:8080', enabled: true },
+  { key: 'versaoApp', value: '1.0.0', enabled: true }
+];
 
 const DEFAULT_COLLECTIONS: ApiCollection[] = [
   {
@@ -193,6 +200,7 @@ const DEFAULT_ENVIRONMENTS: ApiEnvironment[] = [
     name: 'Desenvolvimento Local',
     variables: [
       { key: 'baseUrl', value: 'http://localhost:3000', enabled: true },
+      { key: 'ServerIISPWI', value: 'http://localhost:8080', enabled: true },
       { key: 'apiToken', value: 'Bearer_Exemplo_123456', enabled: true }
     ]
   },
@@ -201,6 +209,7 @@ const DEFAULT_ENVIRONMENTS: ApiEnvironment[] = [
     name: 'Homologação',
     variables: [
       { key: 'baseUrl', value: 'https://homolog.api.exemplo.com.br', enabled: true },
+      { key: 'ServerIISPWI', value: 'https://homolog.pwi.exemplo.com.br', enabled: true },
       { key: 'apiToken', value: 'Token_Homolog_Secret', enabled: true }
     ]
   }
@@ -209,6 +218,7 @@ const DEFAULT_ENVIRONMENTS: ApiEnvironment[] = [
 export class ApiTesterController {
   private collections: ApiCollection[] = [];
   private environments: ApiEnvironment[] = [];
+  private globalVariables: EnvironmentVariable[] = [];
   private activeEnvironmentId: string = '';
   private history: HistoryItem[] = [];
   private currentRequest: ApiRequestItem;
@@ -248,6 +258,9 @@ export class ApiTesterController {
       const rawEnvs = localStorage.getItem(STORAGE_KEY_ENVIRONMENTS);
       this.environments = rawEnvs ? JSON.parse(rawEnvs) : DEFAULT_ENVIRONMENTS;
 
+      const rawGlobals = localStorage.getItem(STORAGE_KEY_GLOBALS);
+      this.globalVariables = rawGlobals ? JSON.parse(rawGlobals) : DEFAULT_GLOBALS;
+
       this.activeEnvironmentId = localStorage.getItem(STORAGE_KEY_ACTIVE_ENV) || '';
 
       const rawHist = localStorage.getItem(STORAGE_KEY_HISTORY);
@@ -262,6 +275,7 @@ export class ApiTesterController {
     } catch {
       this.collections = DEFAULT_COLLECTIONS;
       this.environments = DEFAULT_ENVIRONMENTS;
+      this.globalVariables = DEFAULT_GLOBALS;
       this.history = [];
     }
   }
@@ -270,6 +284,7 @@ export class ApiTesterController {
     try {
       localStorage.setItem(STORAGE_KEY_COLLECTIONS, JSON.stringify(this.collections));
       localStorage.setItem(STORAGE_KEY_ENVIRONMENTS, JSON.stringify(this.environments));
+      localStorage.setItem(STORAGE_KEY_GLOBALS, JSON.stringify(this.globalVariables));
       localStorage.setItem(STORAGE_KEY_ACTIVE_ENV, this.activeEnvironmentId);
       localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(this.history.slice(0, 50)));
       localStorage.setItem(STORAGE_KEY_CURRENT_REQ, JSON.stringify(this.currentRequest));
@@ -286,6 +301,29 @@ export class ApiTesterController {
     return this.environments;
   }
 
+  public getGlobalVariables(): EnvironmentVariable[] {
+    return this.globalVariables;
+  }
+
+  public setGlobalVariables(vars: EnvironmentVariable[]) {
+    this.globalVariables = vars;
+    this.saveState();
+  }
+
+  public addGlobalVariable(key = 'novaVariavel', value = ''): EnvironmentVariable {
+    const newVar: EnvironmentVariable = { key, value, enabled: true };
+    this.globalVariables.push(newVar);
+    this.saveState();
+    return newVar;
+  }
+
+  public deleteGlobalVariable(index: number) {
+    if (index >= 0 && index < this.globalVariables.length) {
+      this.globalVariables.splice(index, 1);
+      this.saveState();
+    }
+  }
+
   public getActiveEnvironment(): ApiEnvironment | null {
     return this.environments.find((e) => e.id === this.activeEnvironmentId) || null;
   }
@@ -293,6 +331,40 @@ export class ApiTesterController {
   public setActiveEnvironment(envId: string) {
     this.activeEnvironmentId = envId;
     this.saveState();
+  }
+
+  // Retorna todas as variáveis ativas com identificação de escopo (Ambiente vs Global)
+  public getActiveVariables(): { key: string; value: string; isGlobal: boolean; envName: string }[] {
+    const map = new Map<string, { key: string; value: string; isGlobal: boolean; envName: string }>();
+
+    // 1. Variáveis Globais (disponíveis sempre)
+    this.globalVariables.forEach((g) => {
+      if (g.enabled !== false && g.key.trim()) {
+        map.set(g.key.trim(), {
+          key: g.key.trim(),
+          value: g.value,
+          isGlobal: true,
+          envName: 'Global'
+        });
+      }
+    });
+
+    // 2. Variáveis do Ambiente Ativo (sobrescrevem ou complementam as globais)
+    const env = this.getActiveEnvironment();
+    if (env) {
+      env.variables.forEach((v) => {
+        if (v.enabled !== false && v.key.trim()) {
+          map.set(v.key.trim(), {
+            key: v.key.trim(),
+            value: v.value,
+            isGlobal: false,
+            envName: env.name
+          });
+        }
+      });
+    }
+
+    return Array.from(map.values());
   }
 
   public getHistory(): HistoryItem[] {
@@ -319,13 +391,14 @@ export class ApiTesterController {
 
   // --- Resolução de Variáveis ({{chave}}) ---
   public interpolate(text: string): string {
-    const env = this.getActiveEnvironment();
-    if (!env || !text) return text;
+    if (!text) return text;
+    const activeVars = this.getActiveVariables();
+    const varMap = new Map<string, string>();
+    activeVars.forEach((v) => varMap.set(v.key, v.value));
 
     return text.replace(/\{\{([^{}]+)\}\}/g, (match, varName) => {
       const trimmed = varName.trim();
-      const variable = env.variables.find((v) => v.enabled && v.key === trimmed);
-      return variable ? variable.value : match;
+      return varMap.has(trimmed) ? varMap.get(trimmed)! : match;
     });
   }
 
@@ -721,7 +794,8 @@ loHttp = .NULL.`;
           exportedAt: new Date().toISOString()
         },
         collections: this.collections,
-        environments: this.environments
+        environments: this.environments,
+        globals: this.globalVariables
       },
       null,
       2
@@ -797,6 +871,14 @@ loHttp = .NULL.`;
           importedEnvs++;
         });
       }
+
+      if (data.globals && Array.isArray(data.globals)) {
+        data.globals.forEach((g: EnvironmentVariable) => {
+          if (!this.globalVariables.some((existing) => existing.key === g.key)) {
+            this.globalVariables.push(g);
+          }
+        });
+      }
     }
 
     this.saveState();
@@ -815,6 +897,10 @@ export function initApiTesterUI() {
   const btnCancel = document.getElementById('btn-api-cancel') as HTMLButtonElement | null;
   const btnVarsPicker = document.getElementById('btn-api-vars-picker') as HTMLButtonElement | null;
   const varsPopover = document.getElementById('api-vars-popover') as HTMLDivElement | null;
+  const urlVarTooltip = document.getElementById('api-url-var-tooltip') as HTMLDivElement | null;
+  const urlResolvedPreview = document.getElementById('api-url-resolved-preview') as HTMLDivElement | null;
+  const urlResolvedText = document.getElementById('api-url-resolved-text') as HTMLElement | null;
+  const urlResolvedStatus = document.getElementById('api-url-resolved-status') as HTMLElement | null;
   const requestNameInput = document.getElementById('api-request-name') as HTMLInputElement | null;
   const activeEnvSelect = document.getElementById('api-active-env-select') as HTMLSelectElement | null;
   const btnManageEnvs = document.getElementById('btn-api-manage-envs') as HTMLButtonElement | null;
@@ -830,10 +916,31 @@ export function initApiTesterUI() {
   const historyList = document.getElementById('api-history-list') as HTMLElement | null;
   const btnNewCol = document.getElementById('btn-api-new-col') as HTMLButtonElement | null;
   const btnNewReq = document.getElementById('btn-api-new-req') as HTMLButtonElement | null;
+  const btnToggleAllCols = document.getElementById('btn-api-toggle-all-cols') as HTMLButtonElement | null;
   const btnImport = document.getElementById('btn-api-import') as HTMLButtonElement | null;
   const btnExport = document.getElementById('btn-api-export') as HTMLButtonElement | null;
   const btnClearHist = document.getElementById('btn-api-clear-hist') as HTMLButtonElement | null;
   const searchReqInput = document.getElementById('api-search-req-input') as HTMLInputElement | null;
+
+  // Estado de Pastas Recolhidas/Expandidas
+  function loadCollapsedState(): Set<string> {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_COLLAPSED_COLS);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  }
+
+  function saveCollapsedState(set: Set<string>) {
+    try {
+      localStorage.setItem(STORAGE_KEY_COLLAPSED_COLS, JSON.stringify(Array.from(set)));
+    } catch {
+      // ignore
+    }
+  }
+
+  const collapsedColIds = loadCollapsedState();
 
   // Abas de Configuração da Requisição
   const reqTabs = ['params', 'headers', 'auth', 'body'];
@@ -943,6 +1050,8 @@ export function initApiTesterUI() {
     // Body
     if (bodyTypeSelect) bodyTypeSelect.value = req.bodyType;
     if (bodyContentTextarea) bodyContentTextarea.value = req.bodyContent || '';
+
+    updateUrlResolvedPreview();
   }
 
   function syncUIToRequest() {
@@ -965,6 +1074,7 @@ export function initApiTesterUI() {
     if (bodyContentTextarea) req.bodyContent = bodyContentTextarea.value;
 
     controller.saveState();
+    updateUrlResolvedPreview();
   }
 
   function updateMethodSelectColor(method: string) {
@@ -1146,8 +1256,10 @@ export function initApiTesterUI() {
         return;
       }
 
+      const isCollapsed = !cleanFilter && collapsedColIds.has(col.id);
+
       const colEl = document.createElement('div');
-      colEl.className = 'border border-gray-200 dark:border-slate-800 rounded-lg overflow-hidden bg-white dark:bg-slate-900 shadow-2xs';
+      colEl.className = 'border border-gray-200 dark:border-slate-800 rounded-lg overflow-hidden bg-white dark:bg-slate-900 shadow-2xs transition-all';
 
       const reqItemsHtml = filteredRequests.map((req) => {
         const isCurrent = req.id === controller.getCurrentRequest().id;
@@ -1158,7 +1270,7 @@ export function initApiTesterUI() {
               <span class="http-method-badge ${methodClass}">${req.method}</span>
               <span class="text-xs text-gray-800 dark:text-slate-200 truncate font-medium" title="${escapeHtml(req.name)}">${escapeHtml(req.name)}</span>
             </div>
-            <button type="button" class="btn-del-req opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity" data-col-id="${col.id}" data-req-id="${req.id}" title="Excluir Requisição">
+            <button type="button" class="btn-del-req opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity cursor-pointer" data-col-id="${col.id}" data-req-id="${req.id}" title="Excluir Requisição">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
           </div>
@@ -1166,13 +1278,18 @@ export function initApiTesterUI() {
       }).join('');
 
       colEl.innerHTML = `
-        <div class="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800">
-          <div class="flex items-center gap-1.5 font-bold text-xs text-gray-700 dark:text-slate-300 truncate">
-            <svg class="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+        <div class="col-header flex items-center justify-between px-2.5 py-2 bg-gray-50 dark:bg-slate-950 ${isCollapsed ? '' : 'border-b border-gray-200 dark:border-slate-800'} cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-900/80 transition-colors select-none" data-col-id="${col.id}" title="Clique para ${isCollapsed ? 'expandir' : 'recolher'} pasta">
+          <div class="flex items-center gap-1.5 font-bold text-xs text-gray-700 dark:text-slate-300 truncate min-w-0">
+            <svg class="col-chevron w-3.5 h-3.5 text-gray-400 dark:text-slate-500 transition-transform duration-200 flex-shrink-0 ${isCollapsed ? '-rotate-90' : 'rotate-0'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            <svg class="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              ${isCollapsed
+                ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>'
+                : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"></path>'}
+            </svg>
             <span class="truncate" title="${escapeHtml(col.name)}">${escapeHtml(col.name)}</span>
             <span class="text-[10px] text-gray-400 font-normal">(${col.requests.length})</span>
           </div>
-          <div class="flex items-center gap-1">
+          <div class="flex items-center gap-1 flex-shrink-0">
             <button type="button" class="btn-add-req-to-col text-gray-400 hover:text-indigo-500 p-1 transition-colors cursor-pointer" data-col-id="${col.id}" title="Adicionar Requisição nesta Coleção">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
             </button>
@@ -1181,12 +1298,32 @@ export function initApiTesterUI() {
             </button>
           </div>
         </div>
-        <div class="divide-y divide-gray-100 dark:divide-slate-800/60 max-h-52 overflow-y-auto api-scrollbar">
+        <div class="col-body ${isCollapsed ? 'hidden' : ''} divide-y divide-gray-100 dark:divide-slate-800/60 max-h-52 overflow-y-auto api-scrollbar">
           ${reqItemsHtml || '<div class="p-2 text-center text-[11px] text-gray-400 italic">Nenhuma requisição</div>'}
         </div>
       `;
 
       collectionsList.appendChild(colEl);
+    });
+
+    // Alternar Recolher/Expandir da Pasta ao clicar no cabeçalho
+    collectionsList.querySelectorAll('.col-header').forEach((hdr) => {
+      hdr.addEventListener('click', (e) => {
+        if (
+          (e.target as HTMLElement).closest('.btn-add-req-to-col') ||
+          (e.target as HTMLElement).closest('.btn-del-col')
+        ) {
+          return;
+        }
+        const colId = (hdr as HTMLElement).dataset.colId!;
+        if (collapsedColIds.has(colId)) {
+          collapsedColIds.delete(colId);
+        } else {
+          collapsedColIds.add(colId);
+        }
+        saveCollapsedState(collapsedColIds);
+        renderCollectionsList(cleanFilter);
+      });
     });
 
     // Eventos nas requisições da lista
@@ -1235,6 +1372,8 @@ export function initApiTesterUI() {
           newReq.collectionId = colId;
           controller.setCurrentRequest(newReq);
           controller.saveCurrentRequestToCollection(colId, name);
+          collapsedColIds.delete(colId);
+          saveCollapsedState(collapsedColIds);
           syncRequestToUI(newReq);
           renderCollectionsList(cleanFilter);
           showToast(`Requisição "${name}" adicionada com sucesso!`, 'success');
@@ -1410,49 +1549,144 @@ export function initApiTesterUI() {
     }
   }
 
-  // --- Modal de Ambientes ---
+  // --- Modal de Ambientes & Variáveis Globais ---
   function renderEnvsModal() {
     if (!envsListModal) return;
+    const globals = controller.getGlobalVariables();
     const envs = controller.getEnvironments();
     envsListModal.innerHTML = '';
 
-    if (envs.length === 0) {
-      envsListModal.innerHTML = `<div class="p-6 text-center text-xs text-gray-400 italic">Nenhum ambiente cadastrado. Clique no botão abaixo para adicionar.</div>`;
-      return;
-    }
+    // --- SEÇÃO 1: Variáveis Globais ---
+    const globalsCard = document.createElement('div');
+    globalsCard.className = 'p-4 rounded-xl border border-cyan-200 dark:border-cyan-800/60 bg-cyan-50/40 dark:bg-cyan-950/20 space-y-3';
 
-    envs.forEach((env) => {
-      const card = document.createElement('div');
-      card.className = 'p-4 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3';
+    const globalRows = globals.map((g, i) => `
+      <div class="flex items-center gap-2 p-1.5 rounded-lg bg-white/80 dark:bg-slate-900/90 border border-cyan-100 dark:border-cyan-900/50 shadow-2xs">
+        <button type="button" class="btn-copy-modal-var px-2 py-1 text-[11px] font-mono font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/80 dark:hover:bg-cyan-900 border border-cyan-200 dark:border-cyan-800 rounded transition-colors cursor-pointer shadow-2xs flex-shrink-0 flex items-center gap-1" data-key="${escapeHtml(g.key)}" title="Clique para copiar {{${escapeHtml(g.key)}}}">
+          <span>{{${escapeHtml(g.key)}}}}</span>
+          <svg class="w-3 h-3 text-cyan-600 dark:text-cyan-400 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+        </button>
+        <input type="text" class="global-var-key flex-1 px-2 py-1 text-xs font-mono bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-cyan-500" value="${escapeHtml(g.key)}" placeholder="Nome (ex: baseUrlGlobal)" data-var-idx="${i}" />
+        <input type="text" class="global-var-val flex-1 px-2 py-1 text-xs font-mono bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-cyan-500" value="${escapeHtml(g.value)}" placeholder="Valor padrão" data-var-idx="${i}" />
+        <button type="button" class="btn-del-global-var p-1 text-gray-400 hover:text-red-500 cursor-pointer transition-colors" data-var-idx="${i}" title="Remover variável global">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+    `).join('');
 
-      const varsRows = env.variables.map((v, i) => `
-        <div class="flex items-center gap-2 p-1 rounded-lg bg-gray-50/60 dark:bg-slate-950/60 border border-gray-200/70 dark:border-slate-800">
-          <button type="button" class="btn-copy-modal-var px-2 py-1 text-[11px] font-mono font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/80 dark:hover:bg-cyan-900 border border-cyan-200 dark:border-cyan-800 rounded transition-colors cursor-pointer shadow-2xs flex-shrink-0 flex items-center gap-1" data-key="${escapeHtml(v.key)}" title="Clique para copiar {{${escapeHtml(v.key)}}}">
-            <span>{{${escapeHtml(v.key)}}}}</span>
-            <svg class="w-3 h-3 text-cyan-600 dark:text-cyan-400 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-          </button>
-          <input type="text" class="env-var-key flex-1 px-2 py-1 text-xs font-mono bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded text-gray-900 dark:text-slate-100" value="${escapeHtml(v.key)}" placeholder="Nome (ex: baseUrl)" data-env-id="${env.id}" data-var-idx="${i}" />
-          <input type="text" class="env-var-val flex-1 px-2 py-1 text-xs font-mono bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded text-gray-900 dark:text-slate-100" value="${escapeHtml(v.value)}" placeholder="Valor" data-env-id="${env.id}" data-var-idx="${i}" />
-          <button type="button" class="btn-del-env-var p-1 text-gray-400 hover:text-red-500 cursor-pointer" data-env-id="${env.id}" data-var-idx="${i}" title="Remover variável">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-          </button>
-        </div>
-      `).join('');
-
-      card.innerHTML = `
-        <div class="flex items-center justify-between pb-2 border-b border-gray-200 dark:border-slate-800">
-          <input type="text" class="env-name-input font-bold text-sm bg-transparent border-b border-transparent hover:border-gray-400 text-gray-800 dark:text-slate-100 focus:outline-none" value="${escapeHtml(env.name)}" data-env-id="${env.id}" />
-          <div class="flex items-center gap-2">
-            <button type="button" class="btn-add-var-to-env text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer" data-env-id="${env.id}">+ Variável</button>
-            <button type="button" class="btn-del-entire-env text-xs text-red-500 hover:underline cursor-pointer" data-env-id="${env.id}">Excluir</button>
+    globalsCard.innerHTML = `
+      <div class="flex items-center justify-between pb-2 border-b border-cyan-200/60 dark:border-cyan-800/50">
+        <div class="flex items-center gap-2">
+          <span class="text-base">🌍</span>
+          <div>
+            <h4 class="font-bold text-xs text-gray-900 dark:text-slate-100">Variáveis Globais do Projeto</h4>
+            <p class="text-[10px] text-gray-500 dark:text-slate-400">Ativas em todos os ambientes e também quando "Sem Ambiente" estiver selecionado.</p>
           </div>
         </div>
-        <div class="space-y-2">
-          ${varsRows || '<div class="text-[11px] text-gray-400 italic">Nenhuma variável</div>'}
-        </div>
-      `;
+        <button type="button" id="btn-add-global-var" class="px-2.5 py-1 text-xs font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-900/60 hover:bg-cyan-200 dark:hover:bg-cyan-800/80 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shadow-2xs">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          <span>Nova Global</span>
+        </button>
+      </div>
+      <div class="space-y-1.5">
+        ${globalRows || '<div class="text-[11px] text-gray-400 dark:text-slate-500 italic p-3 text-center">Nenhuma variável global configurada. Clique em "+ Nova Global" para adicionar.</div>'}
+      </div>
+    `;
+    envsListModal.appendChild(globalsCard);
 
-      envsListModal.appendChild(card);
+    // Divisor de Seção
+    const divider = document.createElement('div');
+    divider.className = 'pt-2 pb-1 flex items-center gap-2';
+    divider.innerHTML = `
+      <div class="h-px bg-gray-200 dark:bg-slate-800 flex-1"></div>
+      <span class="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+        <span>🏢 Ambientes Específicos</span>
+        <span class="text-[10px] font-normal lowercase text-gray-400">(${envs.length})</span>
+      </span>
+      <div class="h-px bg-gray-200 dark:bg-slate-800 flex-1"></div>
+    `;
+    envsListModal.appendChild(divider);
+
+    // --- SEÇÃO 2: Ambientes Específicos ---
+    if (envs.length === 0) {
+      const emptyCard = document.createElement('div');
+      emptyCard.className = 'p-4 rounded-xl border border-dashed border-gray-300 dark:border-slate-800 text-center text-xs text-gray-400 italic';
+      emptyCard.textContent = 'Nenhum ambiente específico cadastrado. Você pode criar um clicando em "+ Novo Ambiente" abaixo.';
+      envsListModal.appendChild(emptyCard);
+    } else {
+      envs.forEach((env) => {
+        const card = document.createElement('div');
+        card.className = 'p-4 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3';
+
+        const varsRows = env.variables.map((v, i) => `
+          <div class="flex items-center gap-2 p-1 rounded-lg bg-gray-50/60 dark:bg-slate-950/60 border border-gray-200/70 dark:border-slate-800">
+            <button type="button" class="btn-copy-modal-var px-2 py-1 text-[11px] font-mono font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/80 dark:hover:bg-cyan-900 border border-cyan-200 dark:border-cyan-800 rounded transition-colors cursor-pointer shadow-2xs flex-shrink-0 flex items-center gap-1" data-key="${escapeHtml(v.key)}" title="Clique para copiar {{${escapeHtml(v.key)}}}">
+              <span>{{${escapeHtml(v.key)}}}}</span>
+              <svg class="w-3 h-3 text-cyan-600 dark:text-cyan-400 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            </button>
+            <input type="text" class="env-var-key flex-1 px-2 py-1 text-xs font-mono bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded text-gray-900 dark:text-slate-100" value="${escapeHtml(v.key)}" placeholder="Nome (ex: baseUrl)" data-env-id="${env.id}" data-var-idx="${i}" />
+            <input type="text" class="env-var-val flex-1 px-2 py-1 text-xs font-mono bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded text-gray-900 dark:text-slate-100" value="${escapeHtml(v.value)}" placeholder="Valor" data-env-id="${env.id}" data-var-idx="${i}" />
+            <button type="button" class="btn-del-env-var p-1 text-gray-400 hover:text-red-500 cursor-pointer" data-env-id="${env.id}" data-var-idx="${i}" title="Remover variável">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
+        `).join('');
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between pb-2 border-b border-gray-200 dark:border-slate-800">
+            <input type="text" class="env-name-input font-bold text-sm bg-transparent border-b border-transparent hover:border-gray-400 text-gray-800 dark:text-slate-100 focus:outline-none" value="${escapeHtml(env.name)}" data-env-id="${env.id}" />
+            <div class="flex items-center gap-2">
+              <button type="button" class="btn-add-var-to-env text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer" data-env-id="${env.id}">+ Variável</button>
+              <button type="button" class="btn-del-entire-env text-xs text-red-500 hover:underline cursor-pointer" data-env-id="${env.id}">Excluir</button>
+            </div>
+          </div>
+          <div class="space-y-2">
+            ${varsRows || '<div class="text-[11px] text-gray-400 italic">Nenhuma variável configurada neste ambiente.</div>'}
+          </div>
+        `;
+
+        envsListModal.appendChild(card);
+      });
+    }
+
+    // Eventos nas Globais
+    envsListModal.querySelector('#btn-add-global-var')?.addEventListener('click', () => {
+      controller.addGlobalVariable('novaGlobal', '');
+      renderEnvsModal();
+      updateUrlResolvedPreview();
+    });
+
+    envsListModal.querySelectorAll('.global-var-key').forEach((input) => {
+      input.addEventListener('input', (e) => {
+        const idx = Number((e.target as HTMLElement).dataset.varIdx);
+        const globalsList = controller.getGlobalVariables();
+        if (globalsList[idx]) {
+          globalsList[idx].key = (e.target as HTMLInputElement).value;
+          controller.saveState();
+          updateUrlResolvedPreview();
+        }
+      });
+    });
+
+    envsListModal.querySelectorAll('.global-var-val').forEach((input) => {
+      input.addEventListener('input', (e) => {
+        const idx = Number((e.target as HTMLElement).dataset.varIdx);
+        const globalsList = controller.getGlobalVariables();
+        if (globalsList[idx]) {
+          globalsList[idx].value = (e.target as HTMLInputElement).value;
+          controller.saveState();
+          updateUrlResolvedPreview();
+        }
+      });
+    });
+
+    envsListModal.querySelectorAll('.btn-del-global-var').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = Number((btn as HTMLElement).dataset.varIdx);
+        controller.deleteGlobalVariable(idx);
+        renderEnvsModal();
+        updateUrlResolvedPreview();
+      });
     });
 
     // Copiar variável pelo botão do modal
@@ -1467,7 +1701,19 @@ export function initApiTesterUI() {
       });
     });
 
-    // Eventos nas variáveis do modal
+    // Eventos nos Ambientes
+    envsListModal.querySelectorAll('.env-name-input').forEach((input) => {
+      input.addEventListener('input', (e) => {
+        const envId = (e.target as HTMLElement).dataset.envId!;
+        const env = controller.getEnvironments().find((x) => x.id === envId);
+        if (env) {
+          env.name = (e.target as HTMLInputElement).value;
+          controller.saveState();
+          updateEnvironmentsDropdown();
+        }
+      });
+    });
+
     envsListModal.querySelectorAll('.env-var-key').forEach((input) => {
       input.addEventListener('input', (e) => {
         const envId = (e.target as HTMLElement).dataset.envId!;
@@ -1476,6 +1722,7 @@ export function initApiTesterUI() {
         if (env) {
           env.variables[idx].key = (e.target as HTMLInputElement).value;
           controller.saveState();
+          updateUrlResolvedPreview();
         }
       });
     });
@@ -1488,6 +1735,7 @@ export function initApiTesterUI() {
         if (env) {
           env.variables[idx].value = (e.target as HTMLInputElement).value;
           controller.saveState();
+          updateUrlResolvedPreview();
         }
       });
     });
@@ -1501,6 +1749,7 @@ export function initApiTesterUI() {
           env.variables.splice(idx, 1);
           renderEnvsModal();
           controller.saveState();
+          updateUrlResolvedPreview();
         }
       });
     });
@@ -1513,6 +1762,7 @@ export function initApiTesterUI() {
           env.variables.push({ key: 'novaVariavel', value: '', enabled: true });
           renderEnvsModal();
           controller.saveState();
+          updateUrlResolvedPreview();
         }
       });
     });
@@ -1530,6 +1780,7 @@ export function initApiTesterUI() {
           controller.deleteEnvironment(envId);
           renderEnvsModal();
           updateEnvironmentsDropdown();
+          updateUrlResolvedPreview();
           showToast('Ambiente excluído com sucesso.', 'info');
         }
       });
@@ -1579,25 +1830,7 @@ export function initApiTesterUI() {
   function renderVarsPopover(filterText = '') {
     if (!varsPopover) return;
     const activeEnv = controller.getActiveEnvironment();
-    const allEnvs = controller.getEnvironments();
-
-    let varsToShow: { key: string; value: string; envName: string }[] = [];
-
-    if (activeEnv) {
-      activeEnv.variables.forEach((v) => {
-        if (v.enabled !== false && v.key.trim()) {
-          varsToShow.push({ key: v.key.trim(), value: v.value, envName: activeEnv.name });
-        }
-      });
-    } else {
-      allEnvs.forEach((env) => {
-        env.variables.forEach((v) => {
-          if (v.enabled !== false && v.key.trim()) {
-            varsToShow.push({ key: v.key.trim(), value: v.value, envName: env.name });
-          }
-        });
-      });
-    }
+    let varsToShow = controller.getActiveVariables();
 
     const cleanFilter = filterText.toLowerCase().trim();
     if (cleanFilter) {
@@ -1606,7 +1839,9 @@ export function initApiTesterUI() {
       );
     }
 
-    const envLabel = activeEnv ? escapeHtml(activeEnv.name) : 'Sem Ambiente Ativo (Listando Todas)';
+    const envLabel = activeEnv
+      ? `🏢 ${escapeHtml(activeEnv.name)} <span class="text-gray-400 font-normal text-[10px]">(+ Globais)</span>`
+      : '🌍 Apenas Globais (Sem Ambiente)';
 
     const listHtml =
       varsToShow.length > 0
@@ -1620,6 +1855,13 @@ export function initApiTesterUI() {
               </span>
               <span class="text-xs text-gray-600 dark:text-slate-400 font-mono truncate" title="${escapeHtml(v.value)}">
                 = "${escapeHtml(v.value || '(vazio)')}"
+              </span>
+              <span class="ml-auto text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${
+                v.isGlobal
+                  ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-medium'
+                  : 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-medium'
+              }">
+                ${v.isGlobal ? '🌍 Global' : `🏢 ${escapeHtml(v.envName)}`}
               </span>
             </div>
             <div class="flex items-center gap-1.5 flex-shrink-0">
@@ -1637,10 +1879,10 @@ export function initApiTesterUI() {
             )
             .join('')
         : `
-          <div class="p-6 text-center text-xs text-gray-500 dark:text-slate-400">
-            ${cleanFilter ? 'Nenhuma variável correspondente encontrada.' : 'Nenhuma variável configurada neste ambiente.'}
-            <div class="mt-2">
-              <button type="button" id="btn-empty-manage-envs" class="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline cursor-pointer">+ Cadastrar Variáveis no Gerenciador</button>
+          <div class="p-6 text-center text-xs text-gray-500 dark:text-slate-400 space-y-2">
+            <div>${cleanFilter ? 'Nenhuma variável correspondente encontrada.' : activeEnv ? 'Nenhuma variável disponível neste ambiente nem nas variáveis globais.' : 'Nenhuma variável global cadastrada. Cadastre variáveis globais para usar em qualquer lugar ou selecione um ambiente.'}</div>
+            <div>
+              <button type="button" id="btn-empty-manage-envs" class="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline cursor-pointer">+ Cadastrar Variáveis Globais / Ambientes</button>
             </div>
           </div>
         `;
@@ -1653,10 +1895,10 @@ export function initApiTesterUI() {
           </div>
           <div>
             <h4 class="font-bold text-xs text-gray-900 dark:text-slate-100 flex items-center gap-1.5">
-              <span>Variáveis de Ambiente</span>
+              <span>Variáveis Disponíveis</span>
               <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300">${varsToShow.length} disponível(is)</span>
             </h4>
-            <p class="text-[11px] text-gray-500 dark:text-slate-400">Ambiente Selecionado: <span class="font-semibold text-cyan-600 dark:text-cyan-400">${envLabel}</span></p>
+            <p class="text-[11px] text-gray-500 dark:text-slate-400">Escopo Atual: <span class="font-semibold text-cyan-600 dark:text-cyan-400">${envLabel}</span></p>
           </div>
         </div>
         <button type="button" id="btn-close-vars-popover" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg font-bold p-1 cursor-pointer leading-none">&times;</button>
@@ -1677,7 +1919,7 @@ export function initApiTesterUI() {
         <span>💡 Clique no nome ou em <strong>Inserir</strong> para colocar na URL, ou em <strong>Copiar</strong> para Headers/Body.</span>
         <button type="button" id="btn-popover-open-envs" class="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline cursor-pointer flex items-center gap-1">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-          Gerenciar Ambientes
+          Gerenciar Ambientes & Globais
         </button>
       </div>
     `;
@@ -1734,6 +1976,157 @@ export function initApiTesterUI() {
     varsPopoverOpenedByTyping = false;
   }
 
+  // --- Prévia da URL Resolvida em Tempo Real ---
+  function updateUrlResolvedPreview() {
+    if (!urlResolvedPreview || !urlResolvedText || !urlResolvedStatus || !urlInput) return;
+    const url = urlInput.value.trim();
+
+    if (!url || !url.includes('{{')) {
+      urlResolvedPreview.classList.add('hidden');
+      return;
+    }
+
+    urlResolvedPreview.classList.remove('hidden');
+    const resolved = controller.interpolate(url);
+    urlResolvedText.textContent = resolved;
+    urlResolvedText.title = resolved;
+
+    const unresolvedMatch = resolved.match(/\{\{([^{}]+)\}\}/g);
+    if (unresolvedMatch && unresolvedMatch.length > 0) {
+      urlResolvedStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 flex items-center gap-1';
+      urlResolvedStatus.innerHTML = `⚠️ ${unresolvedMatch.length} não resolvida(s)`;
+      urlResolvedStatus.title = `As seguintes variáveis não foram encontradas no escopo ativo: ${unresolvedMatch.join(', ')}`;
+    } else {
+      urlResolvedStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1';
+      urlResolvedStatus.innerHTML = `✓ Pronta para envio`;
+      urlResolvedStatus.title = 'Todas as variáveis foram resolvidas com sucesso no escopo ativo.';
+    }
+  }
+
+  // --- Tooltip Flutuante de Inspeção de Variáveis na URL ao Passar o Mouse ---
+  let canvasMeasureCtx: CanvasRenderingContext2D | null = null;
+  function getCharWidth(): number {
+    if (!urlInput) return 7.2;
+    if (!canvasMeasureCtx) {
+      const canvas = document.createElement('canvas');
+      canvasMeasureCtx = canvas.getContext('2d');
+    }
+    if (canvasMeasureCtx) {
+      const style = window.getComputedStyle(urlInput);
+      canvasMeasureCtx.font = `${style.fontSize} ${style.fontFamily || 'monospace'}`;
+      const w = canvasMeasureCtx.measureText('M').width;
+      if (w > 0) return w;
+    }
+    return 7.2;
+  }
+
+  function hideUrlVarTooltip() {
+    if (urlVarTooltip) {
+      urlVarTooltip.classList.add('hidden');
+    }
+  }
+
+  urlInput?.addEventListener('mousemove', (e: MouseEvent) => {
+    if (!urlVarTooltip || !urlInput) return;
+    const val = urlInput.value;
+    if (!val.includes('{{')) {
+      hideUrlVarTooltip();
+      return;
+    }
+
+    const style = window.getComputedStyle(urlInput);
+    const paddingLeft = parseFloat(style.paddingLeft) || 12;
+    const rect = urlInput.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left - paddingLeft + urlInput.scrollLeft;
+
+    if (mouseX < 0) {
+      hideUrlVarTooltip();
+      return;
+    }
+
+    const charWidth = getCharWidth();
+    const charIndex = Math.floor(mouseX / charWidth);
+
+    const regex = /\{\{([^{}]+)\}\}/g;
+    let match: RegExpExecArray | null;
+    let foundToken: { name: string; full: string; start: number; end: number } | null = null;
+
+    while ((match = regex.exec(val)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (charIndex >= start && charIndex < end) {
+        foundToken = {
+          name: match[1].trim(),
+          full: match[0],
+          start,
+          end
+        };
+        break;
+      }
+    }
+
+    if (!foundToken) {
+      hideUrlVarTooltip();
+      return;
+    }
+
+    const activeVars = controller.getActiveVariables();
+    const activeVar = activeVars.find((v) => v.key === foundToken!.name);
+
+    if (activeVar) {
+      const scopeBadge = activeVar.isGlobal
+        ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1">🌍 Global</span>`
+        : `<span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800 flex items-center gap-1">🏢 ${escapeHtml(activeVar.envName)}</span>`;
+
+      urlVarTooltip.innerHTML = `
+        <div class="flex items-center justify-between gap-3 border-b border-slate-700/80 pb-1.5">
+          <span class="font-mono font-bold text-cyan-400 text-xs">{{${escapeHtml(activeVar.key)}}}</span>
+          ${scopeBadge}
+        </div>
+        <div class="pt-1 text-[11px] font-mono break-all">
+          <span class="text-slate-400 select-none">Valor resolvido: </span>
+          <span class="text-emerald-400 font-semibold">${escapeHtml(activeVar.value || '(vazio)')}</span>
+        </div>
+        <div class="text-[10px] text-slate-400 italic">
+          ${activeVar.isGlobal ? 'Definida nas variáveis globais do projeto.' : `Definida no ambiente "${escapeHtml(activeVar.envName)}".`}
+        </div>
+      `;
+    } else {
+      const activeEnv = controller.getActiveEnvironment();
+      const envHint = activeEnv ? `no ambiente "${escapeHtml(activeEnv.name)}" nem nas globais` : `nas variáveis globais (nenhum ambiente selecionado)`;
+
+      urlVarTooltip.innerHTML = `
+        <div class="flex items-center justify-between gap-3 border-b border-rose-800/80 pb-1.5">
+          <span class="font-mono font-bold text-rose-400 text-xs">{{${escapeHtml(foundToken.name)}}}</span>
+          <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1">⚠️ Não Definida</span>
+        </div>
+        <div class="pt-1 text-[11px] text-rose-200">
+          Esta variável não existe ${envHint}.
+        </div>
+        <div class="text-[10px] text-slate-400 pt-0.5">
+          Dica: Selecione o ambiente correto no combo ou cadastre-a em <strong>Gerenciar Ambientes</strong>.
+        </div>
+      `;
+    }
+
+    urlVarTooltip.classList.remove('hidden');
+
+    const tooltipWidth = 320;
+    let posX = e.clientX - 60;
+    if (posX + tooltipWidth > window.innerWidth - 16) {
+      posX = window.innerWidth - tooltipWidth - 16;
+    }
+    if (posX < 16) posX = 16;
+
+    const posY = rect.bottom + 8;
+    urlVarTooltip.style.left = `${posX}px`;
+    urlVarTooltip.style.top = `${posY}px`;
+  });
+
+  urlInput?.addEventListener('mouseleave', hideUrlVarTooltip);
+  urlInput?.addEventListener('blur', hideUrlVarTooltip);
+  window.addEventListener('scroll', hideUrlVarTooltip, true);
+
   // --- Snippet Modal ---
   function updateSnippetModal() {
     if (!snippetContent || !snippetLangSelect) return;
@@ -1751,6 +2144,32 @@ export function initApiTesterUI() {
     if (!urlInput?.value.trim()) {
       showToast('Por favor, informe a URL da requisição.', 'warning');
       urlInput?.focus();
+      return;
+    }
+
+    const currentUrl = urlInput.value.trim();
+    const resolvedUrl = controller.interpolate(currentUrl);
+
+    // Validação 1: Detecta variáveis não resolvidas (ex: {{ServerIISPWI}})
+    const unresolvedMatch = resolvedUrl.match(/\{\{([^{}]+)\}\}/);
+    if (unresolvedMatch) {
+      const activeEnv = controller.getActiveEnvironment();
+      const envName = activeEnv ? `"${activeEnv.name}"` : 'nenhum ambiente selecionado';
+      showToast(
+        `A variável ${unresolvedMatch[0]} não foi encontrada no ambiente ativo (${envName}). Verifique o combo de ambientes ou o cadastro de variáveis.`,
+        'warning',
+        6000
+      );
+      return;
+    }
+
+    // Validação 2: Detecta URL sem protocolo HTTP/HTTPS
+    if (!resolvedUrl.startsWith('http://') && !resolvedUrl.startsWith('https://')) {
+      showToast(
+        'A URL precisa começar com http:// ou https:// (ex: http://meuservidor:8080/api). Sem isso, o navegador tentará buscar dentro do próprio site.',
+        'warning',
+        6000
+      );
       return;
     }
 
@@ -1999,10 +2418,28 @@ export function initApiTesterUI() {
   btnNewCol?.addEventListener('click', async () => {
     const name = await promptText('Nova Coleção', 'Nome da coleção:', 'Microsserviço Vendas', 'Ex: Pagamentos, Usuários');
     if (name) {
-      controller.addCollection(name);
+      const newCol = controller.addCollection(name);
+      collapsedColIds.delete(newCol.id);
+      saveCollapsedState(collapsedColIds);
       renderCollectionsList(searchReqInput?.value || '');
       showToast(`Coleção "${name}" criada com sucesso!`, 'success');
     }
+  });
+
+  // Alternar Recolher / Expandir Todas as Pastas
+  btnToggleAllCols?.addEventListener('click', () => {
+    const cols = controller.getCollections();
+    if (cols.length === 0) return;
+    const allCollapsed = cols.every((c) => collapsedColIds.has(c.id));
+    if (allCollapsed) {
+      collapsedColIds.clear();
+      showToast('Todas as pastas expandidas.', 'info', 1500);
+    } else {
+      cols.forEach((c) => collapsedColIds.add(c.id));
+      showToast('Todas as pastas recolhidas.', 'info', 1500);
+    }
+    saveCollapsedState(collapsedColIds);
+    renderCollectionsList(searchReqInput?.value || '');
   });
 
   // Criar Nova Requisição Solta
@@ -2037,6 +2474,8 @@ export function initApiTesterUI() {
     if (result && result.value) {
       const targetColId = result.selectedOption || defaultColId;
       controller.saveCurrentRequestToCollection(targetColId, result.value);
+      collapsedColIds.delete(targetColId);
+      saveCollapsedState(collapsedColIds);
       renderCollectionsList(searchReqInput?.value || '');
       showToast(`Requisição "${result.value}" salva com sucesso!`, 'success');
     }
@@ -2107,6 +2546,7 @@ export function initApiTesterUI() {
   btnCloseModalEnvs?.addEventListener('click', () => {
     modalEnvs?.classList.add('hidden');
     updateEnvironmentsDropdown();
+    updateUrlResolvedPreview();
   });
   btnModalAddEnv?.addEventListener('click', async () => {
     const name = await promptText('Novo Ambiente', 'Nome do ambiente:', 'Novo Ambiente', 'Ex: Homologação, Produção');
