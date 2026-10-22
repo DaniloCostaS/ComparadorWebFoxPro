@@ -2346,4 +2346,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initApiTesterUI();
 
+  // Seleciona a primeira opção do menu (Leitor Markdown) ao inicializar a página
+  tabMarkdown?.click();
+
 });

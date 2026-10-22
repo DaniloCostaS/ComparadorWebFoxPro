@@ -94,7 +94,7 @@
       </button>
 
       <button id="tab-markdown"
-        class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
+        class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-active">
         <svg class="w-5 h-5 flex-shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"></path>
           <path d="M7 15V9l3 3.5L13 9v6"></path>
@@ -113,7 +113,7 @@
       </button>
 
       <button id="tab-text"
-        class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-active">
+        class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors tab-inactive">
         <svg class="w-5 h-5 flex-shrink-0 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
@@ -210,7 +210,7 @@
       </button>
 
       <div class="text-[11px] text-slate-500 text-center font-mono">
-        Comparador PWI v2.0
+        Comparador PWI v2.1
       </div>
     </div>
   </aside>
@@ -297,7 +297,7 @@
 
       <!-- Seção: Comparador de Texto -->
       <section id="section-text"
-        class="block bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
+        class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
         <h2 class="text-2xl font-bold mb-4 text-blue-800 dark:text-blue-400">Comparador Nativo de Texto</h2>
         <p class="text-gray-600 dark:text-slate-400 mb-6">Cole o código original e o código modificado abaixo. A
           ferramenta irá gerar o arquivo HTML final sem a necessidade do BeyondCompare.</p>
@@ -1455,7 +1455,7 @@
       </section>
 
       <!-- Seção: Leitor de Markdown (.md) -->
-      <section id="section-markdown" class="hidden bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
+      <section id="section-markdown" class="block bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
         <!-- Cabeçalho Principal -->
         <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-gray-200 dark:border-slate-800 mb-6 gap-4">
           <div>

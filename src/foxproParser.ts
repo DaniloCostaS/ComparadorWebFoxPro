@@ -29,8 +29,59 @@ export class FoxProParser {
         return this.decodeString(fptBuffer, offset + 8, dataLength);
     }
 
+    private isCommentLine(line: string): boolean {
+        const trimmed = line.trim();
+        return trimmed.startsWith('*') || 
+               trimmed.startsWith('&&') || 
+               trimmed.toUpperCase().startsWith('NOTE ') || 
+               trimmed.toUpperCase() === 'NOTE';
+    }
+
+    private extractPrecedingComments(content: string[]): string[] {
+        let idx = content.length - 1;
+        while (idx >= 0 && content[idx].trim() === '') {
+            idx--;
+        }
+        if (idx < 0 || !this.isCommentLine(content[idx])) {
+            while (content.length > 0 && content[content.length - 1].trim() === '') {
+                content.pop();
+            }
+            return [];
+        }
+
+        while (idx >= 0) {
+            if (this.isCommentLine(content[idx])) {
+                idx--;
+            } else if (content[idx].trim() === '') {
+                let peek = idx - 1;
+                while (peek >= 0 && content[peek].trim() === '') {
+                    peek--;
+                }
+                if (peek >= 0 && this.isCommentLine(content[peek])) {
+                    idx = peek;
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        const comments = content.splice(idx + 1);
+        while (comments.length > 0 && comments[0].trim() === '') {
+            comments.shift();
+        }
+        while (comments.length > 0 && comments[comments.length - 1].trim() === '') {
+            comments.pop();
+        }
+        while (content.length > 0 && content[content.length - 1].trim() === '') {
+            content.pop();
+        }
+        return comments;
+    }
+
     private sortMethods(methodsText: string, objName: string): string {
-        const methodLines = methodsText.split(/\r?\n/);
+        const methodLines = methodsText.split(/\r?\n/).map(l => l.trimEnd());
         const methodBlocks: { name: string, content: string[] }[] = [];
         let currentName = '_TOP_LEVEL';
         let currentContent: string[] = [];
@@ -38,17 +89,20 @@ export class FoxProParser {
         for (const line of methodLines) {
             const match = line.match(/^\s*(?:PROCEDURE|PROC|FUNCTION|FUNC)\s+([a-zA-Z0-9_.]+)/i);
             if (match) {
-                // Save previous block if it has content
-                if (currentContent.length > 0) {
+                const comments = this.extractPrecedingComments(currentContent);
+                if (currentContent.length > 0 || currentName !== '_TOP_LEVEL') {
                     methodBlocks.push({ name: currentName, content: currentContent });
                 }
                 currentName = match[1].toUpperCase();
-                currentContent = [line];
+                currentContent = [...comments, line];
             } else {
                 currentContent.push(line);
             }
         }
         if (currentContent.length > 0) {
+            while (currentContent.length > 0 && currentContent[currentContent.length - 1].trim() === '') {
+                currentContent.pop();
+            }
             methodBlocks.push({ name: currentName, content: currentContent });
         }
 
@@ -72,7 +126,7 @@ export class FoxProParser {
     }
 
     public parsePrg(prgText: string): string {
-        const methodLines = prgText.split(/\r?\n/);
+        const methodLines = prgText.split(/\r?\n/).map(l => l.trimEnd());
         const methodBlocks: { name: string, content: string[] }[] = [];
         let currentName = '_TOP_LEVEL';
         let currentContent: string[] = [];
@@ -80,21 +134,22 @@ export class FoxProParser {
         for (const line of methodLines) {
             const match = line.match(/^\s*(?:PROCEDURE|PROC|FUNCTION|FUNC)\s+([a-zA-Z0-9_.]+)/i);
             if (match) {
-                // Save previous block if it has content
-                if (currentContent.length > 0) {
+                const comments = this.extractPrecedingComments(currentContent);
+                if (currentContent.length > 0 || currentName !== '_TOP_LEVEL') {
                     methodBlocks.push({ name: currentName, content: currentContent });
                 }
                 currentName = match[1].toUpperCase();
-                currentContent = [line];
+                currentContent = [...comments, line];
             } else {
                 currentContent.push(line);
             }
         }
         if (currentContent.length > 0) {
+            while (currentContent.length > 0 && currentContent[currentContent.length - 1].trim() === '') {
+                currentContent.pop();
+            }
             methodBlocks.push({ name: currentName, content: currentContent });
         }
-
-
 
         let output = '';
         for (const block of methodBlocks) {

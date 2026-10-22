@@ -13,16 +13,43 @@ function escapeHtml(unsafe: string) {
 }
 
 export function generateDiffRows(originalText: string, modifiedText: string, ignoreCase: boolean = true): string {
-    const differences = (diff as any).diffLines(originalText, modifiedText, { ignoreCase });
+    const normOriginal = originalText
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .split('\n')
+        .map(l => l.trimEnd())
+        .join('\n');
+
+    const normModified = modifiedText
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .split('\n')
+        .map(l => l.trimEnd())
+        .join('\n');
+
+    const differences = (diff as any).diffLines(normOriginal, normModified, { ignoreCase });
     
     let htmlRows = '';
     function renderModifiedLine(oldLine: string, newLine: string) {
-        if (ignoreCase && oldLine.toLowerCase() === newLine.toLowerCase()) {
+        if (oldLine.trim() === '' && newLine.trim() === '') {
             return `
 <tr class="SectionMiddle">
-<td class="TextItemSame Wrap">${escapeHtml(oldLine)}</td>
+<td class="TextItemSame Wrap">&nbsp;</td>
 <td class="AlignCenter Wrap">=</td>
-<td class="TextItemSame Wrap">${escapeHtml(newLine)}</td>
+<td class="TextItemSame Wrap">&nbsp;</td>
+</tr>`;
+        }
+
+        const isSame = ignoreCase 
+            ? oldLine.trimEnd().toLowerCase() === newLine.trimEnd().toLowerCase()
+            : oldLine.trimEnd() === newLine.trimEnd();
+
+        if (isSame) {
+            return `
+<tr class="SectionMiddle">
+<td class="TextItemSame Wrap">${escapeHtml(oldLine) || '&nbsp;'}</td>
+<td class="AlignCenter Wrap">=</td>
+<td class="TextItemSame Wrap">${escapeHtml(newLine) || '&nbsp;'}</td>
 </tr>`;
         }
 
@@ -42,6 +69,15 @@ export function generateDiffRows(originalText: string, modifiedText: string, ign
                 rightHtml += escaped;
             }
         });
+
+        if (!leftHtml.includes('TextSegSigDiff') && !rightHtml.includes('TextSegSigDiff')) {
+            return `
+<tr class="SectionMiddle">
+<td class="TextItemSame Wrap">${leftHtml || '&nbsp;'}</td>
+<td class="AlignCenter Wrap">=</td>
+<td class="TextItemSame Wrap">${rightHtml || '&nbsp;'}</td>
+</tr>`;
+        }
 
         return `
 <tr class="SectionMiddle">
