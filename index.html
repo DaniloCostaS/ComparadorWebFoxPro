@@ -2220,6 +2220,92 @@
           </div>
         </div>
 
+        <!-- MODAL: Exportar Coleções (JSON ou Modo Bruno .zip) -->
+        <div id="api-modal-export" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full flex flex-col shadow-2xl border border-gray-200 dark:border-slate-800 overflow-hidden">
+            <!-- Modal Header -->
+            <div class="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between bg-gray-50 dark:bg-slate-950">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">📤</span>
+                <div>
+                  <h3 class="text-base font-bold text-gray-800 dark:text-slate-100">Exportar Coleções & Rotas</h3>
+                  <p class="text-[11px] text-gray-500 dark:text-slate-400">Selecione as coleções e o formato desejado (Modo Bruno .zip ou JSON)</p>
+                </div>
+              </div>
+              <button id="btn-close-api-modal-export" type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl font-bold cursor-pointer leading-none">&times;</button>
+            </div>
+
+            <div class="p-5 space-y-4">
+              <!-- Formato de Exportação -->
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-2">Formato de Exportação:</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <label id="export-opt-bruno" class="export-format-card flex items-start gap-2.5 p-3 rounded-xl border-2 border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40 cursor-pointer transition-all">
+                    <input type="radio" name="api-export-format" value="bruno" checked class="mt-0.5 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+                    <div>
+                      <span class="text-xs font-bold text-gray-800 dark:text-slate-200 flex items-center gap-1.5">
+                        📦 Modo Bruno (.zip)
+                        <span class="text-[9px] px-1.5 py-0.2 bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 rounded font-semibold">Recomendado</span>
+                      </span>
+                      <p class="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">Pastas reais, arquivos <code>.bru</code>, <code>bruno.json</code> e ambientes prontos para abrir no Bruno.</p>
+                    </div>
+                  </label>
+
+                  <label id="export-opt-json" class="export-format-card flex items-start gap-2.5 p-3 rounded-xl border border-gray-200 dark:border-slate-800 hover:border-gray-300 dark:hover:border-slate-700 bg-gray-50/50 dark:bg-slate-950/30 cursor-pointer transition-all">
+                    <input type="radio" name="api-export-format" value="json" class="mt-0.5 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+                    <div>
+                      <span class="text-xs font-bold text-gray-800 dark:text-slate-200">📄 Formato JSON (.json)</span>
+                      <p class="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">Arquivo único de backup contendo as coleções selecionadas e configurações.</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Opção de Ambientes -->
+              <div class="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-slate-950/60 rounded-lg border border-gray-200 dark:border-slate-800 text-xs">
+                <label class="flex items-center gap-2 cursor-pointer select-none text-gray-700 dark:text-slate-300">
+                  <input type="checkbox" id="api-export-include-envs" checked class="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+                  <span>Incluir Ambientes e Variáveis Globais</span>
+                </label>
+                <span id="api-export-env-count" class="text-[11px] text-gray-400">0 ambientes</span>
+              </div>
+
+              <!-- Seleção de Coleções -->
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-bold text-gray-700 dark:text-slate-300">
+                    Selecione as Coleções para Exportar:
+                  </label>
+                  <div class="flex items-center gap-2 text-xs">
+                    <button type="button" id="btn-api-export-select-all" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 font-semibold cursor-pointer">Selecionar Todas</button>
+                    <span class="text-gray-300 dark:text-slate-700">|</span>
+                    <button type="button" id="btn-api-export-unselect-all" class="text-gray-500 hover:text-gray-700 dark:text-slate-400 cursor-pointer">Desmarcar Todas</button>
+                  </div>
+                </div>
+
+                <!-- Lista com checkboxes -->
+                <div id="api-export-collections-list" class="max-h-52 overflow-y-auto api-scrollbar border border-gray-200 dark:border-slate-800 rounded-xl divide-y divide-gray-100 dark:divide-slate-800/60 bg-white dark:bg-slate-950/30">
+                  <!-- Renderizado via JS -->
+                </div>
+
+                <div class="flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400 px-1">
+                  <span id="api-export-selected-stats" class="font-medium text-indigo-600 dark:text-indigo-400">0 coleções selecionadas</span>
+                  <span id="api-export-total-stats">0 requisições no total</span>
+                </div>
+              </div>
+
+              <!-- Footer -->
+              <div class="flex justify-end gap-2 pt-3 border-t border-gray-200 dark:border-slate-800">
+                <button id="btn-api-cancel-export" type="button" class="px-3.5 py-1.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 text-gray-700 dark:text-slate-300 text-xs font-semibold rounded-lg cursor-pointer">Cancelar</button>
+                <button id="btn-api-confirm-export" type="button" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                  <span>Exportar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </section>
 
     </main>

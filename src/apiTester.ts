@@ -13,6 +13,7 @@ import {
   importBrunoFromFiles,
   type BrunoImportResult
 } from './brunoImporter';
+import { generateBrunoZip, sanitizeFileName } from './brunoExporter';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS' | 'HEAD';
 
@@ -878,7 +879,11 @@ loHttp = .NULL.`;
   }
 
   // --- Exportar / Importar Coleções ---
-  public exportCollectionsJson(): string {
+  public exportCollectionsJson(collectionIds?: string[], includeEnvironments = true): string {
+    const selectedCols = collectionIds && collectionIds.length > 0
+      ? this.collections.filter((c) => collectionIds.includes(c.id))
+      : this.collections;
+
     return JSON.stringify(
       {
         info: {
@@ -886,9 +891,9 @@ loHttp = .NULL.`;
           version: '1.0.0',
           exportedAt: new Date().toISOString()
         },
-        collections: this.collections,
-        environments: this.environments,
-        globals: this.globalVariables
+        collections: selectedCols,
+        environments: includeEnvironments ? this.environments : [],
+        globals: includeEnvironments ? this.globalVariables : []
       },
       null,
       2
@@ -1213,6 +1218,19 @@ export function initApiTesterUI() {
   const importTextInput = document.getElementById('api-import-text') as HTMLTextAreaElement | null;
   const btnConfirmImport = document.getElementById('btn-api-confirm-import') as HTMLButtonElement | null;
   const btnImportBruno = document.getElementById('btn-api-import-bruno') as HTMLButtonElement | null;
+
+  // Elementos do Modal de Exportação
+  const modalExport = document.getElementById('api-modal-export') as HTMLElement | null;
+  const btnCloseModalExport = document.getElementById('btn-close-api-modal-export') as HTMLButtonElement | null;
+  const btnCancelExport = document.getElementById('btn-api-cancel-export') as HTMLButtonElement | null;
+  const btnConfirmExport = document.getElementById('btn-api-confirm-export') as HTMLButtonElement | null;
+  const exportIncludeEnvs = document.getElementById('api-export-include-envs') as HTMLInputElement | null;
+  const exportEnvCount = document.getElementById('api-export-env-count') as HTMLElement | null;
+  const exportListContainer = document.getElementById('api-export-collections-list') as HTMLElement | null;
+  const exportSelectedStats = document.getElementById('api-export-selected-stats') as HTMLElement | null;
+  const exportTotalStats = document.getElementById('api-export-total-stats') as HTMLElement | null;
+  const btnExportSelectAll = document.getElementById('btn-api-export-select-all') as HTMLButtonElement | null;
+  const btnExportUnselectAll = document.getElementById('btn-api-export-unselect-all') as HTMLButtonElement | null;
 
   // Abas do Modal de Importação
   const tabBtnImportBruno = document.getElementById('tab-btn-import-bruno') as HTMLButtonElement | null;
@@ -1635,6 +1653,9 @@ export function initApiTesterUI() {
             <span class="text-[10px] text-gray-400 font-normal">(${col.requests.length})</span>
           </div>
           <div class="flex items-center gap-1 flex-shrink-0">
+            <button type="button" class="btn-export-col text-gray-400 hover:text-indigo-500 p-1 transition-colors cursor-pointer" data-col-id="${col.id}" title="Exportar esta Coleção (JSON ou Modo Bruno)">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            </button>
             <button type="button" class="btn-add-folder-to-col text-gray-400 hover:text-amber-500 p-1 transition-colors cursor-pointer" data-col-id="${col.id}" title="Adicionar Subpasta nesta Coleção">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
             </button>
@@ -1660,6 +1681,7 @@ export function initApiTesterUI() {
         if (
           (e.target as HTMLElement).closest('.btn-add-req-to-col') ||
           (e.target as HTMLElement).closest('.btn-add-folder-to-col') ||
+          (e.target as HTMLElement).closest('.btn-export-col') ||
           (e.target as HTMLElement).closest('.btn-del-col')
         ) {
           return;
@@ -1845,6 +1867,15 @@ export function initApiTesterUI() {
           renderCollectionsList(cleanFilter);
           showToast(`Requisição "${name.trim()}" adicionada com sucesso!`, 'success');
         }
+      });
+    });
+
+    // Exportar Coleção Individual
+    collectionsList.querySelectorAll('.btn-export-col').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const colId = (btn as HTMLElement).dataset.colId!;
+        openExportModal([colId]);
       });
     });
 
@@ -3002,11 +3033,193 @@ export function initApiTesterUI() {
     }
   });
 
-  // Exportar Coleções
+  // --- Modal de Exportação com Seleção de Coleções & Modo Bruno ---
+  const selectedExportColIds = new Set<string>();
+
+  function updateExportModalStats() {
+    const allCols = controller.getCollections();
+    const selectedCount = selectedExportColIds.size;
+    let totalReqs = 0;
+    allCols.forEach((c) => {
+      if (selectedExportColIds.has(c.id)) {
+        totalReqs += c.requests.length;
+      }
+    });
+
+    if (exportSelectedStats) {
+      exportSelectedStats.textContent = `${selectedCount} de ${allCols.length} coleção(ões) selecionada(s)`;
+    }
+    if (exportTotalStats) {
+      exportTotalStats.textContent = `${totalReqs} requisições no total`;
+    }
+    if (btnConfirmExport) {
+      btnConfirmExport.disabled = selectedCount === 0;
+    }
+  }
+
+  function renderExportCollectionsList() {
+    if (!exportListContainer) return;
+    const allCols = controller.getCollections();
+    if (allCols.length === 0) {
+      exportListContainer.innerHTML = '<div class="p-4 text-center text-xs text-gray-400">Nenhuma coleção cadastrada para exportar.</div>';
+      updateExportModalStats();
+      return;
+    }
+
+    exportListContainer.innerHTML = allCols
+      .map((c) => {
+        const isChecked = selectedExportColIds.has(c.id);
+        const folderCount = c.folders?.length || 0;
+        return `
+          <label class="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-slate-900/60 cursor-pointer select-none transition-colors">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+              <input type="checkbox" class="export-col-checkbox rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer" data-col-id="${c.id}" ${
+          isChecked ? 'checked' : ''
+        } />
+              <svg class="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+              <div class="min-w-0">
+                <span class="text-xs font-bold text-gray-800 dark:text-slate-200 block truncate">${escapeHtml(c.name)}</span>
+                <span class="text-[11px] text-gray-400 block">${c.requests.length} requisições${
+          folderCount > 0 ? ` • ${folderCount} subpastas` : ''
+        }</span>
+              </div>
+            </div>
+            <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 ml-2">
+              ${c.requests.length} rotas
+            </span>
+          </label>
+        `;
+      })
+      .join('');
+
+    exportListContainer.querySelectorAll('.export-col-checkbox').forEach((cb) => {
+      cb.addEventListener('change', (e) => {
+        const id = (e.target as HTMLInputElement).dataset.colId!;
+        if ((e.target as HTMLInputElement).checked) {
+          selectedExportColIds.add(id);
+        } else {
+          selectedExportColIds.delete(id);
+        }
+        updateExportModalStats();
+      });
+    });
+
+    updateExportModalStats();
+  }
+
+  function openExportModal(preselectedColIds?: string[]) {
+    const allCols = controller.getCollections();
+    if (allCols.length === 0) {
+      showToast('Não há nenhuma coleção cadastrada para exportar.', 'warning');
+      return;
+    }
+
+    selectedExportColIds.clear();
+    if (preselectedColIds && preselectedColIds.length > 0) {
+      preselectedColIds.forEach((id) => selectedExportColIds.add(id));
+    } else {
+      allCols.forEach((c) => selectedExportColIds.add(c.id));
+    }
+
+    const envs = controller.getEnvironments();
+    if (exportEnvCount) {
+      exportEnvCount.textContent = `${envs.length} ambiente(s) configurado(s)`;
+    }
+
+    renderExportCollectionsList();
+    modalExport?.classList.remove('hidden');
+  }
+
   btnExport?.addEventListener('click', () => {
-    const json = controller.exportCollectionsJson();
-    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
-    saveAs(blob, 'pwi-api-collections.json');
+    openExportModal();
+  });
+
+  btnCloseModalExport?.addEventListener('click', () => modalExport?.classList.add('hidden'));
+  btnCancelExport?.addEventListener('click', () => modalExport?.classList.add('hidden'));
+  modalExport?.addEventListener('click', (e) => {
+    if (e.target === modalExport) modalExport.classList.add('hidden');
+  });
+
+  btnExportSelectAll?.addEventListener('click', () => {
+    controller.getCollections().forEach((c) => selectedExportColIds.add(c.id));
+    renderExportCollectionsList();
+  });
+
+  btnExportUnselectAll?.addEventListener('click', () => {
+    selectedExportColIds.clear();
+    renderExportCollectionsList();
+  });
+
+  // Alternância visual dos cards de formato de exportação
+  document.querySelectorAll('input[name="api-export-format"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      document.querySelectorAll('.export-format-card').forEach((card) => {
+        const r = card.querySelector('input[type="radio"]') as HTMLInputElement;
+        if (r && r.checked) {
+          card.classList.add('border-2', 'border-indigo-600', 'bg-indigo-50/50', 'dark:bg-indigo-950/40');
+          card.classList.remove('border', 'border-gray-200', 'dark:border-slate-800', 'bg-gray-50/50', 'dark:bg-slate-950/30');
+        } else {
+          card.classList.remove('border-2', 'border-indigo-600', 'bg-indigo-50/50', 'dark:bg-indigo-950/40');
+          card.classList.add('border', 'border-gray-200', 'dark:border-slate-800', 'bg-gray-50/50', 'dark:bg-slate-950/30');
+        }
+      });
+    });
+  });
+
+  btnConfirmExport?.addEventListener('click', async () => {
+    const allCols = controller.getCollections();
+    const selectedCols = allCols.filter((c) => selectedExportColIds.has(c.id));
+    if (selectedCols.length === 0) {
+      showToast('Selecione ao menos uma coleção para exportar.', 'warning');
+      return;
+    }
+
+    const includeEnvs = exportIncludeEnvs ? exportIncludeEnvs.checked : true;
+    const environments = includeEnvs ? controller.getEnvironments() : [];
+
+    const formatRadio = document.querySelector('input[name="api-export-format"]:checked') as HTMLInputElement | null;
+    const format = formatRadio ? formatRadio.value : 'bruno';
+
+    btnConfirmExport.disabled = true;
+    const originalHtml = btnConfirmExport.innerHTML;
+    btnConfirmExport.innerHTML = '<span>Exportando...</span>';
+
+    try {
+      if (format === 'bruno') {
+        showToast('Compactando coleções no Modo Bruno (.zip)...', 'info');
+        const zipBlob = await generateBrunoZip(selectedCols, environments);
+
+        let fileName = 'colecoes-bruno.zip';
+        if (selectedCols.length === 1) {
+          const safeName = sanitizeFileName(selectedCols[0].name) || 'colecao';
+          fileName = `${safeName}-bruno.zip`;
+        }
+
+        saveAs(zipBlob, fileName);
+        showToast(`${selectedCols.length} coleção(ões) exportada(s) com sucesso no Modo Bruno!`, 'success');
+      } else {
+        const selectedIds = selectedCols.map((c) => c.id);
+        const json = controller.exportCollectionsJson(selectedIds, includeEnvs);
+        const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+
+        let fileName = 'pwi-api-collections.json';
+        if (selectedCols.length === 1) {
+          const safeName = sanitizeFileName(selectedCols[0].name) || 'colecao';
+          fileName = `${safeName}.json`;
+        }
+
+        saveAs(blob, fileName);
+        showToast(`${selectedCols.length} coleção(ões) exportada(s) com sucesso em JSON!`, 'success');
+      }
+
+      modalExport?.classList.add('hidden');
+    } catch (err: any) {
+      console.error(err);
+      showToast('Erro ao exportar: ' + (err?.message || err), 'error');
+    } finally {
+      btnConfirmExport.disabled = false;
+      btnConfirmExport.innerHTML = originalHtml;
+    }
   });
 
   // --- Importação Bruno & Modal ---
