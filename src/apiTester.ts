@@ -1,6 +1,18 @@
 import hljs from 'highlight.js/lib/common';
 import { saveAs } from 'file-saver';
-import { promptDialog, promptText, confirmDialog, showToast } from './uiFeedback';
+import {
+  promptDialog,
+  promptText,
+  confirmDialog,
+  showToast,
+  pickDirectoryWithCustomConfirm,
+  confirmFolderUploadDialog
+} from './uiFeedback';
+import {
+  importBrunoDirectory,
+  importBrunoFromFiles,
+  type BrunoImportResult
+} from './brunoImporter';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS' | 'HEAD';
 
@@ -29,6 +41,7 @@ export interface ApiAuth {
 export interface ApiRequestItem {
   id: string;
   collectionId?: string;
+  folder?: string;
   name: string;
   method: HttpMethod;
   url: string;
@@ -47,6 +60,7 @@ export interface ApiCollection {
   id: string;
   name: string;
   description?: string;
+  folders?: string[];
   requests: ApiRequestItem[];
   createdAt: number;
 }
@@ -93,6 +107,7 @@ const STORAGE_KEY_ACTIVE_ENV = 'pwi_api_active_env_v1';
 const STORAGE_KEY_HISTORY = 'pwi_api_history_v1';
 const STORAGE_KEY_CURRENT_REQ = 'pwi_api_current_req_v1';
 const STORAGE_KEY_COLLAPSED_COLS = 'pwi_api_collapsed_cols_v1';
+const STORAGE_KEY_COLLAPSED_FOLDERS = 'pwi_api_collapsed_folders_v1';
 const STORAGE_KEY_GLOBALS = 'pwi_api_globals_v1';
 
 function uid(): string {
@@ -441,11 +456,69 @@ export class ApiTesterController {
     this.saveState();
   }
 
-  public saveCurrentRequestToCollection(collectionId: string, reqName?: string) {
+  // --- Gerenciamento de Subpastas nas Coleções ---
+  public addFolderToCollection(collectionId: string, folderPath: string) {
+    const col = this.collections.find((c) => c.id === collectionId);
+    if (!col) return;
+    const clean = folderPath.trim().replace(/^[\/\\]+|[\/\\]+$/g, '');
+    if (!clean) return;
+    if (!col.folders) col.folders = [];
+    if (!col.folders.includes(clean)) {
+      col.folders.push(clean);
+      this.saveState();
+    }
+  }
+
+  public deleteFolderFromCollection(collectionId: string, folderPath: string) {
+    const col = this.collections.find((c) => c.id === collectionId);
+    if (!col) return;
+    const clean = folderPath.trim().replace(/^[\/\\]+|[\/\\]+$/g, '');
+    const prefix = clean + '/';
+
+    // Remove requisições contidas nesta pasta ou subpastas
+    col.requests = col.requests.filter(
+      (r) => !r.folder || (r.folder !== clean && !r.folder.startsWith(prefix))
+    );
+
+    // Remove pasta e subpastas da lista explícita
+    if (col.folders) {
+      col.folders = col.folders.filter((f) => f !== clean && !f.startsWith(prefix));
+    }
+    this.saveState();
+  }
+
+  public renameFolderInCollection(collectionId: string, oldPath: string, newPath: string) {
+    const col = this.collections.find((c) => c.id === collectionId);
+    if (!col) return;
+    const cleanOld = oldPath.trim().replace(/^[\/\\]+|[\/\\]+$/g, '');
+    const cleanNew = newPath.trim().replace(/^[\/\\]+|[\/\\]+$/g, '');
+    if (!cleanOld || !cleanNew || cleanOld === cleanNew) return;
+    const oldPrefix = cleanOld + '/';
+
+    col.requests.forEach((r) => {
+      if (r.folder === cleanOld) {
+        r.folder = cleanNew;
+      } else if (r.folder && r.folder.startsWith(oldPrefix)) {
+        r.folder = cleanNew + '/' + r.folder.slice(oldPrefix.length);
+      }
+    });
+
+    if (col.folders) {
+      col.folders = col.folders.map((f) => {
+        if (f === cleanOld) return cleanNew;
+        if (f.startsWith(oldPrefix)) return cleanNew + '/' + f.slice(oldPrefix.length);
+        return f;
+      });
+    }
+    this.saveState();
+  }
+
+  public saveCurrentRequestToCollection(collectionId: string, reqName?: string, folder?: string) {
     const col = this.collections.find((c) => c.id === collectionId);
     if (!col) return;
 
     if (reqName) this.currentRequest.name = reqName;
+    if (folder !== undefined) this.currentRequest.folder = folder || undefined;
     this.currentRequest.collectionId = collectionId;
     this.currentRequest.updatedAt = Date.now();
 
@@ -822,7 +895,85 @@ loHttp = .NULL.`;
     );
   }
 
+  public importBrunoResult(
+    result: BrunoImportResult,
+    mergeExisting = true
+  ): { importedCols: number; importedReqs: number; importedEnvs: number } {
+    let importedCols = 0;
+    let importedReqs = 0;
+    let importedEnvs = 0;
+
+    for (const incomingCol of result.collections) {
+      const existing = mergeExisting
+        ? this.collections.find((c) => c.name.trim().toLowerCase() === incomingCol.name.trim().toLowerCase())
+        : null;
+
+      if (existing) {
+        if (incomingCol.folders) {
+          if (!existing.folders) existing.folders = [];
+          for (const f of incomingCol.folders) {
+            if (!existing.folders.includes(f)) existing.folders.push(f);
+          }
+        }
+        for (const req of incomingCol.requests) {
+          req.collectionId = existing.id;
+          const duplicate = existing.requests.find(
+            (r) => r.name === req.name && r.method === req.method && (r.folder || '') === (req.folder || '')
+          );
+          if (!duplicate) {
+            existing.requests.push(req);
+            importedReqs++;
+          }
+        }
+      } else {
+        incomingCol.id = uid();
+        for (const req of incomingCol.requests) {
+          req.collectionId = incomingCol.id;
+          importedReqs++;
+        }
+        this.collections.push(incomingCol);
+        importedCols++;
+      }
+    }
+
+    for (const incomingEnv of result.environments) {
+      const existing = this.environments.find(
+        (e) => e.name.trim().toLowerCase() === incomingEnv.name.trim().toLowerCase()
+      );
+      if (existing) {
+        for (const v of incomingEnv.variables) {
+          const varExist = existing.variables.find((ev) => ev.key.toLowerCase() === v.key.toLowerCase());
+          if (!varExist) {
+            existing.variables.push(v);
+          } else if (!varExist.value && v.value) {
+            varExist.value = v.value;
+          }
+        }
+      } else {
+        incomingEnv.id = uid();
+        this.environments.push(incomingEnv);
+        importedEnvs++;
+      }
+    }
+
+    this.saveState();
+    return { importedCols, importedReqs, importedEnvs };
+  }
+
   public importCollectionsJson(jsonText: string): { importedCols: number; importedEnvs: number } {
+    const trimmed = jsonText.trim();
+
+    // Se parecer com arquivo .bru ou .yml do Bruno/OpenCollection
+    if (
+      trimmed.includes('meta {') ||
+      trimmed.startsWith('opencollection:') ||
+      (trimmed.includes('info:') && trimmed.includes('http:'))
+    ) {
+      const brunoRes = importBrunoFromFiles([{ path: 'Colecao_Importada/Requisicao', content: jsonText }]);
+      const res = this.importBrunoResult(brunoRes, true);
+      return { importedCols: res.importedCols, importedEnvs: res.importedEnvs };
+    }
+
     const data = JSON.parse(jsonText);
     let importedCols = 0;
     let importedEnvs = 0;
@@ -962,6 +1113,25 @@ export function initApiTesterUI() {
 
   const collapsedColIds = loadCollapsedState();
 
+  function loadCollapsedFoldersState(): Set<string> {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_COLLAPSED_FOLDERS);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  }
+
+  function saveCollapsedFoldersState(set: Set<string>) {
+    try {
+      localStorage.setItem(STORAGE_KEY_COLLAPSED_FOLDERS, JSON.stringify(Array.from(set)));
+    } catch {
+      // ignore
+    }
+  }
+
+  const collapsedFolderKeys = loadCollapsedFoldersState();
+
   // Abas de Configuração da Requisição
   const reqTabs = ['params', 'headers', 'auth', 'body'];
   const reqTabBtns: Record<string, HTMLButtonElement | null> = {};
@@ -1042,6 +1212,27 @@ export function initApiTesterUI() {
   const btnCloseModalImport = document.getElementById('btn-close-api-modal-import') as HTMLButtonElement | null;
   const importTextInput = document.getElementById('api-import-text') as HTMLTextAreaElement | null;
   const btnConfirmImport = document.getElementById('btn-api-confirm-import') as HTMLButtonElement | null;
+  const btnImportBruno = document.getElementById('btn-api-import-bruno') as HTMLButtonElement | null;
+
+  // Abas do Modal de Importação
+  const tabBtnImportBruno = document.getElementById('tab-btn-import-bruno') as HTMLButtonElement | null;
+  const tabBtnImportText = document.getElementById('tab-btn-import-text') as HTMLButtonElement | null;
+  const tabPaneImportBruno = document.getElementById('tab-pane-import-bruno') as HTMLElement | null;
+  const tabPaneImportText = document.getElementById('tab-pane-import-text') as HTMLElement | null;
+
+  // Elementos do Bruno Import
+  const brunoFolderInput = document.getElementById('api-bruno-folder-input') as HTMLInputElement | null;
+  const brunoDropzone = document.getElementById('api-bruno-dropzone') as HTMLElement | null;
+  const brunoPathInput = document.getElementById('api-bruno-path-input') as HTMLInputElement | null;
+  const btnBrunoLoadPath = document.getElementById('btn-api-bruno-load-path') as HTMLButtonElement | null;
+  const brunoPreviewContainer = document.getElementById('api-bruno-preview-container') as HTMLElement | null;
+  const brunoPreviewStats = document.getElementById('api-bruno-preview-stats') as HTMLElement | null;
+  const brunoPreviewList = document.getElementById('api-bruno-preview-list') as HTMLElement | null;
+  const brunoMergeCheckbox = document.getElementById('api-bruno-merge-checkbox') as HTMLInputElement | null;
+  const btnConfirmBrunoImport = document.getElementById('btn-api-confirm-bruno-import') as HTMLButtonElement | null;
+  const btnCancelBrunoImport = document.getElementById('btn-api-cancel-bruno-import') as HTMLButtonElement | null;
+
+  let pendingBrunoResult: BrunoImportResult | null = null;
 
   // Sincroniza estado para a interface
   function syncRequestToUI(req: ApiRequestItem) {
@@ -1257,6 +1448,77 @@ export function initApiTesterUI() {
   }
 
   // --- Renderização da Árvore de Coleções e Histórico ---
+  interface FolderTreeNode {
+    name: string;
+    fullPath: string;
+    subfolders: Map<string, FolderTreeNode>;
+    requests: ApiRequestItem[];
+  }
+
+  function buildFolderTree(
+    requests: ApiRequestItem[],
+    explicitFolders: string[] = []
+  ): { rootRequests: ApiRequestItem[]; rootFolders: Map<string, FolderTreeNode> } {
+    const rootRequests: ApiRequestItem[] = [];
+    const rootFolders = new Map<string, FolderTreeNode>();
+
+    function getOrCreateNode(pathParts: string[]): FolderTreeNode {
+      let currentMap = rootFolders;
+      let accumulatedPath = '';
+      let node: FolderTreeNode | null = null;
+
+      for (let i = 0; i < pathParts.length; i++) {
+        const part = pathParts[i];
+        accumulatedPath = accumulatedPath ? `${accumulatedPath}/${part}` : part;
+
+        if (!currentMap.has(part)) {
+          const newNode: FolderTreeNode = {
+            name: part,
+            fullPath: accumulatedPath,
+            subfolders: new Map(),
+            requests: []
+          };
+          currentMap.set(part, newNode);
+        }
+        node = currentMap.get(part)!;
+        currentMap = node.subfolders;
+      }
+
+      return node!;
+    }
+
+    for (const f of explicitFolders) {
+      const parts = f.split(/[\/\\]+/).map((s) => s.trim()).filter(Boolean);
+      if (parts.length > 0) {
+        getOrCreateNode(parts);
+      }
+    }
+
+    for (const req of requests) {
+      if (!req.folder || !req.folder.trim()) {
+        rootRequests.push(req);
+      } else {
+        const parts = req.folder.split(/[\/\\]+/).map((s) => s.trim()).filter(Boolean);
+        if (parts.length === 0) {
+          rootRequests.push(req);
+        } else {
+          const folderNode = getOrCreateNode(parts);
+          folderNode.requests.push(req);
+        }
+      }
+    }
+
+    return { rootRequests, rootFolders };
+  }
+
+  function countRequestsInNode(node: FolderTreeNode): number {
+    let count = node.requests.length;
+    for (const sub of node.subfolders.values()) {
+      count += countRequestsInNode(sub);
+    }
+    return count;
+  }
+
   function renderCollectionsList(filter = '') {
     if (!collectionsList) return;
     const collections = controller.getCollections();
@@ -1269,8 +1531,75 @@ export function initApiTesterUI() {
       return;
     }
 
+    function renderRequestItemHtml(colId: string, req: ApiRequestItem): string {
+      const isCurrent = req.id === controller.getCurrentRequest().id;
+      const methodClass = `http-method-${req.method.toLowerCase()}`;
+      return `
+        <div class="api-req-item group flex items-center justify-between px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-slate-800/80 cursor-pointer transition-colors rounded ${isCurrent ? 'bg-indigo-50 dark:bg-indigo-950/40 border-l-2 border-indigo-600 font-semibold' : ''}" data-col-id="${colId}" data-req-id="${req.id}">
+          <div class="flex items-center gap-1.5 min-w-0 flex-1">
+            <span class="http-method-badge ${methodClass} flex-shrink-0">${req.method}</span>
+            <span class="api-req-name text-xs text-gray-800 dark:text-slate-200 truncate font-medium" title="${escapeHtml(req.name)}">${escapeHtml(req.name)}</span>
+          </div>
+          <button type="button" class="btn-del-req opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-500 transition-opacity cursor-pointer flex-shrink-0" data-col-id="${colId}" data-req-id="${req.id}" title="Excluir Requisição">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+      `;
+    }
+
+    function renderFolderNodeHtml(col: ApiCollection, node: FolderTreeNode): string {
+      const folderKey = `${col.id}::${node.fullPath}`;
+      const totalInSubtree = countRequestsInNode(node);
+      const isCollapsed = !cleanFilter && collapsedFolderKeys.has(folderKey);
+
+      const subfoldersHtml = Array.from(node.subfolders.values())
+        .map((sub) => renderFolderNodeHtml(col, sub))
+        .join('');
+
+      const requestsHtml = node.requests
+        .map((req) => renderRequestItemHtml(col.id, req))
+        .join('');
+
+      const bodyContent = subfoldersHtml + requestsHtml || '<div class="py-1 px-2.5 text-[11px] text-gray-400 italic">Subpasta vazia</div>';
+
+      return `
+        <div class="subfolder-item ml-2 pl-1.5 border-l border-amber-300/40 dark:border-amber-700/30 mt-1">
+          <div class="subfolder-header group/folder flex items-center justify-between py-1 px-1.5 hover:bg-gray-100 dark:hover:bg-slate-800/60 rounded cursor-pointer select-none transition-colors" data-col-id="${col.id}" data-folder-path="${escapeHtml(node.fullPath)}" title="Clique para ${isCollapsed ? 'expandir' : 'recolher'} subpasta">
+            <div class="flex items-center gap-1.5 min-w-0 flex-1">
+              <svg class="folder-chevron w-3 h-3 text-gray-400 dark:text-slate-500 transition-transform duration-200 flex-shrink-0 ${isCollapsed ? '-rotate-90' : 'rotate-0'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+              <svg class="w-3.5 h-3.5 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path>
+              </svg>
+              <span class="text-xs font-semibold text-gray-700 dark:text-slate-300 truncate" title="${escapeHtml(node.name)}">${escapeHtml(node.name)}</span>
+              <span class="text-[10px] text-gray-400 font-normal">(${totalInSubtree})</span>
+            </div>
+            <div class="flex items-center gap-0.5 opacity-0 group-hover/folder:opacity-100 transition-opacity flex-shrink-0">
+              <button type="button" class="btn-add-req-to-folder text-gray-400 hover:text-indigo-500 p-0.5 transition-colors cursor-pointer" data-col-id="${col.id}" data-folder-path="${escapeHtml(node.fullPath)}" title="Nova Requisição nesta subpasta">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+              </button>
+              <button type="button" class="btn-add-subfolder text-gray-400 hover:text-amber-500 p-0.5 transition-colors cursor-pointer" data-col-id="${col.id}" data-parent-folder="${escapeHtml(node.fullPath)}" title="Nova Subpasta aqui dentro">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
+              </button>
+              <button type="button" class="btn-del-folder text-gray-400 hover:text-red-500 p-0.5 transition-colors cursor-pointer" data-col-id="${col.id}" data-folder-path="${escapeHtml(node.fullPath)}" title="Excluir Subpasta">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+            </div>
+          </div>
+          <div class="subfolder-body ${isCollapsed ? 'hidden' : ''} space-y-0.5 mt-0.5">
+            ${bodyContent}
+          </div>
+        </div>
+      `;
+    }
+
     collections.forEach((col) => {
-      const filteredRequests = col.requests.filter((r) => !cleanFilter || r.name.toLowerCase().includes(cleanFilter) || r.url.toLowerCase().includes(cleanFilter));
+      const filteredRequests = col.requests.filter(
+        (r) =>
+          !cleanFilter ||
+          r.name.toLowerCase().includes(cleanFilter) ||
+          r.url.toLowerCase().includes(cleanFilter) ||
+          (r.folder && r.folder.toLowerCase().includes(cleanFilter))
+      );
 
       if (cleanFilter && filteredRequests.length === 0 && !col.name.toLowerCase().includes(cleanFilter)) {
         return;
@@ -1278,24 +1607,20 @@ export function initApiTesterUI() {
 
       const isCollapsed = !cleanFilter && collapsedColIds.has(col.id);
 
+      const tree = buildFolderTree(filteredRequests, cleanFilter ? [] : col.folders || []);
+
+      const foldersHtml = Array.from(tree.rootFolders.values())
+        .map((node) => renderFolderNodeHtml(col, node))
+        .join('');
+
+      const rootReqsHtml = tree.rootRequests
+        .map((req) => renderRequestItemHtml(col.id, req))
+        .join('');
+
+      const bodyHtml = foldersHtml + rootReqsHtml || '<div class="p-2 text-center text-[11px] text-gray-400 italic">Nenhuma requisição nesta coleção</div>';
+
       const colEl = document.createElement('div');
       colEl.className = 'border border-gray-200 dark:border-slate-800 rounded-lg overflow-hidden bg-white dark:bg-slate-900 shadow-2xs transition-all';
-
-      const reqItemsHtml = filteredRequests.map((req) => {
-        const isCurrent = req.id === controller.getCurrentRequest().id;
-        const methodClass = `http-method-${req.method.toLowerCase()}`;
-        return `
-          <div class="api-req-item group flex items-center justify-between px-2.5 py-1.5 hover:bg-gray-100 dark:hover:bg-slate-800/80 cursor-pointer transition-colors ${isCurrent ? 'bg-indigo-50 dark:bg-indigo-950/40 border-l-2 border-indigo-600' : ''}" data-col-id="${col.id}" data-req-id="${req.id}">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="http-method-badge ${methodClass}">${req.method}</span>
-              <span class="api-req-name text-xs text-gray-800 dark:text-slate-200 truncate font-medium" title="${escapeHtml(req.name)}">${escapeHtml(req.name)}</span>
-            </div>
-            <button type="button" class="btn-del-req opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity cursor-pointer" data-col-id="${col.id}" data-req-id="${req.id}" title="Excluir Requisição">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-          </div>
-        `;
-      }).join('');
 
       colEl.innerHTML = `
         <div class="col-header flex items-center justify-between px-2.5 py-2 bg-gray-50 dark:bg-slate-950 ${isCollapsed ? '' : 'border-b border-gray-200 dark:border-slate-800'} cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-900/80 transition-colors select-none" data-col-id="${col.id}" title="Clique para ${isCollapsed ? 'expandir' : 'recolher'} pasta">
@@ -1310,6 +1635,9 @@ export function initApiTesterUI() {
             <span class="text-[10px] text-gray-400 font-normal">(${col.requests.length})</span>
           </div>
           <div class="flex items-center gap-1 flex-shrink-0">
+            <button type="button" class="btn-add-folder-to-col text-gray-400 hover:text-amber-500 p-1 transition-colors cursor-pointer" data-col-id="${col.id}" title="Adicionar Subpasta nesta Coleção">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
+            </button>
             <button type="button" class="btn-add-req-to-col text-gray-400 hover:text-indigo-500 p-1 transition-colors cursor-pointer" data-col-id="${col.id}" title="Adicionar Requisição nesta Coleção">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
             </button>
@@ -1318,19 +1646,20 @@ export function initApiTesterUI() {
             </button>
           </div>
         </div>
-        <div class="col-body ${isCollapsed ? 'hidden' : ''} divide-y divide-gray-100 dark:divide-slate-800/60 max-h-52 overflow-y-auto api-scrollbar">
-          ${reqItemsHtml || '<div class="p-2 text-center text-[11px] text-gray-400 italic">Nenhuma requisição</div>'}
+        <div class="col-body ${isCollapsed ? 'hidden' : ''} max-h-[32rem] overflow-y-auto api-scrollbar p-1.5 space-y-1">
+          ${bodyHtml}
         </div>
       `;
 
       collectionsList.appendChild(colEl);
     });
 
-    // Alternar Recolher/Expandir da Pasta ao clicar no cabeçalho
+    // Alternar Recolher/Expandir da Pasta ao clicar no cabeçalho da Coleção
     collectionsList.querySelectorAll('.col-header').forEach((hdr) => {
       hdr.addEventListener('click', (e) => {
         if (
           (e.target as HTMLElement).closest('.btn-add-req-to-col') ||
+          (e.target as HTMLElement).closest('.btn-add-folder-to-col') ||
           (e.target as HTMLElement).closest('.btn-del-col')
         ) {
           return;
@@ -1343,6 +1672,120 @@ export function initApiTesterUI() {
         }
         saveCollapsedState(collapsedColIds);
         renderCollectionsList(cleanFilter);
+      });
+    });
+
+    // Alternar Recolher/Expandir de Subpastas
+    collectionsList.querySelectorAll('.subfolder-header').forEach((hdr) => {
+      hdr.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).closest('button')) return;
+        const colId = (hdr as HTMLElement).dataset.colId!;
+        const folderPath = (hdr as HTMLElement).dataset.folderPath!;
+        const folderKey = `${colId}::${folderPath}`;
+        if (collapsedFolderKeys.has(folderKey)) {
+          collapsedFolderKeys.delete(folderKey);
+        } else {
+          collapsedFolderKeys.add(folderKey);
+        }
+        saveCollapsedFoldersState(collapsedFolderKeys);
+        renderCollectionsList(cleanFilter);
+      });
+    });
+
+    // Adicionar Subpasta na Raiz da Coleção
+    collectionsList.querySelectorAll('.btn-add-folder-to-col').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const colId = (btn as HTMLElement).dataset.colId!;
+        const folderName = await promptText(
+          'Nova Subpasta',
+          'Nome da subpasta:',
+          '',
+          'Ex: Homologação ou API Clientes'
+        );
+        if (folderName && folderName.trim()) {
+          controller.addFolderToCollection(colId, folderName.trim());
+          collapsedColIds.delete(colId);
+          saveCollapsedState(collapsedColIds);
+          renderCollectionsList(cleanFilter);
+          showToast(`Subpasta "${folderName.trim()}" criada com sucesso!`, 'success');
+        }
+      });
+    });
+
+    // Adicionar Subpasta Aninhada dentro de outra Subpasta
+    collectionsList.querySelectorAll('.btn-add-subfolder').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const colId = (btn as HTMLElement).dataset.colId!;
+        const parentFolder = (btn as HTMLElement).dataset.parentFolder!;
+        const folderName = await promptText(
+          'Nova Subpasta',
+          `Nome da subpasta dentro de "${parentFolder}":`,
+          '',
+          'Ex: API Cadastros'
+        );
+        if (folderName && folderName.trim()) {
+          const newPath = `${parentFolder}/${folderName.trim()}`;
+          controller.addFolderToCollection(colId, newPath);
+          const parentKey = `${colId}::${parentFolder}`;
+          collapsedFolderKeys.delete(parentKey);
+          saveCollapsedFoldersState(collapsedFolderKeys);
+          renderCollectionsList(cleanFilter);
+          showToast(`Subpasta "${newPath}" criada com sucesso!`, 'success');
+        }
+      });
+    });
+
+    // Adicionar Requisição Dentro de uma Subpasta
+    collectionsList.querySelectorAll('.btn-add-req-to-folder').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const colId = (btn as HTMLElement).dataset.colId!;
+        const folderPath = (btn as HTMLElement).dataset.folderPath!;
+        const name = await promptText(
+          'Nova Requisição',
+          `Nome da requisição em "${folderPath}":`,
+          'Nova Consulta',
+          'Ex: Obter Clientes'
+        );
+        if (name && name.trim()) {
+          syncUIToRequest();
+          const newReq = controller.createEmptyRequest();
+          newReq.name = name.trim();
+          newReq.collectionId = colId;
+          newReq.folder = folderPath;
+          controller.setCurrentRequest(newReq);
+          controller.saveCurrentRequestToCollection(colId, name.trim(), folderPath);
+          collapsedColIds.delete(colId);
+          saveCollapsedState(collapsedColIds);
+          const folderKey = `${colId}::${folderPath}`;
+          collapsedFolderKeys.delete(folderKey);
+          saveCollapsedFoldersState(collapsedFolderKeys);
+          syncRequestToUI(newReq);
+          renderCollectionsList(cleanFilter);
+          showToast(`Requisição "${name.trim()}" criada em "${folderPath}"!`, 'success');
+        }
+      });
+    });
+
+    // Excluir Subpasta
+    collectionsList.querySelectorAll('.btn-del-folder').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const colId = (btn as HTMLElement).dataset.colId!;
+        const folderPath = (btn as HTMLElement).dataset.folderPath!;
+        const ok = await confirmDialog({
+          title: 'Excluir Subpasta',
+          message: `Tem certeza que deseja excluir a subpasta "${folderPath}" e todas as requisições contidas nela?`,
+          confirmText: 'Excluir Subpasta',
+          isDanger: true
+        });
+        if (ok) {
+          controller.deleteFolderFromCollection(colId, folderPath);
+          renderCollectionsList(cleanFilter);
+          showToast(`Subpasta "${folderPath}" excluída.`, 'info');
+        }
       });
     });
 
@@ -1365,7 +1808,8 @@ export function initApiTesterUI() {
 
     // Excluir Requisição
     collectionsList.querySelectorAll('.btn-del-req').forEach((btn) => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         const colId = (btn as HTMLElement).dataset.colId!;
         const reqId = (btn as HTMLElement).dataset.reqId!;
         const ok = await confirmDialog({
@@ -1382,30 +1826,32 @@ export function initApiTesterUI() {
       });
     });
 
-    // Adicionar Requisição na Coleção
+    // Adicionar Requisição na Coleção (Raiz)
     collectionsList.querySelectorAll('.btn-add-req-to-col').forEach((btn) => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         const colId = (btn as HTMLElement).dataset.colId!;
         const name = await promptText('Nova Requisição', 'Nome da requisição:', 'Nova Consulta', 'Ex: Obter Clientes');
-        if (name) {
+        if (name && name.trim()) {
           syncUIToRequest(); // Salva alterações pendentes antes de criar nova
           const newReq = controller.createEmptyRequest();
-          newReq.name = name;
+          newReq.name = name.trim();
           newReq.collectionId = colId;
           controller.setCurrentRequest(newReq);
-          controller.saveCurrentRequestToCollection(colId, name);
+          controller.saveCurrentRequestToCollection(colId, name.trim());
           collapsedColIds.delete(colId);
           saveCollapsedState(collapsedColIds);
           syncRequestToUI(newReq);
           renderCollectionsList(cleanFilter);
-          showToast(`Requisição "${name}" adicionada com sucesso!`, 'success');
+          showToast(`Requisição "${name.trim()}" adicionada com sucesso!`, 'success');
         }
       });
     });
 
     // Excluir Coleção
     collectionsList.querySelectorAll('.btn-del-col').forEach((btn) => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         const colId = (btn as HTMLElement).dataset.colId!;
         const ok = await confirmDialog({
           title: 'Excluir Coleção',
@@ -2484,12 +2930,22 @@ export function initApiTesterUI() {
     const allCollapsed = cols.every((c) => collapsedColIds.has(c.id));
     if (allCollapsed) {
       collapsedColIds.clear();
+      collapsedFolderKeys.clear();
       showToast('Todas as pastas expandidas.', 'info', 1500);
     } else {
-      cols.forEach((c) => collapsedColIds.add(c.id));
+      cols.forEach((c) => {
+        collapsedColIds.add(c.id);
+        if (c.folders) {
+          c.folders.forEach((f) => collapsedFolderKeys.add(`${c.id}::${f}`));
+        }
+        c.requests.forEach((r) => {
+          if (r.folder) collapsedFolderKeys.add(`${c.id}::${r.folder}`);
+        });
+      });
       showToast('Todas as pastas recolhidas.', 'info', 1500);
     }
     saveCollapsedState(collapsedColIds);
+    saveCollapsedFoldersState(collapsedFolderKeys);
     renderCollectionsList(searchReqInput?.value || '');
   });
 
@@ -2516,7 +2972,7 @@ export function initApiTesterUI() {
     if (currentReq.collectionId) {
       const parentCol = cols.find((c) => c.id === currentReq.collectionId);
       if (parentCol) {
-        controller.saveCurrentRequestToCollection(currentReq.collectionId, currentReq.name);
+        controller.saveCurrentRequestToCollection(currentReq.collectionId, currentReq.name, currentReq.folder);
         renderCollectionsList(searchReqInput?.value || '');
         showToast(`Requisição "${currentReq.name}" salva com sucesso!`, 'success');
         return;
@@ -2538,7 +2994,7 @@ export function initApiTesterUI() {
 
     if (result && result.value) {
       const targetColId = result.selectedOption || defaultColId;
-      controller.saveCurrentRequestToCollection(targetColId, result.value);
+      controller.saveCurrentRequestToCollection(targetColId, result.value, currentReq.folder);
       collapsedColIds.delete(targetColId);
       saveCollapsedState(collapsedColIds);
       renderCollectionsList(searchReqInput?.value || '');
@@ -2553,9 +3009,154 @@ export function initApiTesterUI() {
     saveAs(blob, 'pwi-api-collections.json');
   });
 
-  // Importar Modal
+  // --- Importação Bruno & Modal ---
+  function switchImportTab(tab: 'bruno' | 'text') {
+    if (tab === 'bruno') {
+      tabBtnImportBruno?.classList.add('border-indigo-600', 'text-indigo-600', 'dark:text-indigo-400');
+      tabBtnImportBruno?.classList.remove('border-transparent', 'text-gray-500', 'dark:text-slate-400');
+      tabBtnImportText?.classList.remove('border-indigo-600', 'text-indigo-600', 'dark:text-indigo-400');
+      tabBtnImportText?.classList.add('border-transparent', 'text-gray-500', 'dark:text-slate-400');
+      tabPaneImportBruno?.classList.remove('hidden');
+      tabPaneImportText?.classList.add('hidden');
+    } else {
+      tabBtnImportText?.classList.add('border-indigo-600', 'text-indigo-600', 'dark:text-indigo-400');
+      tabBtnImportText?.classList.remove('border-transparent', 'text-gray-500', 'dark:text-slate-400');
+      tabBtnImportBruno?.classList.remove('border-indigo-600', 'text-indigo-600', 'dark:text-indigo-400');
+      tabBtnImportBruno?.classList.add('border-transparent', 'text-gray-500', 'dark:text-slate-400');
+      tabPaneImportText?.classList.remove('hidden');
+      tabPaneImportBruno?.classList.add('hidden');
+    }
+  }
+
+  tabBtnImportBruno?.addEventListener('click', () => switchImportTab('bruno'));
+  tabBtnImportText?.addEventListener('click', () => switchImportTab('text'));
+
+  function displayBrunoPreview(res: BrunoImportResult) {
+    pendingBrunoResult = res;
+    if (!brunoPreviewContainer || !brunoPreviewStats || !brunoPreviewList || !btnConfirmBrunoImport) return;
+
+    if (res.collections.length === 0) {
+      brunoPreviewContainer.classList.add('hidden');
+      btnConfirmBrunoImport.disabled = true;
+      showToast('Nenhuma rota ou coleção válida do Bruno (.bru / .yml) foi encontrada.', 'warning');
+      return;
+    }
+
+    brunoPreviewStats.textContent = `${res.collections.length} coleção(ões) • ${res.totalRequests} rota(s) • ${res.environments.length} ambiente(s)`;
+    brunoPreviewList.innerHTML = res.collections
+      .map((c) => {
+        const envCount = res.environments.filter((e) => e.name.startsWith(c.name)).length;
+        return `
+          <div class="flex items-center justify-between py-1 px-1">
+            <div class="flex items-center gap-1.5 truncate min-w-0">
+              <span class="font-bold text-gray-800 dark:text-slate-200 truncate">📁 ${escapeHtml(c.name)}</span>
+              ${envCount > 0 ? `<span class="px-1.5 py-0.2 bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 rounded text-[10px]">${envCount} env</span>` : ''}
+            </div>
+            <span class="text-[11px] text-gray-500 dark:text-slate-400 font-mono">${c.requests.length} rotas</span>
+          </div>
+        `;
+      })
+      .join('');
+
+    brunoPreviewContainer.classList.remove('hidden');
+    btnConfirmBrunoImport.disabled = false;
+  }
+
+  const pickBrunoFolder = async () => {
+    try {
+      const res = await pickDirectoryWithCustomConfirm({
+        id: 'bruno_collection_picker',
+        fallbackInput: brunoFolderInput || undefined
+      });
+      if (!res) return;
+      showToast('Lendo arquivos da pasta selecionada...', 'info');
+      const importRes = await importBrunoDirectory(res.files);
+      displayBrunoPreview(importRes);
+      showToast(`${importRes.collections.length} coleções do Bruno preparadas para importação!`, 'success');
+    } catch (err: any) {
+      showToast('Erro ao ler pasta do Bruno: ' + (err?.message || err), 'error');
+    }
+  };
+
+  brunoDropzone?.addEventListener('click', () => {
+    pickBrunoFolder();
+  });
+
+  brunoDropzone?.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    brunoDropzone.classList.add('border-indigo-600', 'bg-indigo-100/50');
+  });
+  brunoDropzone?.addEventListener('dragleave', () => {
+    brunoDropzone.classList.remove('border-indigo-600', 'bg-indigo-100/50');
+  });
+  brunoDropzone?.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    brunoDropzone.classList.remove('border-indigo-600', 'bg-indigo-100/50');
+    const fileList = e.dataTransfer?.files;
+    if (fileList && fileList.length > 0) {
+      const filesArray = Array.from(fileList);
+      const folderName = filesArray[0]?.webkitRelativePath?.split('/')[0] || 'Arquivos arrastados';
+      const confirmed = await confirmFolderUploadDialog({
+        folderName,
+        fileCount: filesArray.length
+      });
+      if (!confirmed) return;
+      showToast('Lendo arquivos arrastados...', 'info');
+      const res = await importBrunoDirectory(filesArray);
+      displayBrunoPreview(res);
+      showToast(`${res.collections.length} coleções do Bruno preparadas para importação!`, 'success');
+    }
+  });
+
+  btnBrunoLoadPath?.addEventListener('click', async () => {
+    const p = brunoPathInput?.value.trim() || 'C:\\TestesVF\\RotasAPI\\Bruno';
+    try {
+      showToast(`Buscando rotas em ${p}...`, 'info');
+      const resp = await fetch(`/api/bruno-read?path=${encodeURIComponent(p)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.success && Array.isArray(data.files)) {
+          const res = importBrunoFromFiles(data.files);
+          displayBrunoPreview(res);
+          showToast(`Lidas ${res.collections.length} coleções (${res.totalRequests} rotas) diretamente do disco!`, 'success');
+          return;
+        }
+      }
+    } catch {
+      // Fallback
+    }
+    showToast('Não foi possível ler diretamente do disco via servidor local. Abrindo seletor de pastas...', 'info');
+    pickBrunoFolder();
+  });
+
+  btnConfirmBrunoImport?.addEventListener('click', () => {
+    if (!pendingBrunoResult) return;
+    const merge = brunoMergeCheckbox ? brunoMergeCheckbox.checked : true;
+    const res = controller.importBrunoResult(pendingBrunoResult, merge);
+    renderCollectionsList();
+    updateEnvironmentsDropdown();
+    modalImport?.classList.add('hidden');
+    pendingBrunoResult = null;
+    if (brunoPreviewContainer) brunoPreviewContainer.classList.add('hidden');
+    if (btnConfirmBrunoImport) btnConfirmBrunoImport.disabled = true;
+    showToast(
+      `Importação Bruno concluída com sucesso! ${res.importedCols} coleção(ões), ${res.importedReqs} rota(s) e ${res.importedEnvs} ambiente(s) importados.`,
+      'success'
+    );
+  });
+
+  btnCancelBrunoImport?.addEventListener('click', () => {
+    modalImport?.classList.add('hidden');
+  });
+
+  btnImportBruno?.addEventListener('click', () => {
+    switchImportTab('bruno');
+    modalImport?.classList.remove('hidden');
+  });
+
   btnImport?.addEventListener('click', () => {
     if (importTextInput) importTextInput.value = '';
+    switchImportTab('bruno');
     modalImport?.classList.remove('hidden');
   });
   btnCloseModalImport?.addEventListener('click', () => modalImport?.classList.add('hidden'));

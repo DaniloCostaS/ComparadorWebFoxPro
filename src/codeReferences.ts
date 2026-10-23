@@ -36,7 +36,7 @@ function buildSearchRegex(term: string, matchExact: boolean, matchCase: boolean,
 }
 
 export async function handleCodeReferencesSearch(
-    files: FileList,
+    files: FileList | File[],
     searchTerms: string[],
     matchExact: boolean,
     matchCase: boolean,

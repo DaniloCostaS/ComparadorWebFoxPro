@@ -334,3 +334,186 @@ export function alertDialog(options: AlertOptions): Promise<void> {
     });
   });
 }
+
+// --- Diálogo Personalizado de Upload/Carregamento de Pasta ---
+export interface FolderConfirmOptions {
+  folderName: string;
+  fileCount: number;
+  title?: string;
+  confirmText?: string;
+  cancelText?: string;
+}
+
+export function confirmFolderUploadDialog(options: FolderConfirmOptions): Promise<boolean> {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'fixed inset-0 bg-black/60 backdrop-blur-xs z-[99990] flex items-center justify-center p-4';
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-animate-pop bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col';
+
+    const title = options.title || `Fazer upload de ${options.fileCount} arquivo${options.fileCount === 1 ? '' : 's'} para este site?`;
+    const confirmText = options.confirmText || 'Fazer upload';
+    const cancelText = options.cancelText || 'Cancelar';
+
+    modal.innerHTML = `
+      <div class="p-6 flex items-start gap-3.5">
+        <div class="p-2.5 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+          </svg>
+        </div>
+        <div class="space-y-1.5 flex-1 min-w-0">
+          <h3 class="font-bold text-base text-gray-900 dark:text-slate-100 leading-snug">${escapeHtml(title)}</h3>
+          <p class="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
+            Essa ação fará o upload de todos os arquivos de <strong class="text-gray-900 dark:text-white font-semibold">"${escapeHtml(options.folderName)}"</strong>.
+          </p>
+          <p class="text-[11px] text-gray-400 dark:text-slate-500">
+            Faça isso apenas se você confiar no site. Os arquivos serão processados localmente.
+          </p>
+        </div>
+      </div>
+      <div class="px-6 py-3.5 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950/80 flex justify-end gap-2.5">
+        <button type="button" id="pwi-folder-confirm-cancel-btn" class="px-4 py-2 text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">
+          ${escapeHtml(cancelText)}
+        </button>
+        <button type="button" id="pwi-folder-confirm-ok-btn" class="px-5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-md cursor-pointer">
+          ${escapeHtml(confirmText)}
+        </button>
+      </div>
+    `;
+
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    const okBtn = modal.querySelector('#pwi-folder-confirm-ok-btn') as HTMLButtonElement | null;
+    const cancelBtn = modal.querySelector('#pwi-folder-confirm-cancel-btn') as HTMLButtonElement | null;
+
+    okBtn?.focus();
+
+    const cleanup = () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+    };
+
+    const confirm = () => {
+      cleanup();
+      resolve(true);
+    };
+
+    const cancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cancel();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        confirm();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    okBtn?.addEventListener('click', confirm);
+    cancelBtn?.addEventListener('click', cancel);
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) cancel();
+    });
+  });
+}
+
+// Helper para ler arquivos de FileSystemDirectoryHandle (navegação recursiva)
+export async function readFilesFromDirectoryHandle(dirHandle: any, path = ''): Promise<File[]> {
+  const files: File[] = [];
+  for await (const entry of dirHandle.values()) {
+    if (entry.kind === 'file') {
+      const file = await entry.getFile();
+      const relativePath = path ? `${path}/${file.name}` : `${dirHandle.name}/${file.name}`;
+      Object.defineProperty(file, 'webkitRelativePath', {
+        value: relativePath,
+        writable: false,
+        configurable: true
+      });
+      files.push(file);
+    } else if (entry.kind === 'directory') {
+      const subFiles = await readFilesFromDirectoryHandle(
+        entry,
+        path ? `${path}/${entry.name}` : `${dirHandle.name}/${entry.name}`
+      );
+      files.push(...subFiles);
+    }
+  }
+  return files;
+}
+
+// Seletor Inteligente de Pastas com Confirmação Personalizada
+export async function pickDirectoryWithCustomConfirm(options: {
+  id?: string;
+  fallbackInput?: HTMLInputElement;
+}): Promise<{ folderName: string; files: File[] } | null> {
+  if ('showDirectoryPicker' in window) {
+    try {
+      let handle: any;
+      try {
+        handle = await (window as any).showDirectoryPicker(options.id ? { id: options.id } : undefined);
+      } catch (pickerErr: any) {
+        if (pickerErr.name === 'AbortError') return null;
+        if (options.id) {
+          handle = await (window as any).showDirectoryPicker();
+        } else {
+          throw pickerErr;
+        }
+      }
+      const files = await readFilesFromDirectoryHandle(handle);
+      if (files.length === 0) {
+        showToast('Nenhum arquivo encontrado na pasta selecionada.', 'warning');
+        return null;
+      }
+      const confirmed = await confirmFolderUploadDialog({
+        folderName: handle.name,
+        fileCount: files.length
+      });
+      if (!confirmed) {
+        return null;
+      }
+      return { folderName: handle.name, files };
+    } catch (err: any) {
+      if (err.name === 'AbortError') return null; // Usuário cancelou no seletor do SO
+      console.warn('showDirectoryPicker falhou, tentando fallback:', err);
+    }
+  }
+
+  // Fallback para navegadores sem showDirectoryPicker
+  const fallbackInput = options.fallbackInput;
+  if (fallbackInput) {
+    return new Promise((resolve) => {
+      const handler = async (e: Event) => {
+        fallbackInput.removeEventListener('change', handler);
+        const fileList = (e.target as HTMLInputElement).files;
+        if (!fileList || fileList.length === 0) {
+          resolve(null);
+          return;
+        }
+        const filesArray = Array.from(fileList);
+        const folderName = filesArray[0]?.webkitRelativePath?.split('/')[0] || 'Pasta selecionada';
+        const confirmed = await confirmFolderUploadDialog({
+          folderName,
+          fileCount: filesArray.length
+        });
+        if (!confirmed) {
+          fallbackInput.value = '';
+          resolve(null);
+          return;
+        }
+        resolve({ folderName, files: filesArray });
+      };
+      fallbackInput.addEventListener('change', handler);
+      fallbackInput.click();
+    });
+  }
+
+  return null;
+}

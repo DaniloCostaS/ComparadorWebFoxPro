@@ -85,7 +85,7 @@ function handleOpenFileRequest(req: any, res: any) {
       console.warn('[Open API] Arquivo não encontrado no disco:', targetPath);
       res.statusCode = 200; // Retorna 200 com JSON informando success: false para evitar erro 404 genérico no console
       res.end(JSON.stringify({ 
-        success: false,
+        success: false, 
         error: `Arquivo não encontrado no disco:\n${targetPath}\n\nVerifique se a pasta raiz informada contém este arquivo.` 
       }));
       return;
@@ -178,14 +178,60 @@ if (-not $opened) {
   }
 }
 
+function handleBrunoReadRequest(req: any, res: any) {
+  try {
+    const url = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+    const dirPath = url.searchParams.get('path') || 'C:\\TestesVF\\RotasAPI\\Bruno';
+    res.setHeader('Content-Type', 'application/json');
+
+    if (!fs.existsSync(dirPath)) {
+      res.statusCode = 404;
+      res.end(JSON.stringify({ success: false, error: `Diretório não encontrado: ${dirPath}` }));
+      return;
+    }
+
+    const files: { path: string; content: string }[] = [];
+    function scan(currentDir: string, rootDir: string) {
+      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+      for (const entry of entries) {
+        const full = path.join(currentDir, entry.name);
+        const rel = path.relative(rootDir, full).replace(/\\/g, '/');
+        if (entry.isDirectory()) {
+          if (entry.name !== 'node_modules' && entry.name !== '.git') {
+            scan(full, rootDir);
+          }
+        } else if (entry.isFile()) {
+          const ext = path.extname(entry.name).toLowerCase();
+          if (ext === '.bru' || ext === '.yml' || ext === '.yaml' || ext === '.json') {
+            try {
+              const content = fs.readFileSync(full, 'utf8');
+              files.push({ path: rel, content });
+            } catch {}
+          }
+        }
+      }
+    }
+
+    scan(dirPath, path.dirname(dirPath));
+    res.statusCode = 200;
+    res.end(JSON.stringify({ success: true, path: dirPath, filesCount: files.length, files }));
+  } catch (err: any) {
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ success: false, error: err?.message || 'Erro interno' }));
+  }
+}
+
 function localFileOpenerPlugin(): Plugin {
   return {
     name: 'local-file-opener',
     configureServer(server) {
       server.middlewares.use('/api/open-file', handleOpenFileRequest);
+      server.middlewares.use('/api/bruno-read', handleBrunoReadRequest);
     },
     configurePreviewServer(server) {
       server.middlewares.use('/api/open-file', handleOpenFileRequest);
+      server.middlewares.use('/api/bruno-read', handleBrunoReadRequest);
     }
   }
 }

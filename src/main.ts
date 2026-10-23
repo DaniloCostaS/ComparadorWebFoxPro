@@ -5,6 +5,7 @@ import { FoxProParser } from './foxproParser.ts';
 import { handleCodeReferencesSearch, renderTreeResults } from './codeReferences.ts';
 import { beautifyText, minifyText } from './beautifier.ts';
 import { analyzeRepositoryCustomizations, type AnalysisSummary, type CustomizedItem } from './customizationAnalyzer.ts';
+import { showToast, pickDirectoryWithCustomConfirm } from './uiFeedback.ts';
 import { validateSingleXml, validateBatchXml, SCHEMA_PACKAGES, type FileValidationResult } from './xmlValidator.ts';
 import { parseSqlPlan, SQL_OPERATIONS_DICTIONARY, getOperationTooltip, getEducationalBadge } from './sqlPlanReader.ts';
 import './markdownViewer.css';
@@ -459,88 +460,41 @@ document.addEventListener('DOMContentLoaded', () => {
       return map;
   }
 
-  async function readFilesFromDirectoryHandle(dirHandle: any, path = ''): Promise<File[]> {
-      const files: File[] = [];
-      for await (const entry of dirHandle.values()) {
-          if (entry.kind === 'file') {
-              const file = await entry.getFile();
-              const relativePath = path ? `${path}/${file.name}` : `${dirHandle.name}/${file.name}`;
-              Object.defineProperty(file, 'webkitRelativePath', {
-                  value: relativePath,
-                  writable: false,
-                  configurable: true
-              });
-              files.push(file);
-          } else if (entry.kind === 'directory') {
-              const subFiles = await readFilesFromDirectoryHandle(entry, path ? `${path}/${entry.name}` : `${dirHandle.name}/${entry.name}`);
-              files.push(...subFiles);
-          }
-      }
-      return files;
-  }
-
-  // Bind Native Directory Picker with separate location memory per ID
+  // FoxPro Batch - Pasta Original (Antes) com Confirmação Personalizada
   const foxBatchAntesLabel = foxBatchAntesDirInput.closest('label');
-  if (foxBatchAntesLabel && 'showDirectoryPicker' in window) {
+  if (foxBatchAntesLabel) {
       foxBatchAntesLabel.addEventListener('click', async (e) => {
           e.preventDefault();
-          try {
-              const handle = await (window as any).showDirectoryPicker({ id: 'fox_batch_antes_directory' });
-              const files = await readFilesFromDirectoryHandle(handle);
-              foxBatchAntesFiles = files;
-              const map = getFileMap(files);
-              foxBatchAntesCount.textContent = `${map.size} formulários encontrados`;
-              foxBatchAntesCount.classList.remove('hidden');
-              validateFoxProBatch();
-          } catch (err: any) {
-              if (err.name !== 'AbortError') console.error(err);
-          }
+          const res = await pickDirectoryWithCustomConfirm({
+              id: 'fox_batch_antes_directory',
+              fallbackInput: foxBatchAntesDirInput
+          });
+          if (!res) return;
+          foxBatchAntesFiles = res.files;
+          const map = getFileMap(res.files);
+          foxBatchAntesCount.textContent = `${map.size} formulários encontrados (${res.folderName})`;
+          foxBatchAntesCount.classList.remove('hidden');
+          validateFoxProBatch();
       });
   }
 
-  foxBatchAntesDirInput.addEventListener('change', (e) => {
-      const files = (e.target as HTMLInputElement).files;
-      if (files && files.length > 0) {
-          foxBatchAntesFiles = files;
-          const map = getFileMap(files);
-          foxBatchAntesCount.textContent = `${map.size} formulários encontrados`;
-          foxBatchAntesCount.classList.remove('hidden');
-      } else {
-          foxBatchAntesCount.classList.add('hidden');
-      }
-      validateFoxProBatch();
-  });
-
+  // FoxPro Batch - Pasta Modificada (Depois) com Confirmação Personalizada
   const foxBatchDepoisLabel = foxBatchDepoisDirInput.closest('label');
-  if (foxBatchDepoisLabel && 'showDirectoryPicker' in window) {
+  if (foxBatchDepoisLabel) {
       foxBatchDepoisLabel.addEventListener('click', async (e) => {
           e.preventDefault();
-          try {
-              const handle = await (window as any).showDirectoryPicker({ id: 'fox_batch_depois_directory' });
-              const files = await readFilesFromDirectoryHandle(handle);
-              foxBatchDepoisFiles = files;
-              const map = getFileMap(files);
-              foxBatchDepoisCount.textContent = `${map.size} formulários encontrados`;
-              foxBatchDepoisCount.classList.remove('hidden');
-              validateFoxProBatch();
-          } catch (err: any) {
-              if (err.name !== 'AbortError') console.error(err);
-          }
+          const res = await pickDirectoryWithCustomConfirm({
+              id: 'fox_batch_depois_directory',
+              fallbackInput: foxBatchDepoisDirInput
+          });
+          if (!res) return;
+          foxBatchDepoisFiles = res.files;
+          const map = getFileMap(res.files);
+          foxBatchDepoisCount.textContent = `${map.size} formulários encontrados (${res.folderName})`;
+          foxBatchDepoisCount.classList.remove('hidden');
+          validateFoxProBatch();
       });
   }
-
-  foxBatchDepoisDirInput.addEventListener('change', (e) => {
-      const files = (e.target as HTMLInputElement).files;
-      if (files && files.length > 0) {
-          foxBatchDepoisFiles = files;
-          const map = getFileMap(files);
-          foxBatchDepoisCount.textContent = `${map.size} formulários encontrados`;
-          foxBatchDepoisCount.classList.remove('hidden');
-      } else {
-          foxBatchDepoisCount.classList.add('hidden');
-      }
-      validateFoxProBatch();
-  });
   validateFoxProBatch();
   validateFoxPro();
 
@@ -779,8 +733,24 @@ document.addEventListener('DOMContentLoaded', () => {
       svgs.forEach(svg => svg.style.transform = 'rotate(0deg)');
   });
 
-  let crFiles: FileList | null = crFolderInput.files && crFolderInput.files.length > 0 ? crFolderInput.files : null;
+  let crFiles: FileList | File[] | null = crFolderInput.files && crFolderInput.files.length > 0 ? crFolderInput.files : null;
   const crSearchTermList: string[] = [];
+
+  const crFolderLabel = crFolderInput.closest('label');
+  if (crFolderLabel) {
+      crFolderLabel.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const res = await pickDirectoryWithCustomConfirm({
+              id: 'cr_folder_directory',
+              fallbackInput: crFolderInput
+          });
+          if (!res) return;
+          crFiles = res.files;
+          crFolderCount.textContent = `${res.files.length} arquivos encontrados na pasta (${res.folderName})`;
+          crFolderCount.classList.remove('hidden');
+          validateCr();
+      });
+  }
 
   function renderCrTags() {
       crSearchTags.innerHTML = '';
@@ -1069,12 +1039,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeSearchTerm: string = '';
   let activeModalItem: CustomizedItem | null = null;
 
-  customFolderInput?.addEventListener('change', async (e) => {
-    const files = (e.target as HTMLInputElement).files;
+  const runCustomAnalysis = async (files: FileList | File[], folderName?: string) => {
     if (!files || files.length === 0) return;
 
     if (customFolderCount) {
-      customFolderCount.textContent = `${files.length.toLocaleString()} arquivos carregados do repositório`;
+      customFolderCount.textContent = `${files.length.toLocaleString()} arquivos carregados do repositório${folderName ? ` (${folderName})` : ''}`;
       customFolderCount.classList.remove('hidden');
     }
 
@@ -1099,11 +1068,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
       renderCustomSummary(activeSummary);
       if (customResultsContainer) customResultsContainer.classList.remove('hidden');
+      showToast('Análise de customizações concluída com sucesso!', 'success');
     } catch (err: any) {
       console.error(err);
-      alert(`Erro ao analisar repositório: ${err?.message || err}`);
+      showToast(`Erro ao analisar repositório: ${err?.message || err}`, 'error');
     } finally {
       if (customProgressContainer) customProgressContainer.classList.add('hidden');
+    }
+  };
+
+  const customFolderLabel = customFolderInput?.closest('label');
+  if (customFolderLabel) {
+    customFolderLabel.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const res = await pickDirectoryWithCustomConfirm({
+        id: 'custom_analyzer_directory',
+        fallbackInput: customFolderInput
+      });
+      if (!res) return;
+      await runCustomAnalysis(res.files, res.folderName);
+    });
+  }
+
+  customFolderInput?.addEventListener('change', async (e) => {
+    const files = (e.target as HTMLInputElement).files;
+    if (files && files.length > 0) {
+      await runCustomAnalysis(files);
     }
   });
 
