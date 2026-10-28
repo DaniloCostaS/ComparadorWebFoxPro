@@ -138,6 +138,7 @@ export const SCHEMA_PACKAGES: SchemaPackage[] = [
       'tiposBasico_v4.00.xsd',
       'xmldsig-core-schema_v1.01.xsd',
       'e110001_v1.00.xsd',
+      'e110300_v1.00.xsd',
       'e112110_v1.00.xsd',
       'e112120_v1.00 .xsd',
       'e112130_v1.00.xsd',
